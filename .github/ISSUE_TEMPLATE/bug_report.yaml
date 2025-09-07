@@ -1,0 +1,67 @@
+name: Bug
+description: Report a bug in the project
+labels: ["bug"]
+projects: ["Simon-Boyer/1"]
+body:
+  - type: textarea
+    id: description-bug
+    attributes:
+      label: Describe the bug
+      description: "A clear and concise description of what the issue is."
+      placeholder: "E.g. When I click on this button, nothing happens."
+
+  - type: textarea
+    id: reproduction-bug
+    attributes:
+      label: "Reproduction steps"
+      description: "Steps to reproduce the behavior."
+      value: |
+        1. Go to '...'
+        2. Click on '....'
+        3. Scroll down to '....'
+        4. See the error
+      render: markdown
+
+  - type: textarea
+    id: expected-behavior-bug
+    attributes:
+      label: "Expected behavior"
+      description: "A clear and concise description of what you expected to happen."
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: "Screenshots"
+      description: "If applicable, add screenshots to help explain your issue."
+
+  - type: dropdown
+    id: computer-os
+    attributes:
+      label: Operating System
+      description: "Which operating system are you using?"
+      options:
+        - Windows
+        - MacOS
+        - Linux
+      default: 0
+
+  - type: dropdown
+    id: browser-bug
+    attributes:
+      label: Browser used?
+      description: "Which browser did you use to reproduce the bug?"
+      options:
+        - Firefox
+        - Chrome
+        - Safari
+        - Microsoft Edge
+        - Brave
+        - Other
+      default: 0
+      
+  - type: textarea
+    id: additional-infos-bug
+    attributes:
+      label: "Additional Information"
+      description: "Add any other relevant information here."
+

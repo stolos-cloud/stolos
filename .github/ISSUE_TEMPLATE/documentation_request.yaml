@@ -1,0 +1,20 @@
+name: Documentation
+description: Add documentation to the project
+labels: ["documentation"]
+projects: ["Simon-Boyer/1"]
+body:
+  - type: dropdown
+    id: documentation-location
+    attributes:
+      label: "Documentation location"
+      description: "The location you want to document."
+      options:
+        - README.md file
+        - Wiki
+      default: 0
+      
+  - type: textarea
+    id: additional-infos-documentation
+    attributes:
+      label: "Additional Information"
+      description: "Add any other relevant information here."
