@@ -1,0 +1,28 @@
+name: Feature
+description: Add a new feature or improvement to the project
+labels: ["enhancement"]
+projects: ["Simon-Boyer/1"]
+body:
+
+  - type: textarea
+    id: description-feature
+    attributes:
+      label: "Describe the feature"
+      description: "A clear and concise description of the new request."
+      placeholder: "E.g. Add a new feature to..."
+
+  - type: checkboxes
+    id: options-feature
+    attributes:
+      label: "Select an option"
+      description: "Please select one option from the following feature types"
+      options:
+        - label: "New feature"
+        - label: "Improvement"
+        - label: "Add tests"
+
+  - type: textarea
+    id: additional-infos-feature
+    attributes:
+      label: "Additional informations"
+      description: "Add any other additional information here."

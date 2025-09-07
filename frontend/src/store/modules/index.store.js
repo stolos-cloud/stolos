@@ -1,0 +1,1 @@
+//Example of store file for Vuex modules
