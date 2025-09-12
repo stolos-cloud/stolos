@@ -2,10 +2,16 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"log"
+	"net"
 	"strings"
+	"time"
 
+	"github.com/cavaliergopher/grab/v3"
 	tea "github.com/charmbracelet/bubbletea"
+	schematic "github.com/siderolabs/image-factory/pkg/schematic"
 )
 
 // Indices for Step 1 fields
@@ -14,10 +20,24 @@ const (
 	idxTalosVersion
 	idxImageOverlay
 	idxMCOverlay
+	idxHTTPHostname
 	idxHTTPPort
 	idxPXEEnabled
 	idxPXEPort
 )
+
+type BootstrapInfo struct {
+	ClusterName              string
+	TalosVersion             string
+	ImageOverlayPath         string
+	MachineconfigOverlayPath string
+	HTTPHostname             string
+	HTTPPort                 string
+	PXEEnabled               string
+	PXEPort                  string
+}
+
+var bootstrapInfos = BootstrapInfo{}
 
 func main() {
 	step1 := Step{
@@ -29,6 +49,7 @@ func main() {
 			NewTextField("Talos Version (Optional)", "", true),
 			NewTextField("Custom Image Factory YAML Overlay (Optional)", "", true),
 			NewTextField("Custom Machineconfig YAML Overlay (Optional)", "", true),
+			NewTextField("HTTP Machineconfig Server External Hostname", "", false),
 			NewTextField("HTTP Machineconfig Server Port", "", false),
 			NewTextField("PXE Server Enabled (true/false)", "", true),
 			NewTextField("PXE Server Port (Optional)", "", true),
@@ -38,6 +59,7 @@ func main() {
 	// Default form values:
 	step1.Fields[idxTalosVersion].Input.SetValue("v1.8.0")
 	step1.Fields[idxClusterName].Input.SetValue("mycluster")
+	step1.Fields[idxHTTPHostname].Input.SetValue(GetOutboundIP())
 	step1.Fields[idxHTTPPort].Input.SetValue("8082")
 	step1.Fields[idxPXEEnabled].Input.SetValue("false")
 	step1.Fields[idxPXEPort].Input.SetValue("69")
@@ -82,9 +104,46 @@ func main() {
 
 	steps[1].OnEnter = func(m *Model) tea.Cmd {
 		return func() tea.Msg {
-			loggerRef.Info("Calling ImageFactory...")
-			loggerRef.Info("TQWERTYUIOP")
-			return nil
+
+			bootstrapInfos.ClusterName = step1.Fields[idxClusterName].Input.Value()
+			bootstrapInfos.TalosVersion = step1.Fields[idxTalosVersion].Input.Value()
+			bootstrapInfos.HTTPHostname = step1.Fields[idxHTTPHostname].Input.Value()
+			bootstrapInfos.HTTPPort = step1.Fields[idxHTTPPort].Input.Value()
+			bootstrapInfos.MachineconfigOverlayPath = step1.Fields[idxMCOverlay].Input.Value()
+			bootstrapInfos.ImageOverlayPath = step1.Fields[idxImageOverlay].Input.Value()
+			bootstrapInfos.PXEEnabled = step1.Fields[idxImageOverlay].Input.Value()
+			bootstrapInfos.PXEPort = step1.Fields[idxPXEPort].Input.Value()
+
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+
+			talosConfigArg := fmt.Sprintf("talos.config=http://%s:%s/talosconfig?h=${hostname}&m=${mac}&s=${serial}&u=${uuid}", step1.Fields[idxHTTPHostname].Input.Value(), step1.Fields[idxHTTPPort].Input.Value())
+			kernelArgs := append(make([]string, 1), talosConfigArg)
+
+			loggerRef.Infof("Generating image with kernelParam: %s", talosConfigArg)
+
+			factory := CreateFactoryClient()
+			sch := schematic.Schematic{
+
+				Customization: schematic.Customization{
+					ExtraKernelArgs:  kernelArgs,
+					Meta:             nil,
+					SystemExtensions: schematic.SystemExtensions{},
+					SecureBoot:       schematic.SecureBootCustomization{},
+				},
+			}
+
+			schematicId, _ := factory.SchematicCreate(ctx, sch)
+
+			resp, err := grab.Get(".", fmt.Sprintf("https://factory.talos.dev/image/%s/%s/%s", schematicId))
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			fmt.Println("Download saved to", resp.Filename)
+
+			loggerRef.Info(schematicId)
+			return m.advanceCmd()
 		}
 	}
 
@@ -163,4 +222,20 @@ func main() {
 	if _, err := p.Run(); err != nil {
 		fmt.Println("Error:", err)
 	}
+}
+
+// Utils
+
+// Get preferred outbound ip of this machine
+// Ref: https://stackoverflow.com/a/37382208
+func GetOutboundIP() string {
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		return ""
+	}
+	defer conn.Close()
+
+	localAddr := conn.LocalAddr().(*net.UDPAddr)
+
+	return localAddr.IP.String()
 }
