@@ -3,7 +3,6 @@ package main
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -15,7 +14,6 @@ const (
 	idxTalosVersion
 	idxImageOverlay
 	idxMCOverlay
-	idxHTTPEnabled
 	idxHTTPPort
 	idxPXEEnabled
 	idxPXEPort
@@ -25,24 +23,31 @@ func main() {
 	step1 := Step{
 		Title: "1) Basic Information and Image Factory",
 		Kind:  StepForm,
+		// TODO: Bug in Bubbletea causes placeholder not to work - check after package is updated
 		Fields: []Field{
-			NewTextField("Cluster Name", "mycluster", false),
-			NewTextField("Talos Version (Optional)", "v1.7.x", true),
-			NewTextField("Custom Image Factory YAML Overlay (Optional)", "path/to/image-factory-overlay.yaml", true),
-			NewTextField("Custom Machineconfig YAML Overlay (Optional)", "path/to/machineconfig-overlay.yaml", true),
-			NewTextField("HTTP Machineconfig Server Enabled (true/false)", "true", false),
-			NewTextField("HTTP Machineconfig Server Port", "8080", false),
-			NewTextField("PXE Server Enabled (true/false)", "false", true),
-			NewTextField("PXE Server Port (Optional)", "69", true),
+			NewTextField("Cluster Name", "my-cluster-01", false),
+			NewTextField("Talos Version (Optional)", "", true),
+			NewTextField("Custom Image Factory YAML Overlay (Optional)", "", true),
+			NewTextField("Custom Machineconfig YAML Overlay (Optional)", "", true),
+			NewTextField("HTTP Machineconfig Server Port", "", false),
+			NewTextField("PXE Server Enabled (true/false)", "", true),
+			NewTextField("PXE Server Port (Optional)", "", true),
 		},
 	}
 
 	// Default form values:
+	step1.Fields[idxTalosVersion].Input.SetValue("v1.8.0")
 	step1.Fields[idxClusterName].Input.SetValue("mycluster")
-	step1.Fields[idxHTTPEnabled].Input.SetValue("true")
-	step1.Fields[idxHTTPPort].Input.SetValue("8080")
+	step1.Fields[idxHTTPPort].Input.SetValue("8082")
 	step1.Fields[idxPXEEnabled].Input.SetValue("false")
 	step1.Fields[idxPXEPort].Input.SetValue("69")
+
+	step1_1 := Step{
+		Title:       "1.1) Generate Talos Image...",
+		Kind:        StepSpinner,
+		Body:        "Generating talos image via image factory...",
+		AutoAdvance: false,
+	}
 
 	step2 := Step{
 		Title:       "2) Boot",
@@ -69,20 +74,28 @@ func main() {
 		Body:  "Bootstrapping the cluster…",
 	}
 
-	steps := []Step{step1, step2, step21, step22, step23}
+	steps := []Step{step1, step1_1, step2, step21, step22, step23}
 
 	p, logger := NewWizard(steps)
 
 	loggerRef := logger
 
-	// Step 2 (Boot): start HTTP server as soon as we enter the step.
 	steps[1].OnEnter = func(m *Model) tea.Cmd {
+		return func() tea.Msg {
+			loggerRef.Info("Calling ImageFactory...")
+			loggerRef.Info("TQWERTYUIOP")
+			return nil
+		}
+	}
+
+	// Step 2 (Boot): start HTTP server as soon as we enter the step.
+	steps[2].OnEnter = func(m *Model) tea.Cmd {
 		// Read Step 1 values from the model
 		cluster := strings.TrimSpace(m.steps[0].Fields[idxClusterName].Input.Value())
 		if cluster == "" {
 			cluster = "mycluster"
 		}
-		httpEnabled := parseBool(m.steps[0].Fields[idxHTTPEnabled].Input.Value())
+		httpEnabled := true
 		httpPort := strings.TrimSpace(m.steps[0].Fields[idxHTTPPort].Input.Value())
 		if httpPort == "" {
 			httpPort = "8080"
@@ -99,7 +112,7 @@ func main() {
 					loggerRef.Warn("HTTP Machineconfig Server is disabled (enable it in Step 1 to serve /machineconfig)")
 					return nil
 				}
-				loggerRef.Infof("Starting HTTP Machineconfig Server on %s …", addr)
+				//loggerRef.Infof("Starting HTTP Machineconfig Server on %s …", addr)
 				// Start the server in a goroutine; never block the TUI.
 				go func() {
 					if err := StartConfigServer(loggerRef, addr); err != nil {
@@ -112,7 +125,7 @@ func main() {
 	}
 
 	// Step 2.1: show some example log messages upon entering the waiting screen.
-	steps[2].OnEnter = func(m *Model) tea.Cmd {
+	steps[3].OnEnter = func(m *Model) tea.Cmd {
 		return func() tea.Msg {
 			loggerRef.Info("Spinner active. Waiting for first node to hit /machineconfig …")
 			loggerRef.Info("Tip: The first requester becomes the Kubernetes Control Plane.")
@@ -121,7 +134,7 @@ func main() {
 	}
 
 	// Step 2.2: example worker logs
-	steps[3].OnEnter = func(m *Model) tea.Cmd {
+	steps[4].OnEnter = func(m *Model) tea.Cmd {
 		return func() tea.Msg {
 			loggerRef.Info("Generating worker base machine config…")
 			loggerRef.Success("Found Worker 1 10.0.0.21 , Responded with worker.machineconfig.yaml")
@@ -133,7 +146,7 @@ func main() {
 	}
 
 	// Step 2.3: example bootstrap logs (use inputs for $NAME)
-	steps[4].OnEnter = func(m *Model) tea.Cmd {
+	steps[5].OnEnter = func(m *Model) tea.Cmd {
 		return func() tea.Msg {
 			cluster := strings.TrimSpace(m.steps[0].Fields[idxClusterName].Input.Value())
 			if cluster == "" {
@@ -149,21 +162,5 @@ func main() {
 
 	if _, err := p.Run(); err != nil {
 		fmt.Println("Error:", err)
-	}
-}
-
-// parseBool fuzzy
-func parseBool(s string) bool {
-	switch strings.ToLower(strings.TrimSpace(s)) {
-	case "1", "t", "true", "yes", "y", "on":
-		return true
-	case "0", "f", "false", "no", "n", "off":
-		return false
-	default:
-		// Try to parse as int in case someone types a port number accidentally :)
-		if i, err := strconv.Atoi(s); err == nil {
-			return i != 0
-		}
-		return false
 	}
 }

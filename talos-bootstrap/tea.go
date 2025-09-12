@@ -3,6 +3,7 @@ package main
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -44,7 +45,7 @@ func NewTextField(label, placeholder string, optional bool) Field {
 	ti := textinput.New()
 	ti.Prompt = "› "
 	ti.Placeholder = placeholder
-	ti.CursorStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("212")).Bold(true)
+	//ti.CursorStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("212")).Bold(true)
 	return Field{
 		Label:       label,
 		Placeholder: placeholder,
@@ -107,7 +108,7 @@ type tickMsg struct{}
 // Model holds UI state.
 type Model struct {
 	steps             []Step
-	currntStepIndex   int
+	currentStepIndex  int
 	width             int
 	height            int
 	spinner           spinner.Model
@@ -121,10 +122,10 @@ func newModel(steps []Step) Model {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	return Model{
-		steps:           steps,
-		currntStepIndex: 0,
-		spinner:         s,
-		maxLogs:         500,
+		steps:            steps,
+		currentStepIndex: 0,
+		spinner:          s,
+		maxLogs:          500,
 	}
 }
 
@@ -143,24 +144,27 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "enter":
 			// TODO: ADD Form validation and processing
+			//if m.currentStepIndex == 0 {
+			//	return m, nil
+			//}
 			return m, m.advanceCmd()
 
 		case "tab", "down":
-			if m.cur().Kind == StepForm && len(m.cur().Fields) > 0 {
-				m.steps[m.currntStepIndex].Fields[m.focusedFieldIndex].Input.Blur()
-				m.focusedFieldIndex = (m.focusedFieldIndex + 1) % len(m.cur().Fields)
-				m.steps[m.currntStepIndex].Fields[m.focusedFieldIndex].Input.Focus()
+			if m.getCurrentStep().Kind == StepForm && len(m.getCurrentStep().Fields) > 0 {
+				m.steps[m.currentStepIndex].Fields[m.focusedFieldIndex].Input.Blur()
+				m.focusedFieldIndex = (m.focusedFieldIndex + 1) % len(m.getCurrentStep().Fields)
+				m.steps[m.currentStepIndex].Fields[m.focusedFieldIndex].Input.Focus()
 			}
 			return m, nil
 
 		case "shift+tab", "up":
-			if m.cur().Kind == StepForm && len(m.cur().Fields) > 0 {
-				m.steps[m.currntStepIndex].Fields[m.focusedFieldIndex].Input.Blur()
+			if m.getCurrentStep().Kind == StepForm && len(m.getCurrentStep().Fields) > 0 {
+				m.steps[m.currentStepIndex].Fields[m.focusedFieldIndex].Input.Blur()
 				m.focusedFieldIndex--
 				if m.focusedFieldIndex < 0 {
-					m.focusedFieldIndex = len(m.cur().Fields) - 1
+					m.focusedFieldIndex = len(m.getCurrentStep().Fields) - 1
 				}
-				m.steps[m.currntStepIndex].Fields[m.focusedFieldIndex].Input.Focus()
+				m.steps[m.currentStepIndex].Fields[m.focusedFieldIndex].Input.Focus()
 			}
 			return m, nil
 
@@ -179,15 +183,15 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case stepEnteredMsg:
 		cmds := []tea.Cmd{}
-		if m.cur().Kind == StepSpinner {
+		if m.getCurrentStep().Kind == StepSpinner {
 			cmds = append(cmds, m.spinner.Tick)
 		}
-		if m.cur().AutoAdvance {
+		if m.getCurrentStep().AutoAdvance {
 			// TODO : Fix AutoAdvance behaviour
 			cmds = append(cmds, tea.Tick(80*time.Millisecond, func(time.Time) tea.Msg { return advanceMsg{} }))
 		}
-		if m.cur().OnEnter != nil {
-			cmds = append(cmds, m.cur().OnEnter(m))
+		if m.getCurrentStep().OnEnter != nil {
+			cmds = append(cmds, m.getCurrentStep().OnEnter(m))
 		}
 		return m, tea.Batch(cmds...)
 
@@ -196,7 +200,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	// If we're on a form step, keep updating focused input.
-	if m.cur().Kind == StepForm {
+	if m.getCurrentStep().Kind == StepForm {
 		return m.updateForm(msg)
 	}
 	return m, nil
@@ -212,18 +216,18 @@ func (m *Model) View() string {
 	b.WriteString("\n\n")
 
 	// Step title
-	title := lipgloss.NewStyle().Bold(true).Render(m.cur().Title)
+	title := lipgloss.NewStyle().Bold(true).Render(m.getCurrentStep().Title)
 	b.WriteString(title + "\n\n")
 
 	// Step body by kind
-	switch m.cur().Kind {
+	switch m.getCurrentStep().Kind {
 	case StepForm:
 		b.WriteString(m.renderForm())
 	case StepSpinner:
 		b.WriteString(m.renderSpinnerBody())
 	default:
 		// Plain
-		b.WriteString(m.wrap(m.cur().Body, m.width))
+		b.WriteString(m.wrap(m.getCurrentStep().Body, m.width))
 	}
 
 	// Logs
@@ -235,36 +239,36 @@ func (m *Model) View() string {
 
 // Steps helper / processing
 
-func (m *Model) cur() Step { return m.steps[m.currntStepIndex] }
+func (m *Model) getCurrentStep() Step { return m.steps[m.currentStepIndex] }
 
 func (m *Model) enterStepCmd(i int) tea.Cmd {
-	m.currntStepIndex = i
-	if m.cur().Kind == StepForm && len(m.cur().Fields) > 0 {
-		for j := range m.cur().Fields {
-			m.steps[m.currntStepIndex].Fields[j].Input.Blur()
+	m.currentStepIndex = i
+	if m.getCurrentStep().Kind == StepForm && len(m.getCurrentStep().Fields) > 0 {
+		for j := range m.getCurrentStep().Fields {
+			m.steps[m.currentStepIndex].Fields[j].Input.Blur()
 		}
 		m.focusedFieldIndex = 0
-		m.steps[m.currntStepIndex].Fields[0].Input.Focus()
+		m.steps[m.currentStepIndex].Fields[0].Input.Focus()
 	}
 	return func() tea.Msg { return stepEnteredMsg{idx: i} }
 }
 
 func (m *Model) advanceCmd() tea.Cmd {
-	if m.currntStepIndex >= len(m.steps)-1 {
+	if m.currentStepIndex >= len(m.steps)-1 {
 		return tea.Quit
 	}
-	next := m.currntStepIndex + 1
+	next := m.currentStepIndex + 1
 	return m.enterStepCmd(next)
 }
 
 // Forms
 
 func (m *Model) updateForm(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if len(m.cur().Fields) == 0 {
+	if len(m.getCurrentStep().Fields) == 0 {
 		return m, nil
 	}
 	// Route to the focused input
-	curField := &m.steps[m.currntStepIndex].Fields[m.focusedFieldIndex]
+	curField := &m.steps[m.currentStepIndex].Fields[m.focusedFieldIndex]
 	var cmd tea.Cmd
 	curField.Input, cmd = curField.Input.Update(msg)
 	return m, cmd
@@ -272,16 +276,16 @@ func (m *Model) updateForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *Model) renderForm() string {
 	var out []string
-	for idx := range m.cur().Fields {
-		f := m.cur().Fields[idx]
+	for idx := range m.getCurrentStep().Fields {
+		f := m.getCurrentStep().Fields[idx]
 		label := lipgloss.NewStyle().Bold(true).Render(f.Label)
 		line := fmt.Sprintf("%s\n%s", label, f.Input.View())
-		if idx < len(m.cur().Fields)-1 {
+		if idx < len(m.getCurrentStep().Fields)-1 {
 			line += "\n"
 		}
 		out = append(out, line)
 	}
-	footer := lipgloss.NewStyle().Faint(true).Render("\nPress Enter to continue")
+	footer := lipgloss.NewStyle().Bold(true).Faint(false).Render("\n\n*** Press Enter to continue")
 	return strings.Join(out, "\n") + footer
 }
 
@@ -289,7 +293,7 @@ func (m *Model) renderForm() string {
 
 func (m *Model) renderSpinnerBody() string {
 	sp := m.spinner.View()
-	body := m.cur().Body
+	body := m.getCurrentStep().Body
 	if body == "" {
 		body = "Working..."
 	}
@@ -352,7 +356,7 @@ func (m *Model) renderBreadcrumbs() string {
 	var parts []string
 	for idx, s := range m.steps {
 		label := s.Title
-		if idx == m.currntStepIndex {
+		if idx == m.currentStepIndex {
 			label = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("212")).Render(label)
 		} else {
 			label = lipgloss.NewStyle().Faint(true).Render(label)
@@ -402,4 +406,20 @@ func truncate(s string, width int) string {
 	}
 	r := []rune(s)
 	return string(r[:width-1]) + "…"
+}
+
+// parseBool fuzzy
+func parseBool(s string) bool {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "1", "t", "true", "yes", "y", "on":
+		return true
+	case "0", "f", "false", "no", "n", "off":
+		return false
+	default:
+		// Try to parse as int in case someone types a port number accidentally :)
+		if i, err := strconv.Atoi(s); err == nil {
+			return i != 0
+		}
+		return false
+	}
 }
