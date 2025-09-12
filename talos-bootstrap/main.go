@@ -1,240 +1,169 @@
+// main.go
 package main
 
 import (
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-/* --------------------------------------------------------------------------------
-   Steps
--------------------------------------------------------------------------------- */
-
-type stepID int
-
+// Indices for Step 1 fields
 const (
-	step_1_BasicAndImageFactory stepID = iota
-	step_2_Boot
-	step_2_1_WaitFirstCP
-	step_2_2_WaitWorkers
-	step_2_3_ExecuteBootstrap
+	idxClusterName = iota
+	idxTalosVersion
+	idxImageOverlay
+	idxMCOverlay
+	idxHTTPEnabled
+	idxHTTPPort
+	idxPXEEnabled
+	idxPXEPort
 )
 
-type stepMeta struct {
-	id       stepID
-	title    string
-	subtitle string
-}
-
-var steps = []stepMeta{
-	{step_1_BasicAndImageFactory, "1) Basic Information and Image Factory", "Cluster, Talos version, overlays, HTTP/PXE server setup"},
-	{step_2_Boot, "2) Boot", "Note: First node to hit config server becomes a Control Plane"},
-	{step_2_1_WaitFirstCP, "2.1) Waiting for First Node (Control Plane)", "Spinner"},
-	{step_2_2_WaitWorkers, "2.2) Waiting for three worker nodes…", "Spinner"},
-	{step_2_3_ExecuteBootstrap, "2.3) Executing bootstrap…", "Spinner"},
-}
-
-/* --------------------------------------------------------------------------------
-   Shared State
--------------------------------------------------------------------------------- */
-
-type wizardState struct {
-	ClusterName              string
-	TalosVersion             string
-	ImageFactoryOverlayPath  string
-	MachineConfigOverlayPath string
-	HTTPEnabled              bool
-	HTTPPort                 string
-	PXEEnabled               bool
-	PXEPort                  string
-
-	FirstControlPlaneIP string
-	AnyFilePath         string
-	Endpoint            string
-}
-
-/* --------------------------------------------------------------------------------
-   Root Model (wizard shell)
--------------------------------------------------------------------------------- */
-
-type model struct {
-	width, height int
-	activeIdx     int
-	pages         []page
-	completed     map[stepID]bool
-	wizState      wizardState
-}
-
-func (m *model) vars() map[string]string {
-	// Provide variables for interpolation in spinner pages
-	name := m.wizState.ClusterName
-	if strings.TrimSpace(name) == "" {
-		name = "$NAME"
-	}
-	endpoint := m.wizState.Endpoint
-	if strings.TrimSpace(endpoint) == "" {
-		endpoint = "$ENDPOINT"
-	}
-	ip := m.wizState.FirstControlPlaneIP
-	if strings.TrimSpace(ip) == "" {
-		ip = "$IP"
-	}
-	file := m.wizState.AnyFilePath
-	if strings.TrimSpace(file) == "" {
-		file = "$FILE"
-	}
-	return map[string]string{
-		"NAME":     name,
-		"ENDPOINT": endpoint,
-		"IP":       ip,
-		"FILE":     file,
-	}
-}
-
-func newModel() *model {
-	m := &model{
-		activeIdx: 0,
-		completed: map[stepID]bool{},
-		wizState: wizardState{
-			// Safe defaults for placeholders
-			AnyFilePath: "/tmp/output.yaml",
-			// Endpoint intentionally left as "$ENDPOINT" until real logic populates it.
-		},
-	}
-
-	/* ------------------------- Step 1: Form ------------------------- */
-
-	step1Form := newFormPage(
-		"Basic Information and Image Factory",
-		"Provide cluster basics, optional overlays, and HTTP/PXE server configuration.",
-		styleDim.Render("Note: Advanced network and disk configurations must be specified in the Machineconfig Overlay."),
-		[]formField{
-			{Key: "cluster_name", Label: "Cluster Name", Required: true, Help: "e.g., protos-talos", Input: newTextInput("cluster name", "", 40)},
-			{Key: "talos_version", Label: "Talos Version (optional)", Required: false, Help: "e.g., v1.7.x", Input: newTextInput("v1.7.x", "", 20)},
-			{Key: "image_overlay", Label: "Custom Image Factory YAML Overlay (optional)", Required: false, Input: newTextInput("/path/to/imagefactory-overlay.yaml", "", 52)},
-			{Key: "mc_overlay", Label: "Custom Machineconfig YAML Overlay (optional)", Required: false, Help: "Put advanced network & disk configs here", Input: newTextInput("/path/to/machineconfig-overlay.yaml", "", 52)},
-
-			// HTTP Machineconfigserver (Mandatory) / PXE (Optional)
-			{Key: "http_port", Label: "HTTP Machineconfig Server Port", Required: true, Input: newTextInput("8080", "8080", 8), Validation: validatePort},
-			{Key: "pxe_enabled", Label: "Enable PXE Server (true/false)", Required: false, Input: newTextInput("false", "false", 8), Validation: validateBool},
-			{Key: "pxe_port", Label: "PXE Server Port (optional)", Required: false, Help: "Ignored if PXE disabled", Input: newTextInput("69", "", 8), Validation: optionalPort},
-		},
-	)
-
-	/* ------------------------- Step 2: Info ------------------------- */
-
-	step2Info := newInfoPage(
-		"Boot",
-		"Launch nodes with the generated/served configs",
-		"Note: The first node that accesses the config server will be configured as a Kubernetes Control Plane.\n\nPress Enter to continue.",
-	)
-
-	/* ------------------------- Step 2.1: Spinner ------------------------- */
-
-	step2_1 := newSpinnerPage(
-		"Waiting for First Node (Control Plane)",
-		"HTTP Machineconfig server listening…",
-		[]string{
-			"HTTP Request from $IP!",
-			"Generating controlplane machineconfig on the fly…",
-			"Saved to $FILE.",
-			"Responding to HTTP request with controlplane machineconfig…",
-			"Generating talosconfig with endpoint https://$IP:6443 on the fly…",
-			"Talosconfig saved to $FILE.",
-		},
-		m.vars,
-	)
-
-	/* ------------------------- Step 2.2: Spinner ------------------------- */
-
-	step2_2 := newSpinnerPage(
-		"Waiting for three worker nodes…",
-		"Serving worker machineconfigs…",
-		[]string{
-			"Generating worker base machine config…",
-			"Found Worker 1 $IP , Responded with worker.machineconfig.yaml",
-			"Found Worker 2 $IP , Responded with worker.machineconfig.yaml",
-			"Found Worker 3 $IP , Responded with worker.machineconfig.yaml",
-			"3x Workers found ! Execute bootstrap ?",
-		},
-		m.vars,
-	)
-
-	/* ------------------------- Step 2.3: Spinner ------------------------- */
-
-	step2_3 := newSpinnerPage(
-		"Executing bootstrap…",
-		"Orchestrating Talos bootstrap",
-		[]string{
-			"Executing bootstrap with clustername $NAME and endpoint $ENDPOINT…",
-			"Bootstrap Succeeded!",
-			"Writing Kubeconfig to $FILE",
-		},
-		m.vars,
-	)
-
-	m.pages = []page{
-		step1Form,
-		step2Info,
-		step2_1,
-		step2_2,
-		step2_3,
-	}
-
-	return m
-}
-
-/* --------------------------------------------------------------------------------
-   Validation helpers
--------------------------------------------------------------------------------- */
-
-func validatePort(s string) (bool, string) {
-	if strings.TrimSpace(s) == "" {
-		return false, "port is required"
-	}
-	p, err := strconv.Atoi(s)
-	if err != nil || p < 1 || p > 65535 {
-		return false, "invalid port (must be 1-65535)"
-	}
-	return true, ""
-}
-
-func optionalPort(s string) (bool, string) {
-	if strings.TrimSpace(s) == "" {
-		return true, ""
-	}
-	return validatePort(s)
-}
-
-func validateBool(s string) (bool, string) {
-	v := strings.ToLower(strings.TrimSpace(s))
-	if v == "true" || v == "false" {
-		return true, ""
-	}
-	return false, "must be true or false"
-}
-
-func requireTrue(s string) (bool, string) {
-	ok, msg := validateBool(s)
-	if !ok {
-		return ok, msg
-	}
-	if strings.ToLower(strings.TrimSpace(s)) != "true" {
-		return false, "HTTP Machineconfig server must be enabled"
-	}
-	return true, ""
-}
-
-/* --------------------------------------------------------------------------------
-   main
--------------------------------------------------------------------------------- */
-
 func main() {
-	if err := tea.NewProgram(newModel(), tea.WithAltScreen()).Start(); err != nil {
+	step1 := Step{
+		Title: "1) Basic Information and Image Factory",
+		Kind:  StepForm,
+		Fields: []Field{
+			NewTextField("Cluster Name", "mycluster", false),
+			NewTextField("Talos Version (Optional)", "v1.7.x", true),
+			NewTextField("Custom Image Factory YAML Overlay (Optional)", "path/to/image-factory-overlay.yaml", true),
+			NewTextField("Custom Machineconfig YAML Overlay (Optional)", "path/to/machineconfig-overlay.yaml", true),
+			NewTextField("HTTP Machineconfig Server Enabled (true/false)", "true", false),
+			NewTextField("HTTP Machineconfig Server Port", "8080", false),
+			NewTextField("PXE Server Enabled (true/false)", "false", true),
+			NewTextField("PXE Server Port (Optional)", "69", true),
+		},
+	}
+
+	// Default form values:
+	step1.Fields[idxClusterName].Input.SetValue("mycluster")
+	step1.Fields[idxHTTPEnabled].Input.SetValue("true")
+	step1.Fields[idxHTTPPort].Input.SetValue("8080")
+	step1.Fields[idxPXEEnabled].Input.SetValue("false")
+	step1.Fields[idxPXEPort].Input.SetValue("69")
+
+	step2 := Step{
+		Title:       "2) Boot",
+		Kind:        StepPlain,
+		Body:        "Note: The first node that accesses the config server will be configured as a Kubernetes Control Plane",
+		AutoAdvance: false,
+	}
+
+	step21 := Step{
+		Title: "2.1) Waiting for First Node (Control Plane)",
+		Kind:  StepSpinner,
+		Body:  "Waiting for the first node to request machineconfig...",
+	}
+
+	step22 := Step{
+		Title: "2.2) Waiting for three worker nodes…",
+		Kind:  StepSpinner,
+		Body:  "Generating worker base machine config and waiting for 3 workers to fetch their configs…",
+	}
+
+	step23 := Step{
+		Title: "2.3) Executing bootstrap…",
+		Kind:  StepSpinner,
+		Body:  "Bootstrapping the cluster…",
+	}
+
+	steps := []Step{step1, step2, step21, step22, step23}
+
+	p, logger := NewWizard(steps)
+
+	loggerRef := logger
+
+	// Step 2 (Boot): start HTTP server as soon as we enter the step.
+	steps[1].OnEnter = func(m *Model) tea.Cmd {
+		// Read Step 1 values from the model
+		cluster := strings.TrimSpace(m.steps[0].Fields[idxClusterName].Input.Value())
+		if cluster == "" {
+			cluster = "mycluster"
+		}
+		httpEnabled := parseBool(m.steps[0].Fields[idxHTTPEnabled].Input.Value())
+		httpPort := strings.TrimSpace(m.steps[0].Fields[idxHTTPPort].Input.Value())
+		if httpPort == "" {
+			httpPort = "8080"
+		}
+		addr := "0.0.0.0:" + httpPort
+
+		return tea.Batch(
+			func() tea.Msg {
+				loggerRef.Infof("Cluster: %s", cluster)
+				return nil
+			},
+			func() tea.Msg {
+				if !httpEnabled {
+					loggerRef.Warn("HTTP Machineconfig Server is disabled (enable it in Step 1 to serve /machineconfig)")
+					return nil
+				}
+				loggerRef.Infof("Starting HTTP Machineconfig Server on %s …", addr)
+				// Start the server in a goroutine; never block the TUI.
+				go func() {
+					if err := StartConfigServer(loggerRef, addr); err != nil {
+						loggerRef.Errorf("Config server stopped: %v", err)
+					}
+				}()
+				return nil
+			},
+		)
+	}
+
+	// Step 2.1: show some example log messages upon entering the waiting screen.
+	steps[2].OnEnter = func(m *Model) tea.Cmd {
+		return func() tea.Msg {
+			loggerRef.Info("Spinner active. Waiting for first node to hit /machineconfig …")
+			loggerRef.Info("Tip: The first requester becomes the Kubernetes Control Plane.")
+			return nil
+		}
+	}
+
+	// Step 2.2: example worker logs
+	steps[3].OnEnter = func(m *Model) tea.Cmd {
+		return func() tea.Msg {
+			loggerRef.Info("Generating worker base machine config…")
+			loggerRef.Success("Found Worker 1 10.0.0.21 , Responded with worker.machineconfig.yaml")
+			loggerRef.Success("Found Worker 2 10.0.0.22 , Responded with worker.machineconfig.yaml")
+			loggerRef.Success("Found Worker 3 10.0.0.23 , Responded with worker.machineconfig.yaml")
+			loggerRef.Success("3x Workers found ! Execute bootstrap ?")
+			return nil
+		}
+	}
+
+	// Step 2.3: example bootstrap logs (use inputs for $NAME)
+	steps[4].OnEnter = func(m *Model) tea.Cmd {
+		return func() tea.Msg {
+			cluster := strings.TrimSpace(m.steps[0].Fields[idxClusterName].Input.Value())
+			if cluster == "" {
+				cluster = "mycluster"
+			}
+			endpoint := "https://$IP:6443" // placeholder; real value would come from first node IP
+			loggerRef.Infof("Executing bootstrap with clustername %s and endpoint %s....", cluster, endpoint)
+			loggerRef.Success("Bootstrap Succeeded !")
+			loggerRef.Successf("Writing Kubeconfig to %s", "./kubeconfig")
+			return nil
+		}
+	}
+
+	if _, err := p.Run(); err != nil {
 		fmt.Println("Error:", err)
-		os.Exit(1)
+	}
+}
+
+// parseBool fuzzy
+func parseBool(s string) bool {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "1", "t", "true", "yes", "y", "on":
+		return true
+	case "0", "f", "false", "no", "n", "off":
+		return false
+	default:
+		// Try to parse as int in case someone types a port number accidentally :)
+		if i, err := strconv.Atoi(s); err == nil {
+			return i != 0
+		}
+		return false
 	}
 }
