@@ -6,11 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"os"
 	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/goccy/go-json"
 	schematic "github.com/siderolabs/image-factory/pkg/schematic"
 )
 
@@ -41,11 +41,13 @@ type BootstrapInfo struct {
 
 var bootstrapInfos = BootstrapInfo{}
 
+var doRestoreProgress = false
+
 func main() {
 
 	_, err := os.Stat("talos-bootstrap-state.json")
-	//TODO when true, skip to step 4
 	doRestoreProgress = errors.Is(err, os.ErrNotExist)
+	//TODO when true, skip to step 4
 
 	step1 := Step{
 		Title: "1) Basic Information and Image Factory",
@@ -114,6 +116,11 @@ func main() {
 
 	steps[1].OnEnter = func(m *Model) tea.Cmd {
 		return func() tea.Msg {
+
+			if doRestoreProgress {
+				m.currentStepIndex = 4
+				return nil //  TODO : test test skip logic
+			}
 
 			step1_MapFormValuesToBootstrapInfos(step1)
 
