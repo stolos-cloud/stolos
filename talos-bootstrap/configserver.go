@@ -15,9 +15,7 @@ import (
 	"github.com/siderolabs/talos/pkg/machinery/config/types/v1alpha1"
 )
 
-var firstHit int32 // atomically track first control-plane hit
 var configBundle *bundle.Bundle
-var workersCount = 0
 
 // Machines stores the Machines we have already seen in IP-Hostname pairs
 
@@ -142,7 +140,7 @@ func handleWorker(logger *UILogger, ip string, mac string, host string, serial s
 		ConfigVersion: "v1alpha1",
 		MachineConfig: &v1alpha1.MachineConfig{
 			MachineNetwork: &v1alpha1.NetworkConfig{
-				NetworkHostname: fmt.Sprintf("worker-%d", workersCount),
+				NetworkHostname: fmt.Sprintf("worker-%d", len(machinesCache.Workers)),
 			},
 		},
 	}

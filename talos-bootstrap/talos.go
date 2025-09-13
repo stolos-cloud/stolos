@@ -87,7 +87,7 @@ func CreateMachineConfigBundle(controlPlaneIp string) (*bundle.Bundle, error) {
 		generate.WithNetworkOptions(
 			v1alpha1.WithKubeSpan(),
 		),
-		generate.WithInstallDisk("/dev/nvme0n1"),
+		generate.WithInstallDisk("/dev/sda"),
 		generate.WithInstallImage("ghcr.io/siderolabs/installer:latest"),
 		// generate.WithAdditionalSubjectAltNames([]string{_____}),// TODO : Add the right SAN for external IP / DNS
 		generate.WithPersist(true),

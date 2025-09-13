@@ -3,12 +3,14 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/goccy/go-json"
 	schematic "github.com/siderolabs/image-factory/pkg/schematic"
 )
 
@@ -40,6 +42,11 @@ type BootstrapInfo struct {
 var bootstrapInfos = BootstrapInfo{}
 
 func main() {
+
+	_, err := os.Stat("talos-bootstrap-state.json")
+	//TODO when true, skip to step 4
+	doRestoreProgress = errors.Is(err, os.ErrNotExist)
+
 	step1 := Step{
 		Title: "1) Basic Information and Image Factory",
 		Kind:  StepForm,
