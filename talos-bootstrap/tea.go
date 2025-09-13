@@ -3,6 +3,7 @@ package main
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -422,4 +423,53 @@ func parseBool(s string) bool {
 		}
 		return false
 	}
+}
+
+func createFieldsForStruct[T any]() []Field {
+	formFields := []Field{}
+	for i := 0; i < reflect.TypeFor[T]().NumField(); i++ {
+		field := reflect.TypeFor[T]().Field(i)
+		input := textinput.New()
+		input.Prompt = "› "
+		input.SetValue(field.Tag.Get("field_default"))
+		formFields = append(formFields, Field{
+			Label:    field.Tag.Get("field_label"),
+			Optional: strings.EqualFold(field.Tag.Get("field_required"), "true"),
+			Input:    input,
+		})
+	}
+	return formFields
+}
+
+func retrieveStructFromFields[T any](fields []Field) (*T, error) {
+	result := reflect.New(reflect.TypeFor[T]())
+	for i := 0; i < reflect.TypeOf(result).NumField(); i++ {
+		value := strings.TrimSpace(fields[i].Input.Value())
+		val := reflect.ValueOf(value)
+		structField := result.Elem().Field(i)
+
+		if val.Type().AssignableTo(structField.Type()) {
+			structField.Set(val)
+		} else {
+			switch structField.Kind() {
+			case reflect.Int:
+				intVal, err := strconv.Atoi(value)
+				if err != nil {
+					return nil, fmt.Errorf("failed to convert string to int: %v", err)
+				}
+				structField.SetInt(int64(intVal))
+				break
+			case reflect.Bool:
+				boolVal, err := strconv.ParseBool(value)
+				if err != nil {
+					return nil, fmt.Errorf("failed to convert string to bool: %v", err)
+				}
+				structField.SetBool(boolVal)
+				break
+			default:
+				return nil, fmt.Errorf("type mismatch: cannot assign %v to %v", val.Type(), structField.Type())
+			}
+		}
+	}
+	return result.Interface().(*T), nil
 }

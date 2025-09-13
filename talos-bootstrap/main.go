@@ -27,42 +27,27 @@ const (
 )
 
 type BootstrapInfo struct {
-	ClusterName              string
-	TalosVersion             string
-	ImageOverlayPath         string
-	MachineconfigOverlayPath string
-	HTTPHostname             string
-	HTTPPort                 string
-	PXEEnabled               string
-	PXEPort                  string
+	ClusterName              string `field_label:"Cluster Name" field_required:"true" field_default:"mycluster"`
+	TalosVersion             string `field_label:"Talos Version (Optional)" field_default:"v1.8.0"`
+	ImageOverlayPath         string `field_label:"Custom Image Factory YAML Overlay (Optional)"`
+	MachineconfigOverlayPath string `field_label:"Custom Machineconfig YAML Overlay (Optional)"`
+	HTTPHostname             string `field_label:"HTTP Machineconfig Server External Hostname" field_required:"true"`
+	HTTPPort                 string `field_label:"HTTP Machineconfig Server Port" field_required:"true" `
+	PXEEnabled               string `field_label:"PXE Server Enabled (true/false)" field_default:"false"`
+	PXEPort                  string `field_label:"PXE Server Port (Optional)"`
 }
 
-var bootstrapInfos = BootstrapInfo{}
+var bootstrapInfos = &BootstrapInfo{}
 
 func main() {
+
+	// Step 1
 	step1 := Step{
 		Title: "1) Basic Information and Image Factory",
 		Kind:  StepForm,
 		// TODO: Bug in Bubbletea causes placeholder not to work - check after package is updated
-		Fields: []Field{
-			NewTextField("Cluster Name", "my-cluster-01", false),
-			NewTextField("Talos Version (Optional)", "", true),
-			NewTextField("Custom Image Factory YAML Overlay (Optional)", "", true),
-			NewTextField("Custom Machineconfig YAML Overlay (Optional)", "", true),
-			NewTextField("HTTP Machineconfig Server External Hostname", "", false),
-			NewTextField("HTTP Machineconfig Server Port", "", false),
-			NewTextField("PXE Server Enabled (true/false)", "", true),
-			NewTextField("PXE Server Port (Optional)", "", true),
-		},
+		Fields: createFieldsForStruct[BootstrapInfo](),
 	}
-
-	// Default form values:
-	step1.Fields[idxTalosVersion].Input.SetValue("v1.8.0")
-	step1.Fields[idxClusterName].Input.SetValue("mycluster")
-	step1.Fields[idxHTTPHostname].Input.SetValue(GetOutboundIP())
-	step1.Fields[idxHTTPPort].Input.SetValue("8082")
-	step1.Fields[idxPXEEnabled].Input.SetValue("false")
-	step1.Fields[idxPXEPort].Input.SetValue("69")
 
 	step1_1 := Step{
 		Title:       "1.1) Generate Talos Image...",
@@ -105,14 +90,11 @@ func main() {
 	steps[1].OnEnter = func(m *Model) tea.Cmd {
 		return func() tea.Msg {
 
-			bootstrapInfos.ClusterName = step1.Fields[idxClusterName].Input.Value()
-			bootstrapInfos.TalosVersion = step1.Fields[idxTalosVersion].Input.Value()
-			bootstrapInfos.HTTPHostname = step1.Fields[idxHTTPHostname].Input.Value()
-			bootstrapInfos.HTTPPort = step1.Fields[idxHTTPPort].Input.Value()
-			bootstrapInfos.MachineconfigOverlayPath = step1.Fields[idxMCOverlay].Input.Value()
-			bootstrapInfos.ImageOverlayPath = step1.Fields[idxImageOverlay].Input.Value()
-			bootstrapInfos.PXEEnabled = step1.Fields[idxImageOverlay].Input.Value()
-			bootstrapInfos.PXEPort = step1.Fields[idxPXEPort].Input.Value()
+			var err error
+			bootstrapInfos, err = retrieveStructFromFields[BootstrapInfo](step1.Fields)
+			if err != nil {
+				panic(err)
+			}
 
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
