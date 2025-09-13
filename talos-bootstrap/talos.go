@@ -6,6 +6,7 @@ import (
 	"time"
 
 	factoryClient "github.com/siderolabs/image-factory/pkg/client"
+	"github.com/siderolabs/talos/pkg/machinery/api/machine"
 	machineryClient "github.com/siderolabs/talos/pkg/machinery/client"
 	"github.com/siderolabs/talos/pkg/machinery/client/config"
 	"github.com/siderolabs/talos/pkg/machinery/config/bundle"
@@ -16,10 +17,9 @@ import (
 	talosgen "github.com/siderolabs/talos/cmd/talosctl/cmd/mgmt/gen"
 	"github.com/siderolabs/talos/pkg/machinery/config/generate"
 	"github.com/siderolabs/talos/pkg/machinery/config/generate/secrets"
-	"github.com/siderolabs/talos/pkg/machinery/constants"
 )
 
-func GenerateTalosconfig(clusterName, endpoint string) (*config.Config, error) {
+/*func GenerateTalosconfig(clusterName, endpoint string) (*config.Config, error) {
 	// Pick a version contract (usually current)
 	contract := coreconfig.TalosVersionCurrent
 
@@ -54,15 +54,15 @@ func GenerateTalosconfig(clusterName, endpoint string) (*config.Config, error) {
 	}
 
 	return clientCfg, nil
-}
+}*/
 
-func CreateMachineryClientFromTalosconfig(file string) *machineryClient.Client {
+func CreateMachineryClientFromTalosconfig(talosConfig *config.Config) machineryClient.Client {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	machinery, _ := machineryClient.New(
 		ctx,
-		machineryClient.WithConfigFromFile(file),
+		machineryClient.WithConfig(talosConfig),
 		machineryClient.WithGRPCDialOptions(
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 		),
@@ -112,4 +112,17 @@ func CreateMachineConfigBundle(controlPlaneIp string) (*bundle.Bundle, error) {
 func CreateFactoryClient() *factoryClient.Client {
 	factory, _ := factoryClient.New("https://factory.talos.dev/")
 	return factory
+}
+
+func ExecuteBootstrap(talosApiClient machineryClient.Client) {
+
+	bootrapRequest := machine.BootstrapRequest{
+		RecoverEtcd:          false,
+		RecoverSkipHashCheck: false,
+	}
+
+	err := talosApiClient.Bootstrap(context.Background(), &bootrapRequest)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to bootstrap talos: %s", err))
+	}
 }
