@@ -77,7 +77,6 @@ func handleControlPlane(logger *UILogger, w http.ResponseWriter, ip string, mac 
 		}
 	}
 
-	configBundleCopy := &*configBundle
 	cfg := &v1alpha1.Config{
 		ConfigVersion: "v1alpha1",
 		MachineConfig: &v1alpha1.MachineConfig{
@@ -88,9 +87,9 @@ func handleControlPlane(logger *UILogger, w http.ResponseWriter, ip string, mac 
 	}
 	ctr := container.NewV1Alpha1(cfg)
 	patch := configpatcher.NewStrategicMergePatch(ctr)
-	err = configBundleCopy.ApplyPatches([]configpatcher.Patch{patch}, true, false)
+	err = configBundle.ApplyPatches([]configpatcher.Patch{patch}, true, false)
 
-	configBytes, err := configBundleCopy.Serialize(encoder.CommentsDocs, machine.TypeControlPlane)
+	configBytes, err := configBundle.Serialize(encoder.CommentsDocs, machine.TypeControlPlane)
 	_, err = w.Write(configBytes)
 	if err != nil {
 		return err
@@ -103,7 +102,6 @@ func handleWorker(logger *UILogger, w http.ResponseWriter, ip string, mac string
 	var err error
 	logger.Infof("Found Worker %s , Responded with worker.machineconfig.yaml", ip)
 
-	configBundleCopy := &*configBundle
 	cfg := &v1alpha1.Config{
 		ConfigVersion: "v1alpha1",
 		MachineConfig: &v1alpha1.MachineConfig{
@@ -114,9 +112,9 @@ func handleWorker(logger *UILogger, w http.ResponseWriter, ip string, mac string
 	}
 	ctr := container.NewV1Alpha1(cfg)
 	patch := configpatcher.NewStrategicMergePatch(ctr)
-	err = configBundleCopy.ApplyPatches([]configpatcher.Patch{patch}, false, true)
+	err = configBundle.ApplyPatches([]configpatcher.Patch{patch}, false, true)
 
-	configBytes, err := configBundleCopy.Serialize(encoder.CommentsDocs, machine.TypeWorker)
+	configBytes, err := configBundle.Serialize(encoder.CommentsDocs, machine.TypeWorker)
 	_, err = w.Write(configBytes)
 	if err != nil {
 		return err
