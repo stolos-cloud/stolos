@@ -35,6 +35,7 @@ type BootstrapInfo struct {
 	HTTPPort                 string
 	PXEEnabled               string
 	PXEPort                  string
+	KubernetesVersion        string
 }
 
 var bootstrapInfos = BootstrapInfo{}
