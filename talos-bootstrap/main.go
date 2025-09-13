@@ -108,16 +108,7 @@ func main() {
 	steps[1].OnEnter = func(m *Model) tea.Cmd {
 		return func() tea.Msg {
 
-			bootstrapInfos.ClusterName = step1.Fields[idxClusterName].Input.Value()
-			bootstrapInfos.TalosVersion = step1.Fields[idxTalosVersion].Input.Value()
-			bootstrapInfos.HTTPHostname = step1.Fields[idxHTTPHostname].Input.Value()
-			bootstrapInfos.HTTPPort = step1.Fields[idxHTTPPort].Input.Value()
-			bootstrapInfos.MachineconfigOverlayPath = step1.Fields[idxMCOverlay].Input.Value()
-			bootstrapInfos.ImageOverlayPath = step1.Fields[idxImageOverlay].Input.Value()
-			bootstrapInfos.PXEEnabled = step1.Fields[idxImageOverlay].Input.Value()
-			bootstrapInfos.PXEPort = step1.Fields[idxPXEPort].Input.Value()
-			bootstrapInfos.TalosArchitecture = "arm64"
-			bootstrapInfos.KubernetesVersion = "1.34.1"
+			step1_MapFormValuesToBootstrapInfos(step1)
 
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
@@ -250,6 +241,19 @@ func main() {
 	if _, err := p.Run(); err != nil {
 		fmt.Println("Error:", err)
 	}
+}
+
+func step1_MapFormValuesToBootstrapInfos(step1 Step) {
+	bootstrapInfos.ClusterName = step1.Fields[idxClusterName].Input.Value()
+	bootstrapInfos.TalosVersion = step1.Fields[idxTalosVersion].Input.Value()
+	bootstrapInfos.HTTPHostname = step1.Fields[idxHTTPHostname].Input.Value()
+	bootstrapInfos.HTTPPort = step1.Fields[idxHTTPPort].Input.Value()
+	bootstrapInfos.MachineconfigOverlayPath = step1.Fields[idxMCOverlay].Input.Value()
+	bootstrapInfos.ImageOverlayPath = step1.Fields[idxImageOverlay].Input.Value()
+	bootstrapInfos.PXEEnabled = step1.Fields[idxImageOverlay].Input.Value()
+	bootstrapInfos.PXEPort = step1.Fields[idxPXEPort].Input.Value()
+	bootstrapInfos.TalosArchitecture = "arm64"
+	bootstrapInfos.KubernetesVersion = "1.34.1"
 }
 
 // Utils
