@@ -35,45 +35,46 @@ type BootstrapInfo struct {
 	HTTPPort                 string `field_label:"HTTP Machineconfig Server Port" field_required:"true" `
 	PXEEnabled               string `field_label:"PXE Server Enabled (true/false)" field_default:"false"`
 	PXEPort                  string `field_label:"PXE Server Port (Optional)"`
-	TalosArchitecture		 string `field_label:"Talos architecture" field_default:"arm64" field_required:"true"`
-	KubernetesVersion		string  `field_label:"Kubernetes versions" field_default:"1.34.1"`
+	TalosArchitecture        string `field_label:"Talos architecture" field_default:"arm64" field_required:"true"`
+	KubernetesVersion        string `field_label:"Kubernetes versions" field_default:"1.34.1"`
 }
 
 var bootstrapInfos = &BootstrapInfo{}
 var doRestoreProgress = false
+var steps []Step
 
 func main() {
 
 	_, err := os.Stat("talos-bootstrap-state.json")
 	doRestoreProgress = !(errors.Is(err, os.ErrNotExist))
-	//TODO when true, skip to step 4
 
 	step1 := Step{
-		Title: "1) Basic Information and Image Factory",
-		Kind:  StepForm,
-		// TODO: Bug in Bubbletea causes placeholder not to work - check after package is updated
-		Fields: createFieldsForStruct[BootstrapInfo](),
+		Title:       "1) Basic Information and Image Factory",
+		Kind:        StepForm,
+		Fields:      createFieldsForStruct[BootstrapInfo](),
+		IsDone:      true,
+		AutoAdvance: false,
 	}
 
 	step1_1 := Step{
 		Title:       "1.1) Generate Talos Image...",
 		Kind:        StepSpinner,
 		Body:        "Generating talos image via image factory...",
-		AutoAdvance: false,
+		AutoAdvance: true,
 	}
 
 	step2 := Step{
 		Title:       "2) Boot",
 		Kind:        StepPlain,
 		Body:        "Note: The first node that accesses the config server will be configured as a Kubernetes Control Plane",
-		AutoAdvance: false,
+		AutoAdvance: true,
 	}
 
 	step21 := Step{
 		Title:       "2.1) Waiting for First Node (Control Plane)",
 		Kind:        StepSpinner,
 		Body:        "Waiting for the first node to request machineconfig...",
-		AutoAdvance: false,
+		AutoAdvance: true,
 	}
 
 	step22 := Step{
@@ -90,10 +91,8 @@ func main() {
 		AutoAdvance: false,
 	}
 
-	steps := []Step{step1, step1_1, step2, step21, step22, step23}
-
+	steps = []Step{step1, step1_1, step2, step21, step22, step23}
 	p, logger := NewWizard(steps)
-
 	loggerRef := logger
 
 	steps[1].OnEnter = func(m *Model) tea.Cmd {
@@ -155,6 +154,7 @@ func main() {
 
 			loggerRef.Infof("Download saved to: %s", resp.Filename)*/
 
+			steps[1].IsDone = true
 			return nil
 		}
 	}
@@ -192,6 +192,7 @@ func main() {
 						loggerRef.Errorf("Config server stopped: %v", err)
 					}
 				}()
+				steps[2].IsDone = true
 				return nil
 			},
 		)
@@ -201,8 +202,9 @@ func main() {
 	steps[3].OnEnter = func(m *Model) tea.Cmd {
 		return func() tea.Msg {
 			loggerRef.Info("steps[3]")
-			loggerRef.Info("Waiting for first node to hit /machineconfig …")
-			loggerRef.Info("Tip: The first requester becomes the Kubernetes Control Plane.")
+
+			// NOTE : IsDone is set in handleControlPlane
+
 			return nil
 		}
 	}
@@ -214,13 +216,10 @@ func main() {
 
 			if doRestoreProgress {
 				readStateFromJSON()
-				// TODO restore state from JSON
-				readStateFromJSON()
 				loggerRef.Successf("Progress restored successfully, press Enter to continue...")
 				return nil
 			}
 
-			loggerRef.Success("3x Workers found ! Execute bootstrap ?")
 			return nil
 		}
 	}
@@ -264,6 +263,7 @@ func step1_MapFormValuesToBootstrapInfos(step1 Step) {
 }
 
 func readStateFromJSON() {
+	// TODO implement
 }
 
 // Utils

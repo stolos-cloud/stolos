@@ -124,6 +124,7 @@ func handleControlPlane(logger *UILogger, ip string, mac string, host string, se
 	patch := configpatcher.NewStrategicMergePatch(ctr)
 	err = configBundle.ApplyPatches([]configpatcher.Patch{patch}, true, false)
 
+	steps[3].IsDone = true
 	return configBundle.Serialize(encoder.CommentsDocs, machine.TypeControlPlane)
 }
 

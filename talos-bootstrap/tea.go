@@ -37,6 +37,7 @@ type Step struct {
 	Kind        StepKind
 	Fields      []Field // used when Kind == StepForm
 	Body        string  // used when Kind == StepPlain or StepSpinner
+	IsDone      bool
 	AutoAdvance bool
 	OnEnter     func(*Model) tea.Cmd // hook called when step is entered
 }
@@ -136,6 +137,12 @@ func (m *Model) Init() tea.Cmd {
 }
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+
+	// AutoAdvance when step IsDone
+	if m.getCurrentStep().AutoAdvance && m.getCurrentStep().IsDone {
+		return m, m.advanceCmd()
+	}
+
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
@@ -144,11 +151,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "enter":
-			// TODO: ADD Form validation and processing
-			//if m.currentStepIndex == 0 {
-			//	return m, nil
-			//}
-			return m, m.advanceCmd()
+			if m.getCurrentStep().IsDone {
+				return m, m.advanceCmd()
+			}
+			return m, nil
 
 		case "tab", "down":
 			if m.getCurrentStep().Kind == StepForm && len(m.getCurrentStep().Fields) > 0 {
@@ -186,10 +192,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds := []tea.Cmd{}
 		if m.getCurrentStep().Kind == StepSpinner {
 			cmds = append(cmds, m.spinner.Tick)
-		}
-		if m.getCurrentStep().AutoAdvance {
-			// TODO : Fix AutoAdvance behaviour
-			cmds = append(cmds, tea.Tick(80*time.Millisecond, func(time.Time) tea.Msg { return advanceMsg{} }))
 		}
 		if m.getCurrentStep().OnEnter != nil {
 			cmds = append(cmds, m.getCurrentStep().OnEnter(m))
