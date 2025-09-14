@@ -3,6 +3,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"reflect"
 	"strconv"
 	"strings"
@@ -427,16 +428,63 @@ func parseBool(s string) bool {
 	}
 }
 
+// DefaultFunc is a no-arg function that returns the default string value.
+type DefaultFunc func() string
+
+// DefaultFuncRegistry holds default providers keyed by name.
+var DefaultFuncRegistry = map[string]DefaultFunc{}
+
+// RegisterDefaultFunc adds a function to the registry.
+func RegisterDefaultFunc(name string, fn DefaultFunc) {
+	if name == "" || fn == nil {
+		//log.Printf("RegisterDefaultFunc: ignored empty name or nil fn")
+		return
+	}
+	DefaultFuncRegistry[name] = fn
+}
+
+func safeCallDefault(fn DefaultFunc) (val string, ok bool) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("field_default_func panic: %v", r)
+			ok = false
+		}
+	}()
+	return fn(), true
+}
+
 func createFieldsForStruct[T any]() []Field {
 	formFields := []Field{}
-	for i := 0; i < reflect.TypeFor[T]().NumField(); i++ {
-		field := reflect.TypeFor[T]().Field(i)
+
+	t := reflect.TypeFor[T]()
+	for i := 0; i < t.NumField(); i++ {
+		sf := t.Field(i)
+
+		// 1) Try field_default_func (by name in registry)
+		def := ""
+		if fnName := sf.Tag.Get("field_default_func"); fnName != "" {
+			if fn, ok := DefaultFuncRegistry[fnName]; ok && fn != nil {
+				if v, ok2 := safeCallDefault(fn); ok2 {
+					def = v
+				}
+			}
+		}
+
+		// 2) Fallback to literal field_default if no value yet
+		if def == "" {
+			def = sf.Tag.Get("field_default")
+		}
+
 		input := textinput.New()
-		input.Prompt = "› "
-		input.SetValue(field.Tag.Get("field_default"))
+		input.Prompt = "? "
+		input.SetValue(def) // use your SetDefault if you have one
+
+		// Note: field_required=true -> Optional=false
+		required := strings.EqualFold(sf.Tag.Get("field_required"), "true")
+
 		formFields = append(formFields, Field{
-			Label:    field.Tag.Get("field_label"),
-			Optional: strings.EqualFold(field.Tag.Get("field_required"), "true"),
+			Label:    sf.Tag.Get("field_label"),
+			Optional: !required,
 			Input:    input,
 		})
 	}

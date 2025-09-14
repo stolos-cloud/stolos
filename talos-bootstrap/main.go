@@ -14,36 +14,26 @@ import (
 	schematic "github.com/siderolabs/image-factory/pkg/schematic"
 )
 
-// Indices for Step 1 fields
-const (
-	idxClusterName = iota
-	idxTalosVersion
-	idxImageOverlay
-	idxMCOverlay
-	idxHTTPHostname
-	idxHTTPPort
-	idxPXEEnabled
-	idxPXEPort
-)
-
 type BootstrapInfo struct {
 	ClusterName              string `field_label:"Cluster Name" field_required:"true" field_default:"mycluster"`
-	TalosVersion             string `field_label:"Talos Version (Optional)" field_default:"v1.8.0"`
+	TalosVersion             string `field_label:"Talos Version (Optional)" field_default:"v1.11.1"`
 	ImageOverlayPath         string `field_label:"Custom Image Factory YAML Overlay (Optional)"`
 	MachineconfigOverlayPath string `field_label:"Custom Machineconfig YAML Overlay (Optional)"`
-	HTTPHostname             string `field_label:"HTTP Machineconfig Server External Hostname" field_required:"true"`
-	HTTPPort                 string `field_label:"HTTP Machineconfig Server Port" field_required:"true" `
+	HTTPHostname             string `field_label:"HTTP Machineconfig Server External Hostname" field_required:"true" field_default_func:"GetOutboundIP"`
+	HTTPPort                 string `field_label:"HTTP Machineconfig Server Port" field_required:"true" field_default:"8082"`
 	PXEEnabled               string `field_label:"PXE Server Enabled (true/false)" field_default:"false"`
 	PXEPort                  string `field_label:"PXE Server Port (Optional)"`
 	TalosArchitecture        string `field_label:"Talos architecture" field_default:"arm64" field_required:"true"`
 	KubernetesVersion        string `field_label:"Kubernetes versions" field_default:"1.34.1"`
 }
 
-var bootstrapInfos = &BootstrapInfo{}
+var bootstrapInfos *BootstrapInfo
 var doRestoreProgress = false
 var steps []Step
 
 func main() {
+
+	RegisterDefaultFunc("GetOutboundIP", GetOutboundIP)
 
 	_, err := os.Stat("talos-bootstrap-state.json")
 	doRestoreProgress = !(errors.Is(err, os.ErrNotExist))
@@ -109,12 +99,10 @@ func main() {
 				return nil
 			}
 
-			step1_MapFormValuesToBootstrapInfos(step1)
-
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
 
-			talosConfigArg := fmt.Sprintf("talos.config=http://%s:%s/machineconfig?h=${hostname}&m=${mac}&s=${serial}&u=${uuid}", step1.Fields[idxHTTPHostname].Input.Value(), step1.Fields[idxHTTPPort].Input.Value())
+			talosConfigArg := fmt.Sprintf("talos.config=http://%s:%s/machineconfig?h=${hostname}&m=${mac}&s=${serial}&u=${uuid}", bootstrapInfos.HTTPHostname, bootstrapInfos.HTTPPort)
 			kernelArgs := append(make([]string, 1), talosConfigArg)
 
 			loggerRef.Infof("Generating image with kernelParam: %s", talosConfigArg)
@@ -164,12 +152,12 @@ func main() {
 		loggerRef.Infof("steps[2]")
 
 		// Read Step 1 values from the model
-		cluster := strings.TrimSpace(m.steps[0].Fields[idxClusterName].Input.Value())
+		cluster := strings.TrimSpace(bootstrapInfos.ClusterName)
 		if cluster == "" {
 			cluster = "mycluster"
 		}
 		httpEnabled := true
-		httpPort := strings.TrimSpace(m.steps[0].Fields[idxHTTPPort].Input.Value())
+		httpPort := strings.TrimSpace(bootstrapInfos.HTTPPort)
 		if httpPort == "" {
 			httpPort = "8080"
 		}
@@ -228,7 +216,7 @@ func main() {
 	steps[5].OnEnter = func(m *Model) tea.Cmd {
 		return func() tea.Msg {
 			loggerRef.Info("steps[5]")
-			cluster := strings.TrimSpace(m.steps[0].Fields[idxClusterName].Input.Value())
+			cluster := strings.TrimSpace(bootstrapInfos.ClusterName)
 			if cluster == "" {
 				cluster = "mycluster"
 			}
@@ -247,19 +235,6 @@ func main() {
 	if _, err := p.Run(); err != nil {
 		fmt.Println("Error:", err)
 	}
-}
-
-func step1_MapFormValuesToBootstrapInfos(step1 Step) {
-	bootstrapInfos.ClusterName = step1.Fields[idxClusterName].Input.Value()
-	bootstrapInfos.TalosVersion = step1.Fields[idxTalosVersion].Input.Value()
-	bootstrapInfos.HTTPHostname = step1.Fields[idxHTTPHostname].Input.Value()
-	bootstrapInfos.HTTPPort = step1.Fields[idxHTTPPort].Input.Value()
-	bootstrapInfos.MachineconfigOverlayPath = step1.Fields[idxMCOverlay].Input.Value()
-	bootstrapInfos.ImageOverlayPath = step1.Fields[idxImageOverlay].Input.Value()
-	bootstrapInfos.PXEEnabled = step1.Fields[idxImageOverlay].Input.Value()
-	bootstrapInfos.PXEPort = step1.Fields[idxPXEPort].Input.Value()
-	bootstrapInfos.TalosArchitecture = "arm64"
-	bootstrapInfos.KubernetesVersion = "1.34.1"
 }
 
 func readStateFromJSON() {
