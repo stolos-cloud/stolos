@@ -493,7 +493,8 @@ func createFieldsForStruct[T any]() []Field {
 
 func retrieveStructFromFields[T any](fields []Field) (*T, error) {
 	result := reflect.New(reflect.TypeFor[T]())
-	for i := 0; i < reflect.TypeOf(result).NumField(); i++ {
+	numFields := result.Elem().Type().NumField()
+	for i := 0; i < numFields; i++ {
 		value := strings.TrimSpace(fields[i].Input.Value())
 		val := reflect.ValueOf(value)
 		structField := result.Elem().Field(i)
