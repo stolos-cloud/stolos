@@ -46,7 +46,7 @@ var doRestoreProgress = false
 func main() {
 
 	_, err := os.Stat("talos-bootstrap-state.json")
-	doRestoreProgress = errors.Is(err, os.ErrNotExist)
+	doRestoreProgress = !(errors.Is(err, os.ErrNotExist))
 	//TODO when true, skip to step 4
 
 	step1 := Step{
@@ -118,8 +118,9 @@ func main() {
 		return func() tea.Msg {
 
 			if doRestoreProgress {
+				loggerRef.Info("State file found, skipping to steps[5]")
 				m.currentStepIndex = 4
-				return nil //  TODO : test test skip logic
+				return nil
 			}
 
 			step1_MapFormValuesToBootstrapInfos(step1)
@@ -223,10 +224,15 @@ func main() {
 	steps[4].OnEnter = func(m *Model) tea.Cmd {
 		return func() tea.Msg {
 			loggerRef.Info("steps[4]")
-			loggerRef.Info("Generating worker base machine config…")
-			loggerRef.Success("Found Worker 1 10.0.0.21 , Responded with worker.machineconfig.yaml")
-			loggerRef.Success("Found Worker 2 10.0.0.22 , Responded with worker.machineconfig.yaml")
-			loggerRef.Success("Found Worker 3 10.0.0.23 , Responded with worker.machineconfig.yaml")
+
+			if doRestoreProgress {
+				readStateFromJSON()
+				// TODO restore state from JSON
+				readStateFromJSON()
+				loggerRef.Successf("Progress restored successfully, press Enter to continue...")
+				return nil
+			}
+
 			loggerRef.Success("3x Workers found ! Execute bootstrap ?")
 			return nil
 		}
@@ -268,6 +274,9 @@ func step1_MapFormValuesToBootstrapInfos(step1 Step) {
 	bootstrapInfos.PXEPort = step1.Fields[idxPXEPort].Input.Value()
 	bootstrapInfos.TalosArchitecture = "arm64"
 	bootstrapInfos.KubernetesVersion = "1.34.1"
+}
+
+func readStateFromJSON() {
 }
 
 // Utils
