@@ -2,17 +2,36 @@
 package main
 
 import (
-	"encoding/json"
+	"fmt"
 	"net"
 	"net/http"
-	"sync/atomic"
 	"time"
+
+	"github.com/siderolabs/talos/pkg/machinery/config/bundle"
+	"github.com/siderolabs/talos/pkg/machinery/config/configpatcher"
+	"github.com/siderolabs/talos/pkg/machinery/config/container"
+	"github.com/siderolabs/talos/pkg/machinery/config/encoder"
+	"github.com/siderolabs/talos/pkg/machinery/config/machine"
+	"github.com/siderolabs/talos/pkg/machinery/config/types/v1alpha1"
 )
 
-var firstHit int32 // atomically track first control-plane hit
+var configBundle *bundle.Bundle
+
+// Machines stores the Machines we have already seen in IP-Hostname pairs
+
+type Machines struct {
+	ControlPlanes map[string][]byte // map IP : Hostname
+	Workers       map[string][]byte // map IP : Hostname
+}
+
+var machinesCache = Machines{
+	ControlPlanes: make(map[string][]byte),
+	Workers:       make(map[string][]byte),
+}
 
 // StartConfigServer starts a minimal HTTP server with /machineconfig.
 func StartConfigServer(logger *UILogger, addr string) error {
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/machineconfig", machineConfigHandler(logger))
 	srv := &http.Server{
@@ -34,44 +53,100 @@ func machineConfigHandler(logger *UILogger) http.HandlerFunc {
 		uuid := q.Get("u")
 		ip, _, _ := net.SplitHostPort(r.RemoteAddr)
 
-		responseWriter.Header().Set("Content-Type", "application/json")
+		responseWriter.Header().Set("Content-Type", "application/yaml")
 
-		// Example log lines (control plane on first hit, workers afterwards)
-		if atomic.CompareAndSwapInt32(&firstHit, 0, 1) {
-			// FIRST HIT - CONTROL PLANE
-			handleControlPlane(logger, responseWriter, ip, mac, host, serial, uuid)
+		_, isSeenControlPlane := machinesCache.ControlPlanes[uuid]
+		isFirstMachine := len(machinesCache.ControlPlanes) == 0
+
+		if isFirstMachine || isSeenControlPlane {
+			configBytes, err := handleControlPlane(logger, ip, mac, host, serial, uuid)
+			if err != nil {
+				logger.Errorf("Error handling control plane request: %v", err)
+				responseWriter.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			_, err = responseWriter.Write(configBytes)
+			if err != nil {
+				logger.Errorf("ErError writing response: %v", err)
+				responseWriter.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			machinesCache.ControlPlanes[uuid] = configBytes
 		} else {
-			handleWorker(logger, responseWriter, ip, mac, host, serial, uuid)
+			configBytes, err := handleWorker(logger, ip, mac, host, serial, uuid)
+			if err != nil {
+				logger.Errorf("Error handling control plane request: %v", err)
+				responseWriter.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			_, err = responseWriter.Write(configBytes)
+			machinesCache.Workers[uuid] = configBytes
+			if err != nil {
+				logger.Errorf("Error writing response: %v", err)
+				responseWriter.WriteHeader(http.StatusInternalServerError)
+				return
+			}
 		}
 	}
 }
 
-func handleControlPlane(logger *UILogger, w http.ResponseWriter, ip string, mac string, host string, serial string, uuid string) {
+func handleControlPlane(logger *UILogger, ip string, mac string, host string, serial string, uuid string) ([]byte, error) {
+	var err error
 	logger.Infof("HTTP Request from %s ! Generating controlplane machineconfig on the fly...", ip)
-	logger.Successf("Saved to %s....", "./controlplane.machineconfig.yaml")
-	logger.Infof("Responding to HTTP request with controlplane machineconfig ...")
-	logger.Infof("Generating talosconfig with endpoint https://%s:6443 on the fly...", ip)
-	logger.Successf("Talosconfig saved to %s", "./talosconfig")
+	//logger.Successf("Saved to %s....", "./controlplane.machineconfig.yaml")
+	//logger.Infof("Responding to HTTP request with controlplane machineconfig ...")
+	//logger.Infof("Generating talosconfig with endpoint https://%s:6443 on the fly...", ip)
+	//logger.Successf("Talosconfig saved to %s", "./talosconfig")
 
-	_ = json.NewEncoder(w).Encode(map[string]any{
-		"status":   "ok",
-		"message":  "CONTROL PLANE",
-		"hostname": host,
-		"mac":      mac,
-		"serial":   serial,
-		"uuid":     uuid,
-	})
+	cachedConfig, alreadyPresent := machinesCache.ControlPlanes[uuid]
+	if alreadyPresent {
+		logger.Infof("ControlPlane with IP (%s) already seen! Re-sending config...", ip)
+		return cachedConfig, nil
+	}
+
+	if configBundle == nil {
+		configBundle, err = CreateMachineConfigBundle(ip)
+		if err != nil {
+			logger.Errorf("Error generating talosconfig: %v", err)
+			panic(err)
+		}
+	}
+
+	cfg := &v1alpha1.Config{
+		ConfigVersion: "v1alpha1",
+		MachineConfig: &v1alpha1.MachineConfig{
+			MachineNetwork: &v1alpha1.NetworkConfig{
+				NetworkHostname: "controlplane-0",
+			},
+		},
+	}
+	ctr := container.NewV1Alpha1(cfg)
+	patch := configpatcher.NewStrategicMergePatch(ctr)
+	err = configBundle.ApplyPatches([]configpatcher.Patch{patch}, true, false)
+
+	return configBundle.Serialize(encoder.CommentsDocs, machine.TypeControlPlane)
 }
 
-func handleWorker(logger *UILogger, w http.ResponseWriter, ip string, mac string, host string, serial string, uuid string) {
+func handleWorker(logger *UILogger, ip string, mac string, host string, serial string, uuid string) ([]byte, error) {
+	cachedConfig, alreadyPresent := machinesCache.Workers[uuid]
+	if alreadyPresent {
+		logger.Infof("Worker with IP (%s) and hostname (%s) already seen! Re-sending config...", ip)
+		return cachedConfig, nil
+	}
+
 	logger.Infof("Found Worker %s , Responded with worker.machineconfig.yaml", ip)
 
-	_ = json.NewEncoder(w).Encode(map[string]any{
-		"status":   "ok",
-		"message":  "WORKER",
-		"hostname": host,
-		"mac":      mac,
-		"serial":   serial,
-		"uuid":     uuid,
-	})
+	cfg := &v1alpha1.Config{
+		ConfigVersion: "v1alpha1",
+		MachineConfig: &v1alpha1.MachineConfig{
+			MachineNetwork: &v1alpha1.NetworkConfig{
+				NetworkHostname: fmt.Sprintf("worker-%d", len(machinesCache.Workers)),
+			},
+		},
+	}
+	ctr := container.NewV1Alpha1(cfg)
+	patch := configpatcher.NewStrategicMergePatch(ctr)
+	_ = configBundle.ApplyPatches([]configpatcher.Patch{patch}, false, true)
+
+	return configBundle.Serialize(encoder.CommentsDocs, machine.TypeWorker)
 }
