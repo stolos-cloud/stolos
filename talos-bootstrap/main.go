@@ -186,11 +186,12 @@ func main() {
 		if cluster == "" {
 			cluster = "mycluster"
 		}
-		httpEnabled := true
+
 		httpPort := strings.TrimSpace(bootstrapInfos.HTTPPort)
 		if httpPort == "" {
 			httpPort = "8080"
 		}
+
 		addr := "0.0.0.0:" + httpPort
 
 		return tea.Batch(
@@ -199,12 +200,8 @@ func main() {
 				return nil
 			},
 			func() tea.Msg {
-				if !httpEnabled {
-					loggerRef.Warn("HTTP Machineconfig Server is disabled (enable it in Step 1 to serve /machineconfig)")
-					return nil
-				}
-				//loggerRef.Infof("Starting HTTP Machineconfig Server on %s …", addr)
 				// Start the server in a goroutine; never block the TUI.
+				loggerRef.Infof("Starting HTTP Machineconfig Server on %s …", addr)
 				go func() {
 					if err := StartConfigServer(loggerRef, addr); err != nil {
 						loggerRef.Errorf("Config server stopped: %v", err)
@@ -216,10 +213,10 @@ func main() {
 		)
 	}
 
-	// Step 2.1: show some example log messages upon entering the waiting screen.
+	// Step 2.1 - Waiting for first node
 	steps[3].OnEnter = func(m *Model) tea.Cmd {
 		return func() tea.Msg {
-			loggerRef.Info("steps[3]")
+			loggerRef.Info("steps[3]") // Control Plane Step
 
 			// NOTE : IsDone is set in handleControlPlane
 
@@ -227,7 +224,7 @@ func main() {
 		}
 	}
 
-	// Step 2.2: example worker logs
+	// Step 2.2: Waiting for worker nodes
 	steps[4].OnEnter = func(m *Model) tea.Cmd {
 		return func() tea.Msg {
 			loggerRef.Info("steps[4]")
@@ -242,7 +239,7 @@ func main() {
 		}
 	}
 
-	// Step 2.3: example bootstrap logs (use inputs for $NAME)
+	// Step 2.3: Bootstrap
 	steps[5].OnEnter = func(m *Model) tea.Cmd {
 		return func() tea.Msg {
 			loggerRef.Info("steps[5]")
@@ -267,8 +264,12 @@ func main() {
 	}
 }
 
+func saveStateToJSON() {
+	// TODO implement saving machines cache to JSON
+}
+
 func readStateFromJSON() {
-	// TODO implement
+	// TODO implement reading machinesCache from JSON
 }
 
 // Utils
