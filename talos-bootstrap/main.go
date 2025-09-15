@@ -10,26 +10,41 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cavaliergopher/grab/v3"
 	tea "github.com/charmbracelet/bubbletea"
-	schematic "github.com/siderolabs/image-factory/pkg/schematic"
+	"github.com/goccy/go-json"
+	"github.com/siderolabs/image-factory/pkg/schematic"
 )
 
 type BootstrapInfo struct {
-	ClusterName              string `field_label:"Cluster Name" field_required:"true" field_default:"mycluster"`
-	TalosVersion             string `field_label:"Talos Version (Optional)" field_default:"v1.11.1"`
-	ImageOverlayPath         string `field_label:"Custom Image Factory YAML Overlay (Optional)"`
-	MachineconfigOverlayPath string `field_label:"Custom Machineconfig YAML Overlay (Optional)"`
-	HTTPHostname             string `field_label:"HTTP Machineconfig Server External Hostname" field_required:"true" field_default_func:"GetOutboundIP"`
-	HTTPPort                 string `field_label:"HTTP Machineconfig Server Port" field_required:"true" field_default:"8082"`
-	PXEEnabled               string `field_label:"PXE Server Enabled (true/false)" field_default:"false"`
-	PXEPort                  string `field_label:"PXE Server Port (Optional)"`
-	TalosArchitecture        string `field_label:"Talos architecture" field_default:"arm64" field_required:"true"`
-	KubernetesVersion        string `field_label:"Kubernetes versions" field_default:"1.34.1"`
+	ClusterName       string `json:"ClusterName" field_label:"Cluster Name" field_required:"true" field_default:"mycluster"`
+	KubernetesVersion string `json:"KubernetesVersion" field_label:"Kubernetes versions" field_default:"1.34.1"`
+	TalosVersion      string `json:"TalosVersion" field_label:"Talos Version (Optional)" field_default:"v1.11.1"`
+	TalosArchitecture string `json:"TalosArchitecture" field_label:"Talos architecture" field_default:"amd64" field_required:"true"`
+	TalosExtraArgs    string `json:"TalosExtraArgs" field_label:"Extra Linux cmdline args"`
+	TalosOverlayImage string `json:"TalosOverlayImage" field_label:"Talos Overlay Image (For SBC, ex: siderolabs/sbc-rockchip)"`
+	TalosOverlayName  string `json:"TalosOverlayName" field_label:"Talos Overlay Name (For SBC, ex: turingrk1)"`
+	HTTPHostname      string `json:"HTTPHostname" field_label:"HTTP Machineconfig Server External Hostname" field_required:"true" field_default_func:"GetOutboundIP"`
+	HTTPPort          string `json:"HTTPPort" field_label:"HTTP Machineconfig Server Port" field_required:"true" field_default:"8082"`
+	PXEEnabled        string `json:"PXEEnabled" field_label:"PXE Server Enabled (true/false)" field_default:"false"`
+	PXEPort           string `json:"PXEPort" field_label:"PXE Server Port (Optional)"`
 }
 
 var bootstrapInfos *BootstrapInfo
 var doRestoreProgress = false
+var didReadConfig = false
 var steps []Step
+
+func readBootstrapInfos(filename string) {
+	configFile, err := os.ReadFile(filename)
+	if err != nil {
+		panic(err)
+	}
+	err = json.Unmarshal(configFile, &bootstrapInfos)
+	if err != nil {
+		panic(err)
+	}
+}
 
 func main() {
 
@@ -38,12 +53,22 @@ func main() {
 	_, err := os.Stat("talos-bootstrap-state.json")
 	doRestoreProgress = !(errors.Is(err, os.ErrNotExist))
 
+	_, err = os.Stat("talos-bootstrap-config.json")
+	if !(errors.Is(err, os.ErrNotExist)) {
+		readBootstrapInfos("talos-bootstrap-config.json")
+		didReadConfig = true
+	}
+
 	step1 := Step{
 		Title:       "1) Basic Information and Image Factory",
 		Kind:        StepForm,
 		Fields:      createFieldsForStruct[BootstrapInfo](),
 		IsDone:      true,
 		AutoAdvance: false,
+	}
+
+	if didReadConfig {
+		step1.AutoAdvance = true
 	}
 
 	step1_1 := Step{
@@ -89,60 +114,65 @@ func main() {
 		return func() tea.Msg {
 
 			var err error
-			bootstrapInfos, err = retrieveStructFromFields[BootstrapInfo](step1.Fields)
+			if !didReadConfig {
+				bootstrapInfos, err = retrieveStructFromFields[BootstrapInfo](step1.Fields)
+			} else {
+				loggerRef.Infof("Read bootstrap infos from file, clusterName: %s", bootstrapInfos.ClusterName)
+			}
+
 			if err != nil {
 				panic(err)
 			}
+
 			if doRestoreProgress {
 				loggerRef.Info("State file found, skipping to steps[5]")
 				m.currentStepIndex = 4
 				return nil
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-			defer cancel()
+			go func() {
+				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				defer cancel()
 
-			talosConfigArg := fmt.Sprintf("talos.config=http://%s:%s/machineconfig?h=${hostname}&m=${mac}&s=${serial}&u=${uuid}", bootstrapInfos.HTTPHostname, bootstrapInfos.HTTPPort)
-			kernelArgs := append(make([]string, 1), talosConfigArg)
+				talosConfigArg := fmt.Sprintf("talos.config=http://%s:%s/machineconfig?h=${hostname}&m=${mac}&s=${serial}&u=${uuid}", bootstrapInfos.HTTPHostname, bootstrapInfos.HTTPPort)
+				kernelArgs := []string{talosConfigArg, bootstrapInfos.TalosExtraArgs}
 
-			loggerRef.Infof("Generating image with kernelParam: %s", talosConfigArg)
+				loggerRef.Infof("Generating image with kernelParam: %s", talosConfigArg)
 
-			// TuringPI : ?arch=arm64&board=turingrk1&extensions=-&platform=metal&target=sbc&version=1.11.1
-			// overlay:
-			//    image: siderolabs/sbc-rockchip
-			//    name: turingrk1
-			// customization: {}
+				factory := CreateFactoryClient()
+				sch := schematic.Schematic{
+					Overlay: schematic.Overlay{
+						Image: bootstrapInfos.TalosOverlayImage,
+						Name:  bootstrapInfos.TalosOverlayName,
+						// Options: nil, // ==> Extra YAML settings passed to overlay image.
+					},
+					Customization: schematic.Customization{
+						ExtraKernelArgs: kernelArgs,
+					},
+				}
 
-			factory := CreateFactoryClient()
-			sch := schematic.Schematic{
-				Overlay: schematic.Overlay{
-					// TODO : Add form options for SBC or just Handle via custom YAML file overlay
-					Image: "siderolabs/sbc-rockchip",
-					Name:  "turingrk1",
-					// Options: nil, // ==> Extra YAML settings passed to overlay image.
-				},
-				Customization: schematic.Customization{
-					ExtraKernelArgs: kernelArgs,
-				},
-			}
+				schematicId, _ := factory.SchematicCreate(ctx, sch)
+				loggerRef.Infof("Generated schematicId: %s", schematicId)
 
-			schematicId, _ := factory.SchematicCreate(ctx, sch)
-			loggerRef.Infof("Generated schematicId: %s", schematicId)
+				talosImageFormat := "iso"
+				if bootstrapInfos.TalosArchitecture == "arm64" {
+					talosImageFormat = "raw.xz"
+				}
 
-			talosImageFormat := "raw.xz"
-			talosImagePath := fmt.Sprintf("metal-%s.%s", bootstrapInfos.TalosArchitecture, talosImageFormat)
-			talosImageUrl := fmt.Sprintf("https://factory.talos.dev/image/%s/%s/%s", schematicId, bootstrapInfos.TalosVersion, talosImagePath)
-			loggerRef.Infof("%s", talosImageUrl)
-			// TuringPI RK2 : https://factory.talos.dev/image/df156b82096feda49406ac03aa44e0ace524b7efe4e1f0e144a1e1ae3930f1c0/v1.11.1/metal-arm64.raw.xz
+				talosImagePath := fmt.Sprintf("metal-%s.%s", bootstrapInfos.TalosArchitecture, talosImageFormat)
+				talosImageUrl := fmt.Sprintf("https://factory.talos.dev/image/%s/%s/%s", schematicId, bootstrapInfos.TalosVersion, talosImagePath)
+				loggerRef.Infof("%s", talosImageUrl)
 
-			/*resp, err := grab.Get(".", talosImageUrl)
-			if err != nil {
-				panic(fmt.Sprintf("Failed to download (%s) image! %s", talosImageUrl, err))
-			}
+				resp, err := grab.Get(".", talosImageUrl)
+				if err != nil {
+					panic(fmt.Sprintf("Failed to download (%s) image! %s", talosImageUrl, err))
+				}
 
-			loggerRef.Infof("Download saved to: %s", resp.Filename)*/
+				loggerRef.Infof("Download saved to: %s", resp.Filename)
 
-			steps[1].IsDone = true
+				steps[1].IsDone = true
+			}()
+
 			return nil
 		}
 	}
