@@ -20,17 +20,23 @@ var configBundle *bundle.Bundle
 // Machines stores the Machines we have already seen in IP-Hostname pairs
 
 type Machines struct {
-	ControlPlanes map[string][]byte // map IP : Hostname
-	Workers       map[string][]byte // map IP : Hostname
+	ControlPlanes map[string][]byte `json:"ControlPlanes"` // map IP : Hostname
+	Workers       map[string][]byte `json:"Workers"`       // map IP : Hostname
 }
 
-var machinesCache = Machines{
-	ControlPlanes: make(map[string][]byte),
-	Workers:       make(map[string][]byte),
-}
+var machinesCache Machines
 
 // StartConfigServer starts a minimal HTTP server with /machineconfig.
 func StartConfigServer(logger *UILogger, addr string) error {
+
+	if !doRestoreProgress {
+		machinesCache = Machines{
+			ControlPlanes: make(map[string][]byte),
+			Workers:       make(map[string][]byte),
+		}
+	} else {
+		readStateFromJSON()
+	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/machineconfig", machineConfigHandler(logger))
@@ -87,16 +93,13 @@ func machineConfigHandler(logger *UILogger) http.HandlerFunc {
 				return
 			}
 		}
+		saveStateToJSON(logger)
 	}
 }
 
 func handleControlPlane(logger *UILogger, ip string, mac string, host string, serial string, uuid string) ([]byte, error) {
 	var err error
 	logger.Infof("HTTP Request from %s ! Generating controlplane machineconfig on the fly...", ip)
-	//logger.Successf("Saved to %s....", "./controlplane.machineconfig.yaml")
-	//logger.Infof("Responding to HTTP request with controlplane machineconfig ...")
-	//logger.Infof("Generating talosconfig with endpoint https://%s:6443 on the fly...", ip)
-	//logger.Successf("Talosconfig saved to %s", "./talosconfig")
 
 	cachedConfig, alreadyPresent := machinesCache.ControlPlanes[uuid]
 	if alreadyPresent {
@@ -120,6 +123,7 @@ func handleControlPlane(logger *UILogger, ip string, mac string, host string, se
 			},
 		},
 	}
+
 	ctr := container.NewV1Alpha1(cfg)
 	patch := configpatcher.NewStrategicMergePatch(ctr)
 	err = configBundle.ApplyPatches([]configpatcher.Patch{patch}, true, false)

@@ -19,43 +19,6 @@ import (
 	"github.com/siderolabs/talos/pkg/machinery/config/generate/secrets"
 )
 
-/*func GenerateTalosconfig(clusterName, endpoint string) (*config.Config, error) {
-	// Pick a version contract (usually current)
-	contract := coreconfig.TalosVersionCurrent
-
-	// Create (or load) a secrets bundle — this is what signs client certs
-	sec, err := secrets.NewBundle(secrets.NewFixedClock(time.Now()), contract)
-	if err != nil {
-		return nil, err
-	}
-
-	in, err := generate.NewInput(
-		clusterName,
-		endpoint,
-		constants.DefaultKubernetesVersion,
-		generate.WithVersionContract(contract),
-		generate.WithSecretsBundle(sec),
-		// TODO: See if we need to add SANs
-		// Optional: add SANs for CP IPs/DNS used by the API server:
-		// generate.WithAdditionalSubjectAltNames([]string{"10.0.0.5", "cp.local"}),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	clientCfg, err := in.Talosconfig()
-	if err != nil {
-		return nil, err
-	}
-
-	err = clientCfg.Save(clusterName + "-talosconfig")
-	if err != nil {
-		fmt.Println("Error saving talosconfig!\n", err)
-	}
-
-	return clientCfg, nil
-}*/
-
 func CreateMachineryClientFromTalosconfig(talosConfig *config.Config) machineryClient.Client {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -87,7 +50,7 @@ func CreateMachineConfigBundle(controlPlaneIp string) (*bundle.Bundle, error) {
 		generate.WithNetworkOptions(
 			v1alpha1.WithKubeSpan(),
 		),
-		generate.WithInstallDisk("/dev/sda"),
+		generate.WithInstallDisk(bootstrapInfos.TalosInstallDisk),
 		generate.WithInstallImage("ghcr.io/siderolabs/installer:latest"),
 		// generate.WithAdditionalSubjectAltNames([]string{_____}),// TODO : Add the right SAN for external IP / DNS
 		generate.WithPersist(true),

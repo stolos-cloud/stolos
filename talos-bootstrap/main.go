@@ -22,6 +22,7 @@ type BootstrapInfo struct {
 	TalosVersion      string `json:"TalosVersion" field_label:"Talos Version (Optional)" field_default:"v1.11.1"`
 	TalosArchitecture string `json:"TalosArchitecture" field_label:"Talos architecture" field_default:"amd64" field_required:"true"`
 	TalosExtraArgs    string `json:"TalosExtraArgs" field_label:"Extra Linux cmdline args"`
+	TalosInstallDisk  string `json:"TalosInstallDisk" field_label:"Talos install disk" field_default:"/dev/sda" field_required:"true"`
 	TalosOverlayImage string `json:"TalosOverlayImage" field_label:"Talos Overlay Image (For SBC, ex: siderolabs/sbc-rockchip)"`
 	TalosOverlayName  string `json:"TalosOverlayName" field_label:"Talos Overlay Name (For SBC, ex: turingrk1)"`
 	HTTPHostname      string `json:"HTTPHostname" field_label:"HTTP Machineconfig Server External Hostname" field_required:"true" field_default_func:"GetOutboundIP"`
@@ -41,6 +42,30 @@ func readBootstrapInfos(filename string) {
 		panic(err)
 	}
 	err = json.Unmarshal(configFile, &bootstrapInfos)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func saveStateToJSON(logger *UILogger) {
+	jsonData, err := json.Marshal(machinesCache)
+	if err != nil {
+		logger.Errorf("Error saving state to JSON: %v\n", err)
+		return
+	}
+	err = os.WriteFile("talos-bootstrap-state.json", jsonData, 0644)
+	if err != nil {
+		logger.Errorf("Error saving state to JSON: %v\n", err)
+		return
+	}
+}
+
+func readStateFromJSON() {
+	stateFile, err := os.ReadFile("talos-bootstrap-state.json")
+	if err != nil {
+		panic(err)
+	}
+	err = json.Unmarshal(stateFile, &machinesCache)
 	if err != nil {
 		panic(err)
 	}
@@ -231,7 +256,7 @@ func main() {
 
 			if doRestoreProgress {
 				readStateFromJSON()
-				loggerRef.Successf("Progress restored successfully, press Enter to continue...")
+				loggerRef.Successf("Progress restored successfully!")
 				return nil
 			}
 
@@ -262,14 +287,6 @@ func main() {
 	if _, err := p.Run(); err != nil {
 		fmt.Println("Error:", err)
 	}
-}
-
-func saveStateToJSON() {
-	// TODO implement saving machines cache to JSON
-}
-
-func readStateFromJSON() {
-	// TODO implement reading machinesCache from JSON
 }
 
 // Utils
