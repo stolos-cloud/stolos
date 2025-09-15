@@ -36,3 +36,6 @@ out/
 __debug_*
 
 talos-bootstrap-state.json
+talos-bootstrap-config.json
+
+*.iso
