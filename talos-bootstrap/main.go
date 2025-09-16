@@ -48,12 +48,17 @@ func readBootstrapInfos(filename string) {
 }
 
 func saveStateToJSON(logger *UILogger) {
-	jsonData, err := json.Marshal(machinesCache)
+	jsonData, err := json.Marshal(saveState)
 	if err != nil {
 		logger.Errorf("Error saving state to JSON: %v\n", err)
 		return
 	}
 	err = os.WriteFile("talos-bootstrap-state.json", jsonData, 0644)
+	if err != nil {
+		logger.Errorf("Error saving state to JSON: %v\n", err)
+		return
+	}
+	err = SaveSplitConfigBundleFiles(logger, *configBundle)
 	if err != nil {
 		logger.Errorf("Error saving state to JSON: %v\n", err)
 		return
@@ -65,7 +70,12 @@ func readStateFromJSON() {
 	if err != nil {
 		panic(err)
 	}
-	err = json.Unmarshal(stateFile, &machinesCache)
+	err = json.Unmarshal(stateFile, &saveState)
+	if err != nil {
+		panic(err)
+	}
+	bootstrapInfos = &saveState.BootstrapInfo
+	configBundle, err = ReadSplitConfigBundleFiles()
 	if err != nil {
 		panic(err)
 	}
@@ -76,7 +86,12 @@ func main() {
 	RegisterDefaultFunc("GetOutboundIP", GetOutboundIP)
 
 	_, err := os.Stat("talos-bootstrap-state.json")
-	doRestoreProgress = !(errors.Is(err, os.ErrNotExist))
+
+	if !(errors.Is(err, os.ErrNotExist)) {
+		readStateFromJSON()
+		didReadConfig = true
+		doRestoreProgress = true
+	}
 
 	_, err = os.Stat("talos-bootstrap-config.json")
 	if !(errors.Is(err, os.ErrNotExist)) {
@@ -151,6 +166,8 @@ func main() {
 
 			if doRestoreProgress {
 				loggerRef.Info("State file found, skipping to steps[5]")
+				addr := bootstrapInfos.HTTPHostname + ":" + bootstrapInfos.HTTPPort
+				StartMachineconfigServerInBackground(loggerRef, addr)
 				m.currentStepIndex = 4
 				return nil
 			}
@@ -217,7 +234,7 @@ func main() {
 			httpPort = "8080"
 		}
 
-		addr := "0.0.0.0:" + httpPort
+		addr := bootstrapInfos.HTTPHostname + ":" + httpPort
 
 		return tea.Batch(
 			func() tea.Msg {
@@ -226,12 +243,7 @@ func main() {
 			},
 			func() tea.Msg {
 				// Start the server in a goroutine; never block the TUI.
-				loggerRef.Infof("Starting HTTP Machineconfig Server on %s …", addr)
-				go func() {
-					if err := StartConfigServer(loggerRef, addr); err != nil {
-						loggerRef.Errorf("Config server stopped: %v", err)
-					}
-				}()
+				StartMachineconfigServerInBackground(loggerRef, addr)
 				steps[2].IsDone = true
 				return nil
 			},
@@ -253,12 +265,6 @@ func main() {
 	steps[4].OnEnter = func(m *Model) tea.Cmd {
 		return func() tea.Msg {
 			loggerRef.Info("steps[4]")
-
-			if doRestoreProgress {
-				readStateFromJSON()
-				loggerRef.Successf("Progress restored successfully!")
-				return nil
-			}
 
 			return nil
 		}
@@ -287,6 +293,15 @@ func main() {
 	if _, err := p.Run(); err != nil {
 		fmt.Println("Error:", err)
 	}
+}
+
+func StartMachineconfigServerInBackground(loggerRef *UILogger, addr string) {
+	loggerRef.Infof("Starting HTTP Machineconfig Server on %s …", addr)
+	go func() {
+		if err := StartConfigServer(loggerRef, addr); err != nil {
+			loggerRef.Errorf("Config server stopped: %v", err)
+		}
+	}()
 }
 
 // Utils

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	factoryClient "github.com/siderolabs/image-factory/pkg/client"
@@ -71,6 +72,36 @@ func CreateMachineConfigBundle(controlPlaneIp string) (*bundle.Bundle, error) {
 	}
 
 	return configBundle, nil
+}
+
+// ReadSplitConfigBundleFiles reconstructs multiple yaml configs into a ConfigBundle
+func ReadSplitConfigBundleFiles() (*bundle.Bundle, error) {
+	//dec := yaml.NewDecoder(bytes.NewReader(bundleBytes))
+
+	configBundleOpts := []bundle.Option{
+		//bundle.WithInputOptions(
+		//	&bundle.InputOptions{
+		//		ClusterName: bootstrapInfos.ClusterName,
+		//	},
+		//),
+		bundle.WithExistingConfigs("./"),
+	}
+
+	return bundle.NewBundle(configBundleOpts...)
+
+}
+
+// SaveSplitConfigBundleFiles take a config bundle and saves each composite part to individual files for later loading
+func SaveSplitConfigBundleFiles(logger *UILogger, configBundle bundle.Bundle) error {
+	initBytes, err := configBundle.InitCfg.Bytes()
+	err = os.WriteFile("init.yaml", initBytes, 0644)
+	workerBytes, err := configBundle.WorkerCfg.Bytes()
+	err = os.WriteFile("worker.yaml", workerBytes, 0644)
+	controlPlaneBytes, err := configBundle.ControlPlaneCfg.Bytes()
+	err = os.WriteFile("controlplane.yaml", controlPlaneBytes, 0644)
+	talosBytes, err := configBundle.TalosCfg.Bytes()
+	err = os.WriteFile("talosconfig", talosBytes, 0644)
+	return err
 }
 
 func CreateFactoryClient() *factoryClient.Client {

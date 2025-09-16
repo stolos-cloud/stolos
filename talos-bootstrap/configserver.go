@@ -19,23 +19,31 @@ var configBundle *bundle.Bundle
 
 // Machines stores the Machines we have already seen in IP-Hostname pairs
 
+type SaveState struct {
+	ClusterEndpoint string        `json:"ClusterEndpoint"`
+	BootstrapInfo   BootstrapInfo `json:"BootstrapInfo"`
+	MachinesCache   Machines      `json:"MachinesCache"`
+}
+
 type Machines struct {
 	ControlPlanes map[string][]byte `json:"ControlPlanes"` // map IP : Hostname
 	Workers       map[string][]byte `json:"Workers"`       // map IP : Hostname
 }
 
-var machinesCache Machines
+var saveState SaveState
 
 // StartConfigServer starts a minimal HTTP server with /machineconfig.
 func StartConfigServer(logger *UILogger, addr string) error {
 
 	if !doRestoreProgress {
-		machinesCache = Machines{
+		machines := Machines{
 			ControlPlanes: make(map[string][]byte),
 			Workers:       make(map[string][]byte),
 		}
-	} else {
-		readStateFromJSON()
+		saveState = SaveState{
+			BootstrapInfo: *bootstrapInfos,
+			MachinesCache: machines,
+		}
 	}
 
 	mux := http.NewServeMux()
@@ -61,8 +69,8 @@ func machineConfigHandler(logger *UILogger) http.HandlerFunc {
 
 		responseWriter.Header().Set("Content-Type", "application/yaml")
 
-		_, isSeenControlPlane := machinesCache.ControlPlanes[uuid]
-		isFirstMachine := len(machinesCache.ControlPlanes) == 0
+		_, isSeenControlPlane := saveState.MachinesCache.ControlPlanes[uuid]
+		isFirstMachine := len(saveState.MachinesCache.ControlPlanes) == 0
 
 		if isFirstMachine || isSeenControlPlane {
 			configBytes, err := handleControlPlane(logger, ip, mac, host, serial, uuid)
@@ -77,7 +85,9 @@ func machineConfigHandler(logger *UILogger) http.HandlerFunc {
 				responseWriter.WriteHeader(http.StatusInternalServerError)
 				return
 			}
-			machinesCache.ControlPlanes[uuid] = configBytes
+			saveState.MachinesCache.ControlPlanes[uuid] = configBytes
+			saveState.ClusterEndpoint = fmt.Sprintf("https://%s:443", ip)
+			saveStateToJSON(logger)
 		} else {
 			configBytes, err := handleWorker(logger, ip, mac, host, serial, uuid)
 			if err != nil {
@@ -86,14 +96,14 @@ func machineConfigHandler(logger *UILogger) http.HandlerFunc {
 				return
 			}
 			_, err = responseWriter.Write(configBytes)
-			machinesCache.Workers[uuid] = configBytes
+			saveState.MachinesCache.Workers[uuid] = configBytes
+			saveStateToJSON(logger)
 			if err != nil {
 				logger.Errorf("Error writing response: %v", err)
 				responseWriter.WriteHeader(http.StatusInternalServerError)
 				return
 			}
 		}
-		saveStateToJSON(logger)
 	}
 }
 
@@ -101,7 +111,7 @@ func handleControlPlane(logger *UILogger, ip string, mac string, host string, se
 	var err error
 	logger.Infof("HTTP Request from %s ! Generating controlplane machineconfig on the fly...", ip)
 
-	cachedConfig, alreadyPresent := machinesCache.ControlPlanes[uuid]
+	cachedConfig, alreadyPresent := saveState.MachinesCache.ControlPlanes[uuid]
 	if alreadyPresent {
 		logger.Infof("ControlPlane with IP (%s) already seen! Re-sending config...", ip)
 		return cachedConfig, nil
@@ -111,7 +121,7 @@ func handleControlPlane(logger *UILogger, ip string, mac string, host string, se
 		configBundle, err = CreateMachineConfigBundle(ip)
 		if err != nil {
 			logger.Errorf("Error generating talosconfig: %v", err)
-			panic(err)
+			logger.Errorf(err.Error())
 		}
 	}
 
@@ -133,7 +143,7 @@ func handleControlPlane(logger *UILogger, ip string, mac string, host string, se
 }
 
 func handleWorker(logger *UILogger, ip string, mac string, host string, serial string, uuid string) ([]byte, error) {
-	cachedConfig, alreadyPresent := machinesCache.Workers[uuid]
+	cachedConfig, alreadyPresent := saveState.MachinesCache.Workers[uuid]
 	if alreadyPresent {
 		logger.Infof("Worker with IP (%s) and hostname (%s) already seen! Re-sending config...", ip)
 		return cachedConfig, nil
@@ -145,7 +155,7 @@ func handleWorker(logger *UILogger, ip string, mac string, host string, serial s
 		ConfigVersion: "v1alpha1",
 		MachineConfig: &v1alpha1.MachineConfig{
 			MachineNetwork: &v1alpha1.NetworkConfig{
-				NetworkHostname: fmt.Sprintf("worker-%d", len(machinesCache.Workers)),
+				NetworkHostname: fmt.Sprintf("worker-%d", len(saveState.MachinesCache.Workers)),
 			},
 		},
 	}

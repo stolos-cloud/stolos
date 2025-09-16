@@ -38,4 +38,9 @@ __debug_*
 talos-bootstrap-state.json
 talos-bootstrap-config.json
 
+talosconfig
+init.yaml
+worker.yaml
+controlplane.yaml
+
 *.iso
