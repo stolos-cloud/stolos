@@ -176,7 +176,7 @@ func main() {
 				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 				defer cancel()
 
-				talosConfigArg := fmt.Sprintf("talos.config=http://%s:%s/machineconfig?h=${hostname}&m=${mac}&s=${serial}&u=${uuid}", bootstrapInfos.HTTPHostname, bootstrapInfos.HTTPPort)
+				talosConfigArg := fmt.Sprintf("talos.config=http://%s:%s/machineconfig?m=${mac}&u=${uuid}", bootstrapInfos.HTTPHostname, bootstrapInfos.HTTPPort)
 				kernelArgs := []string{talosConfigArg, bootstrapInfos.TalosExtraArgs}
 
 				loggerRef.Infof("Generating image with kernelParam: %s", talosConfigArg)
@@ -203,14 +203,15 @@ func main() {
 
 				talosImagePath := fmt.Sprintf("metal-%s.%s", bootstrapInfos.TalosArchitecture, talosImageFormat)
 				talosImageUrl := fmt.Sprintf("https://factory.talos.dev/image/%s/%s/%s", schematicId, bootstrapInfos.TalosVersion, talosImagePath)
-				loggerRef.Infof("%s", talosImageUrl)
+				//loggerRef.Infof("%s", talosImageUrl)
 
+				loggerRef.Infof("Downloading image from %s...", talosImageUrl)
 				resp, err := grab.Get(".", talosImageUrl)
 				if err != nil {
 					panic(fmt.Sprintf("Failed to download (%s) image! %s", talosImageUrl, err))
 				}
 
-				loggerRef.Infof("Download saved to: %s", resp.Filename)
+				loggerRef.Successf("Download saved to: %s", resp.Filename)
 
 				steps[1].IsDone = true
 			}()

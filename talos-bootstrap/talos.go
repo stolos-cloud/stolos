@@ -61,7 +61,7 @@ func CreateMachineConfigBundle(controlPlaneIp string) (*bundle.Bundle, error) {
 	configBundle, err := talosgen.GenerateConfigBundle(
 		genOptions,
 		bootstrapInfos.ClusterName,
-		fmt.Sprintf("https://%s:443", controlPlaneIp),
+		fmt.Sprintf("https://%s:6443", controlPlaneIp),
 		bootstrapInfos.KubernetesVersion,
 		[]string{},
 		[]string{},

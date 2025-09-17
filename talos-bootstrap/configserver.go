@@ -61,9 +61,9 @@ func StartConfigServer(logger *UILogger, addr string) error {
 func machineConfigHandler(logger *UILogger) http.HandlerFunc {
 	return func(responseWriter http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
-		host := q.Get("h")
+		//host := q.Get("h")
 		mac := q.Get("m")
-		serial := q.Get("s")
+		//serial := q.Get("s")
 		uuid := q.Get("u")
 		ip, _, _ := net.SplitHostPort(r.RemoteAddr)
 
@@ -73,7 +73,7 @@ func machineConfigHandler(logger *UILogger) http.HandlerFunc {
 		isFirstMachine := len(saveState.MachinesCache.ControlPlanes) == 0
 
 		if isFirstMachine || isSeenControlPlane {
-			configBytes, err := handleControlPlane(logger, ip, mac, host, serial, uuid)
+			configBytes, err := handleControlPlane(logger, ip, mac, uuid)
 			if err != nil {
 				logger.Errorf("Error handling control plane request: %v", err)
 				responseWriter.WriteHeader(http.StatusInternalServerError)
@@ -86,10 +86,10 @@ func machineConfigHandler(logger *UILogger) http.HandlerFunc {
 				return
 			}
 			saveState.MachinesCache.ControlPlanes[uuid] = configBytes
-			saveState.ClusterEndpoint = fmt.Sprintf("https://%s:443", ip)
+			saveState.ClusterEndpoint = fmt.Sprintf("https://%s:6443", ip)
 			saveStateToJSON(logger)
 		} else {
-			configBytes, err := handleWorker(logger, ip, mac, host, serial, uuid)
+			configBytes, err := handleWorker(logger, ip, mac, uuid)
 			if err != nil {
 				logger.Errorf("Error handling control plane request: %v", err)
 				responseWriter.WriteHeader(http.StatusInternalServerError)
@@ -107,7 +107,7 @@ func machineConfigHandler(logger *UILogger) http.HandlerFunc {
 	}
 }
 
-func handleControlPlane(logger *UILogger, ip string, mac string, host string, serial string, uuid string) ([]byte, error) {
+func handleControlPlane(logger *UILogger, ip string, mac string, uuid string) ([]byte, error) {
 	var err error
 	logger.Infof("HTTP Request from %s ! Generating controlplane machineconfig on the fly...", ip)
 
@@ -142,7 +142,7 @@ func handleControlPlane(logger *UILogger, ip string, mac string, host string, se
 	return configBundle.Serialize(encoder.CommentsDocs, machine.TypeControlPlane)
 }
 
-func handleWorker(logger *UILogger, ip string, mac string, host string, serial string, uuid string) ([]byte, error) {
+func handleWorker(logger *UILogger, ip string, mac string, uuid string) ([]byte, error) {
 	cachedConfig, alreadyPresent := saveState.MachinesCache.Workers[uuid]
 	if alreadyPresent {
 		logger.Infof("Worker with IP (%s) and hostname (%s) already seen! Re-sending config...", ip)
