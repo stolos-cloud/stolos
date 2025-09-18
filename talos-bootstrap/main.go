@@ -291,7 +291,7 @@ func main() {
 			}
 
 			talosApiClient := CreateMachineryClientFromTalosconfig(configBundle.TalosConfig())
-			// ExecuteBootstrap(talosApiClient)
+			ExecuteBootstrap(talosApiClient)
 
 			endpoint := "https://$IP:6443" // placeholder; real value would come from first node IP
 			loggerRef.Infof("Executing bootstrap with clustername %s and endpoint %s....", cluster, endpoint)
@@ -339,7 +339,7 @@ func main() {
 
 				loggerRef.Info("Wrote kubeconfig to ~/.kube/config")
 			}()
-			
+
 			return nil
 		}
 	}
