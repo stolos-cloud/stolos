@@ -25,7 +25,7 @@ func CreateMachineryClientFromTalosconfig(talosConfig *config.Config) machineryC
 	defer cancel()
 
 	// TODO : Verify MachineryClient configuration
-	machinery, _ := machineryClient.New(
+	machinery, err := machineryClient.New(
 		ctx,
 		machineryClient.WithConfig(talosConfig),
 		machineryClient.WithGRPCDialOptions(
@@ -33,10 +33,8 @@ func CreateMachineryClientFromTalosconfig(talosConfig *config.Config) machineryC
 		),
 	)
 
-	_, err := machinery.ServiceInfo(ctx, "api")
 	if err != nil {
-		fmt.Println("Error validating machinery api connection:", err)
-		return machineryClient.Client{}
+		panic(err)
 	}
 
 	return *machinery
@@ -70,6 +68,9 @@ func CreateMachineConfigBundle(controlPlaneIp string) (*bundle.Bundle, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	talosConfig := configBundle.TalosConfig().Contexts[bootstrapInfos.ClusterName]
+	talosConfig.Endpoints = append(talosConfig.Endpoints, fmt.Sprintf("https://%s:50000", controlPlaneIp))
 
 	return configBundle, nil
 }
