@@ -142,7 +142,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
-		return m, nil
+		return m, tea.ClearScreen
 	}
 
 	// AutoAdvance when step IsDone
@@ -375,7 +375,8 @@ func (m *Model) renderBreadcrumbs() string {
 	}
 	sep := lipgloss.NewStyle().Faint(true).Render("  ›  ")
 	line := strings.Join(parts, sep)
-	return truncate(line, m.width)
+	return line
+	//return truncate(line, m.width)
 }
 
 // Utils
