@@ -155,7 +155,8 @@ func RunBasicClusterHealthCheck(err error, talosApiClient machineryClient.Client
 }
 
 // ======================
-// TODO : Add reference to original TALOS code
+// Reference: The following code is heavily based on `health.go` part of the talosctl command line utility.
+// https://github.com/siderolabs/talos/tree/main/cmd/talosctl/cmd/talos/health.go
 func RunDetailedClusterHealthCheck(talosApiClient machineryClient.Client, loggerRef *UILogger) {
 	// Create ClientProvider
 	clientProvider := &cluster.ConfigClientProvider{

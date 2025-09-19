@@ -42,5 +42,6 @@ talosconfig
 init.yaml
 worker.yaml
 controlplane.yaml
+kubeconfig
 
 *.iso

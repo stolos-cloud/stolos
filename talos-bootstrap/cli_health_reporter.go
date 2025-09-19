@@ -1,6 +1,8 @@
 package main
 
-// TODO : Add reference to original TALOS code
+// Reference:
+// This code is based on the Talos StderrReporter originally licensed under the MPL.
+// "github.com/siderolabs/talos/pkg/reporter"
 
 import (
 	"fmt"
