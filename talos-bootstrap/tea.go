@@ -323,7 +323,7 @@ func (m *Model) appendLog(l logMsg) {
 func (m *Model) renderLogsPane() string {
 	title := lipgloss.NewStyle().Faint(true).Render("Logs")
 	var lines []string
-	maxLines := max(10, m.height/4) // adaptive height-ish
+	maxLines := max(m.height - 5) // adaptive height-ish
 	start := 0
 	if len(m.logs) > maxLines {
 		start = len(m.logs) - maxLines
@@ -334,7 +334,7 @@ func (m *Model) renderLogsPane() string {
 	box := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("240")).
-		Width(m.width).
+		Width(m.width - 2).
 		Render(title + "\n" + strings.Join(lines, "\n"))
 	return box
 }

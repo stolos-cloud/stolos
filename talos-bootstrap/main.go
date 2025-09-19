@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"net"
 	"os"
 	"strings"
@@ -13,16 +12,8 @@ import (
 
 	"github.com/cavaliergopher/grab/v3"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/cosi-project/runtime/pkg/safe"
 	"github.com/goccy/go-json"
 	"github.com/siderolabs/image-factory/pkg/schematic"
-	"github.com/siderolabs/talos/cmd/talosctl/cmd/talos"
-	"github.com/siderolabs/talos/pkg/cluster"
-	"github.com/siderolabs/talos/pkg/cluster/check"
-	clusterapi "github.com/siderolabs/talos/pkg/machinery/api/cluster"
-	"github.com/siderolabs/talos/pkg/machinery/client"
-	clusterres "github.com/siderolabs/talos/pkg/machinery/resources/cluster"
-	"google.golang.org/grpc/codes"
 )
 
 type BootstrapInfo struct {
@@ -285,44 +276,27 @@ func main() {
 	steps[5].OnEnter = func(m *Model) tea.Cmd {
 		return func() tea.Msg {
 			loggerRef.Info("steps[5]")
-			cluster := strings.TrimSpace(bootstrapInfos.ClusterName)
-			if cluster == "" {
-				cluster = "mycluster"
+			clusterName := strings.TrimSpace(bootstrapInfos.ClusterName)
+			if clusterName == "" {
+				clusterName = "mycluster"
 			}
 
 			talosApiClient := CreateMachineryClientFromTalosconfig(configBundle.TalosConfig())
-			ExecuteBootstrap(talosApiClient)
+			err = ExecuteBootstrap(talosApiClient)
+			if err != nil {
+				loggerRef.Errorf("Failed to execute bootstrap: %s", err)
+			}
 
-			endpoint := "https://$IP:6443" // placeholder; real value would come from first node IP
-			loggerRef.Infof("Executing bootstrap with clustername %s and endpoint %s....", cluster, endpoint)
-			loggerRef.Success("Bootstrap Succeeded !")
+			endpoint := configBundle.ControlPlaneCfg.Cluster().Endpoint() //get machineconfig cluster endpoint
+			loggerRef.Infof("Executing bootstrap with clustername %s and endpoint %s....", clusterName, endpoint)
+			loggerRef.Success("Bootstrap request Succeeded !")
+			loggerRef.Info("Waiting for Kubernetes API....")
 
 			go func() {
-				healthCheckClient, err := talosApiClient.ClusterHealthCheck(context.Background(), 20*time.Minute, &clusterapi.ClusterInfo{})
-				if err != nil {
-					loggerRef.Errorf("Failed to get cluster health: %v", err)
-					panic(err)
-				}
-				if err := healthCheckClient.CloseSend(); err != nil {
-					panic(err)
-				}
 
-				for {
-					msg, err := healthCheckClient.Recv()
-					if err != nil {
-						if err == io.EOF || client.StatusCode(err) == codes.Canceled {
-							break
-						}
-						panic(err)
-					}
-
-					if msg.GetMetadata().GetError() != "" {
-						loggerRef.Errorf("Cluster health check failed: %s", msg.GetMetadata().GetError())
-						panic(msg.GetMetadata().GetError())
-					}
-				}
-
-				loggerRef.Info("Cluster health check succeeded")
+				RunDetailedClusterHealthCheck(talosApiClient, loggerRef)
+				//RunBasicClusterHealthCheck(err, talosApiClient, loggerRef)
+				loggerRef.Success("Cluster health check succeeded!")
 
 				kubeconfig, err := talosApiClient.Kubeconfig(context.Background())
 				if err != nil {
@@ -337,7 +311,8 @@ func main() {
 					panic(err)
 				}
 
-				loggerRef.Info("Wrote kubeconfig to ~/.kube/config")
+				loggerRef.Successf("Wrote kubeconfig to ./kubeconfig")
+				loggerRef.Success("Your cluster is ready! You may now use kubectl to interact with the cluster")
 			}()
 
 			return nil
@@ -372,25 +347,4 @@ func GetOutboundIP() string {
 	localAddr := conn.LocalAddr().(*net.UDPAddr)
 
 	return localAddr.IP.String()
-}
-
-func buildClusterInfo() (cluster.Info, error) {
-
-	var members []*clusterres.Member
-
-	err := talos.WithClientNoNodes(func(ctx context.Context, c *client.Client) error {
-		items, err := safe.StateListAll[*clusterres.Member](ctx, c.COSI)
-		if err != nil {
-			return err
-		}
-
-		items.ForEach(func(item *clusterres.Member) { members = append(members, item) })
-
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return check.NewDiscoveredClusterInfo(members)
 }
