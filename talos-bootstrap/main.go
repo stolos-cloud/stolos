@@ -276,17 +276,17 @@ func main() {
 	steps[5].OnEnter = func(m *Model) tea.Cmd {
 		return func() tea.Msg {
 			loggerRef.Info("steps[5]")
+			endpoint := configBundle.ControlPlaneCfg.Cluster().Endpoint() //get machineconfig cluster endpoint
 
 			talosApiClient := CreateMachineryClientFromTalosconfig(configBundle.TalosConfig())
+			loggerRef.Infof("Executing bootstrap with clustername %s and endpoint %s....", bootstrapInfos.ClusterName, endpoint)
 			err = ExecuteBootstrap(talosApiClient)
 			if err != nil {
 				loggerRef.Errorf("Failed to execute bootstrap: %s", err)
 			}
+			loggerRef.Success("Bootstrap request Succeeded!")
 
-			endpoint := configBundle.ControlPlaneCfg.Cluster().Endpoint() //get machineconfig cluster endpoint
-			loggerRef.Infof("Executing bootstrap with clustername %s and endpoint %s....", bootstrapInfos.ClusterName, endpoint)
-			loggerRef.Success("Bootstrap request Succeeded !")
-			loggerRef.Info("Waiting for Kubernetes API....")
+			loggerRef.Info("Waiting for Kubernetes installation to finish and API to be available...")
 
 			go func() {
 
