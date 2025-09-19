@@ -15,7 +15,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// StepKind describes what the step renders.]
+// StepKind describes what the step renders.
 type StepKind int
 
 const (
