@@ -290,8 +290,8 @@ func main() {
 
 			go func() {
 
-				RunDetailedClusterHealthCheck(talosApiClient, loggerRef)
-				//RunBasicClusterHealthCheck(err, talosApiClient, loggerRef)
+				//RunDetailedClusterHealthCheck(talosApiClient, loggerRef)
+				RunBasicClusterHealthCheck(err, talosApiClient, loggerRef)
 				loggerRef.Success("Cluster health check succeeded!")
 
 				kubeconfig, err := talosApiClient.Kubeconfig(context.Background())
