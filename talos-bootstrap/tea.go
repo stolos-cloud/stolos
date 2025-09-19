@@ -373,10 +373,31 @@ func (m *Model) renderBreadcrumbs() string {
 		}
 		parts = append(parts, label)
 	}
-	sep := lipgloss.NewStyle().Faint(true).Render("  ›  ")
+	sep := lipgloss.NewStyle().Faint(true).Render(" > ")
 	line := strings.Join(parts, sep)
-	return line
-	//return truncate(line, m.width)
+	return wrapBreadcrumbs(line, m.width)
+}
+
+// wrapBreadcrumbs bespoke text wrap for the breadcrumbs header.
+func wrapBreadcrumbs(text string, width int) string {
+	var wrappedLines []string
+	words := strings.Split(text, " > ")
+	currentLine := ""
+
+	for _, word := range words {
+		if len(currentLine)+len(word)+1 > width+20 && currentLine != "" {
+			wrappedLines = append(wrappedLines, currentLine)
+			currentLine = word
+		} else if currentLine == "" {
+			currentLine = word
+		} else {
+			currentLine += " " + word
+		}
+	}
+	if currentLine != "" {
+		wrappedLines = append(wrappedLines, currentLine)
+	}
+	return strings.Join(wrappedLines, "\n")
 }
 
 // Utils
