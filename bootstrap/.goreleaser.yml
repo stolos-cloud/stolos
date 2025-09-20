@@ -10,8 +10,8 @@ builds:
       - CGO_ENABLED=0
     ldflags:
       - -extldflags "-static"
-      - -X github.com/stolos-cloud/stolos-bootstrap/pkg/github.GithubClientId={{ .Env.GITHUB_CLIENT_ID }}
-      - -X github.com/stolos-cloud/stolos-bootstrap/pkg/github.GithubClientSecret={{ .Env.GITHUB_CLIENT_SECRET }}
+      - -X github.com/stolos-cloud/stolos-bootstrap/pkg/github.GithubClientId={{ .Env.GH_CLIENT_ID }}
+      - -X github.com/stolos-cloud/stolos-bootstrap/pkg/github.GithubClientSecret={{ .Env.GH_CLIENT_SECRET }}
       - -X github.com/stolos-cloud/stolos-bootstrap/pkg/gcp.GCPClientId={{ .Env.GCP_CLIENT_ID }}
       - -X github.com/stolos-cloud/stolos-bootstrap/pkg/gcp.GCPClientSecret={{ .Env.GCP_CLIENT_SECRET }}
     goos:
