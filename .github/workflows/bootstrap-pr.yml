@@ -18,4 +18,4 @@ jobs:
       - name: Build (static binary)
         run: |
           cd bootstrap
-          CGO_ENABLED=0 go build ./cmd/bootstrap -ldflags='-extldflags="-static" -X main.GithubClientId=FakeID -X main.GithubClientSecret=FakeSecret -X main.GCPClientId=FakeId -X main.GCPClientSecret=FakeSecret'
+          CGO_ENABLED=0 go build -ldflags='-extldflags="-static" -X main.GithubClientId=FakeID -X main.GithubClientSecret=FakeSecret -X main.GCPClientId=FakeId -X main.GCPClientSecret=FakeSecret' ./cmd/bootstrap
