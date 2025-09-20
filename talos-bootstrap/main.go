@@ -166,8 +166,7 @@ func main() {
 		AutoAdvance: false,
 	}
 
-	steps = []Step{step1, step1_1, step1_2, step2, step21, step22, step23}
-	steps = []Step{step1, step1_1, step2, step21, step22, step23, step24}
+	steps = []Step{step1, step1_1, step1_2, step2, step21, step22, step23, step24}
 	p, logger := NewWizard(steps)
 	loggerRef := logger
 	logger.Infof("Authenticating github client id %s", GithubClientId)
@@ -353,9 +352,9 @@ func main() {
 		}
 	}
 
-	steps[6].OnEnter = func(m *Model) tea.Cmd {
+	steps[7].OnEnter = func(m *Model) tea.Cmd {
 		return func() tea.Msg {
-			loggerRef.Info("steps[6]")
+			loggerRef.Info("steps[7]")
 
 			go func() {
 				loggerRef.Info("Setting up helm...")
