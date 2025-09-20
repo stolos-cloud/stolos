@@ -11,10 +11,12 @@ import (
 
 func setupHelmClient(logger *UILogger) (helmclient.Client, error) {
 	helmClientOptions := &helmclient.Options{
-		RepositoryConfig: "",
-		Debug:            false, // Enable debug logging for Helm operations
-		Linting:          true,  // Enable chart linting,
-		Output:           NewUILoggerWriter(logger),
+		Output: NewUILoggerWriter(logger),
+		Debug:  true, // Enable debug logging for Helm operations
+		DebugLog: func(format string, v ...interface{}) {
+			logger.Infof(format, v...)
+		},
+		Linting: true, // Enable chart linting,
 	}
 
 	kubeclientOptions := helmclient.KubeConfClientOptions{
