@@ -11,14 +11,14 @@ require (
 	github.com/goccy/go-json v0.10.5
 	github.com/goccy/go-yaml v1.18.0
 	github.com/google/go-github/v74 v74.0.0
-	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/mittwald/go-helm-client v0.12.18
+	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/siderolabs/image-factory v0.8.3
 	github.com/siderolabs/talos v1.11.0-beta.0
 	github.com/siderolabs/talos/pkg/machinery v1.11.0-beta.0
 	golang.org/x/oauth2 v0.30.0
 	google.golang.org/grpc v1.73.0
-	k8s.io/client-go v0.34.0-beta.0
+	helm.sh/helm/v3 v3.18.4
 )
 
 require (
@@ -254,12 +254,12 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	helm.sh/helm/v3 v3.18.4 // indirect
 	k8s.io/api v0.34.0-beta.0 // indirect
 	k8s.io/apiextensions-apiserver v0.33.2 // indirect
 	k8s.io/apimachinery v0.34.0-beta.0 // indirect
 	k8s.io/apiserver v0.34.0-beta.0 // indirect
 	k8s.io/cli-runtime v0.34.0-beta.0 // indirect
+	k8s.io/client-go v0.34.0-beta.0 // indirect
 	k8s.io/component-base v0.34.0-beta.0 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20250710124328-f3f2b991d03b // indirect
