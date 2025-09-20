@@ -36,6 +36,7 @@ jobs:
           git add .
       - name: commit changes
         run: |
+          cd target
           git config user.name "stolos-bot"
           git config user.email "bot@stolos.cloud"
           git add .
