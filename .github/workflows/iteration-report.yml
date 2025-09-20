@@ -31,10 +31,6 @@ jobs:
           iteration_number: "${{ inputs.iteration_number || '1' }}"
         with:
           script: |
-            const iteration_items = await github.request('GET /orgs/{org}/projectsV2/{project_number}/items', {
-              project_number: '1',
-              org: 'stolos-cloud',
-              q: `iteration:"Iteration+${process.env.iteration_number}"`
             fs = require('fs')
             const fields = [
                 224317661,
@@ -101,7 +97,6 @@ jobs:
             Handlebars.registerHelper('getAssignees', function (issue) {
                 return issue.content.assignees.map(x => x.login).join(",")
             })
-            console.log(iteration_items.data)
             const template = Handlebars.compile(Buffer.from(content.data.content, 'base64').toString())
             const result = template({
                 issues_by_state: issues_by_state,
@@ -110,3 +105,25 @@ jobs:
             })
             console.log(result)
             fs.writeFileSync('report.md', result)
+      - name: Publish report
+        uses: actions/github-script@v8
+        with:
+          script: |
+            fs = require('fs')
+            const report = fs.readFileSync('report.md', 'utf8')
+            const result = await github.graphql(`mutation AddDiscussionComment {
+              addDiscussionComment(input: {
+                discussionId: "D_kwDOPnFPh84AiCjB",
+                body: "${report}"
+              }) {
+                comment {
+                  id
+                  body
+                  createdAt
+                  url
+                author {
+                    login
+                }
+              }
+              }
+            }`)
