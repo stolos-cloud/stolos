@@ -1,0 +1,37 @@
+
+# Rapport - Sprint {{iteration_number}}
+
+## Statistiques
+
+|   |   |
+|---|---|
+| **Backlog** | {{count_by_state.backlog }} |
+| **Ready** | {{count_by_state.ready}} |
+| **En cours** | {{count_by_state.in_progress}} |
+| **En revue** | {{count_by_state.in_review}} |
+| **Terminé** | {{count_by_state.done}} |
+
+## Issues Terminées
+
+| Titre | État | Taille | Priorité | Assigné | URL |
+| ---   | ---  | ---    | ---      | ---     | --- |
+{{#each issues_by_state.done}}
+| {{content.title}} | {{getField this "Status"}} | {{getField this "Size" }} | {{getField this "Priority"}} |  {{getAssignees this}} | {{content.html_url}} |
+{{/each}}
+
+## Issues qui n'ont pas été complétée dans ce sprint
+
+| Titre | État | Taille | Priorité | Assigné | URL |
+| ---   | ---  | ---    | ---      | ---     | --- |
+{{#each issues_by_state.backlog}}
+| {{content.title}} | {{getField this "Status"}} | {{getField this "Size" }} | {{getField this "Priority"}} |  {{getAssignees this}} | {{content.html_url}} |
+{{/each}}
+{{#each issues_by_state.ready}}
+| {{content.title}} | {{getField this "Status"}} | {{getField this "Size" }} | {{getField this "Priority"}} |  {{getAssignees this}} | {{content.html_url}} |
+{{/each}}
+{{#each issues_by_state.in_progress}}
+| {{content.title}} | {{getField this "Status"}} | {{getField this "Size" }} | {{getField this "Priority"}} |  {{getAssignees this}} | {{content.html_url}} |
+{{/each}}
+{{#each issues_by_state.in_review}}
+| {{content.title}} | {{getField this "Status"}} | {{getField this "Size" }} | {{getField this "Priority"}} |  {{getAssignees this}} | {{content.html_url}} |
+{{/each}}

@@ -20,7 +20,12 @@ jobs:
   create-report:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24.x
+      - run: npm install handlebars
       - name: Get issues
+        id: get-issues
         uses: actions/github-script@v8
         env:
           iteration_number: "${{ inputs.iteration_number || '1' }}"
@@ -30,5 +35,78 @@ jobs:
               project_number: '1',
               org: 'stolos-cloud',
               q: `iteration:"Iteration+${process.env.iteration_number}"`
+            fs = require('fs')
+            const fields = [
+                224317661,
+                224317662,
+                224317663,
+                224317672,
+                224317673,
+                224317674,
+                224317675
+            ]
+            let iteration_items_url = `GET /orgs/${context.payload.repository.owner.login}/projectsV2/1/items?q=iteration%3A"Iteration+${process.env.iteration_number}"`
+            for (let i = 0; i < fields.length; i++) {
+                iteration_items_url += `&fields[]=${fields[i]}`
+            }
+            console.log(iteration_items_url)
+            let iteration_items = await github.request(iteration_items_url)
+            console.log(iteration_items)
+            
+            console.log("==iteration_items==")
+            console.log(iteration_items.data[0].fields.find(x => x.name === "Status"))
+            const filterStatus = (items, status) => items.filter(x => x.fields.find(x => x.name === "Status")?.value?.name?.raw === status)
+            const issues_by_state = {
+                backlog: filterStatus(iteration_items.data, "Backlog"),
+                ready: filterStatus(iteration_items.data, "Ready"),
+                in_progress: filterStatus(iteration_items.data, "In progress"),
+                in_review: filterStatus(iteration_items.data, "In review"),
+                done: filterStatus(iteration_items.data, "Done")
+            }
+            let count_by_state = {} 
+            Object.keys(issues_by_state).forEach(function(key, _) {
+                count_by_state[key] = issues_by_state[key].length;
+            });
+            
+            console.log("==issues_by_state==")
+            console.log(issues_by_state)
+            
+            console.log("==count_by_state==")
+            console.log(count_by_state)
+              
+            fs.writeFileSync('issues_by_state.json', JSON.stringify(issues_by_state))
+            fs.writeFileSync('count_by_state.json', JSON.stringify(count_by_state))
+      - name: Template report
+        uses: actions/github-script@v8
+        env:
+          iteration_number: "${{ inputs.iteration_number || '1' }}"
+        with:
+          script: |
+            fs = require('fs')
+            const issues_by_state = JSON.parse(fs.readFileSync('issues_by_state.json', 'utf8'))
+            const count_by_state = JSON.parse(fs.readFileSync('count_by_state.json', 'utf8'))
+            console.log(process.env)
+            Handlebars = require('handlebars')
+            const content = await github.rest.repos.getContent({
+              owner: context.payload.repository.owner.login,
+              repo: context.payload.repository.name,
+              path: ".github/workflows/report-template.hbs",
+              ref: context.ref
+            });
+            Handlebars.registerHelper('getField', function (issue, fieldName) {
+              console.log(issue)
+              return issue.fields.find(x => x.name === fieldName)?.value?.name?.raw
+            })
+            
+            Handlebars.registerHelper('getAssignees', function (issue) {
+                return issue.content.assignees.map(x => x.login).join(",")
             })
             console.log(iteration_items.data)
+            const template = Handlebars.compile(Buffer.from(content.data.content, 'base64').toString())
+            const result = template({
+                issues_by_state: issues_by_state,
+                count_by_state: count_by_state,
+                iteration_number: process.env.iteration_number
+            })
+            console.log(result)
+            fs.writeFileSync('report.md', result)
