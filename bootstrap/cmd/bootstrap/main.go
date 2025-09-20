@@ -12,9 +12,12 @@ import (
 
 	"github.com/stolos-cloud/stolos-bootstrap/internal/configserver"
 	"github.com/stolos-cloud/stolos-bootstrap/internal/tui"
+	"github.com/stolos-cloud/stolos-bootstrap/pkg/gcp"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/github"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/helm"
+	"github.com/stolos-cloud/stolos-bootstrap/pkg/k8s"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/marshal"
+	"github.com/stolos-cloud/stolos-bootstrap/pkg/oauth"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/state"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/talos"
 
@@ -30,6 +33,8 @@ var didReadConfig = false
 // var tui.Steps []tui.Step
 var kubeconfig []byte
 var saveState state.SaveState
+var gcpConfig *gcp.Config
+var githubConfig *github.Config
 
 func main() {
 
@@ -131,13 +136,71 @@ func main() {
 				panic(err)
 			}
 
-			githubClient, err := github.AuthenticateGithubClient(loggerRef)
+			// Setup OAuth server
+			oauthServer := oauth.NewServer("9999", loggerRef)
+
+			// Register providers
+			if gcp.GCPClientId != "" && gcp.GCPClientSecret != "" {
+				gcpProvider := oauth.NewGCPProvider(gcp.GCPClientId, gcp.GCPClientSecret)
+				oauthServer.RegisterProvider(gcpProvider)
+			}
+
+			githubProvider := oauth.NewGitHubProvider(github.GithubClientId, github.GithubClientSecret)
+			oauthServer.RegisterProvider(githubProvider)
+
+			ctx := context.Background()
+			if err := oauthServer.Start(ctx); err != nil {
+				panic(err)
+			}
+			defer oauthServer.Stop(ctx)
+
+			githubToken, err := oauthServer.Authenticate(ctx, "GitHub")
 			if err != nil {
 				panic(err)
 			}
-			_, err = github.InitRepo(githubClient, bootstrapInfos, false)
 
-			loggerRef.Successf("Repo initialized: https://github.com/%s/%s.git", bootstrapInfos.RepoOwner, bootstrapInfos.RepoName)
+			// Create GitHub client and initialize repository
+			githubClient := github.NewClient(githubToken)
+			githubBootstrapInfo := &github.BootstrapInfo{
+				RepoName:       bootstrapInfos.RepoName,
+				RepoOwner:      bootstrapInfos.RepoOwner,
+				BaseDomain:     bootstrapInfos.BaseDomain,
+				LoadBalancerIP: bootstrapInfos.LoadBalancerIp,
+			}
+
+			_, err = githubClient.InitRepo(githubBootstrapInfo, false)
+			if err != nil {
+				panic(err)
+			}
+
+			// Create GitHub config for backend
+			githubConfig = github.NewConfig(githubToken, bootstrapInfos.RepoOwner, bootstrapInfos.RepoName)
+
+			loggerRef.Infof("Repo initialized: https://github.com/%s/%s.git", bootstrapInfos.RepoOwner, bootstrapInfos.RepoName)
+
+			if gcp.GCPClientId != "" && gcp.GCPClientSecret != "" {
+				gcpToken, err := oauthServer.Authenticate(ctx, "GCP")
+				if err != nil {
+					loggerRef.Errorf("Failed to authenticate with GCP: %v", err)
+				} else {
+					// Create GCP service account
+					gcpConfig, err = gcp.CreateServiceAccountWithOAuth(
+						ctx,
+						bootstrapInfos.GCPProjectID,
+						bootstrapInfos.GCPRegion,
+						gcpToken,
+						"stolos-platform-sa",
+					)
+					if err != nil {
+						loggerRef.Errorf("Failed to create GCP service account: %v", err)
+					} else {
+						loggerRef.Success("GCP service account created successfully")
+					}
+				}
+			} else {
+				loggerRef.Infof("GCP OAuth credentials not provided, skipping GCP service account creation")
+			}
+
 
 			tui.Steps[1].IsDone = true
 			return nil
@@ -309,6 +372,37 @@ func main() {
 					loggerRef.Errorf("Failed to setup helm client: %s", err)
 					return
 				}
+
+				// Apply provider secrets
+				k8sClient, err := k8s.NewClientFromKubeconfig(kubeconfig)
+				if err != nil {
+					loggerRef.Errorf("Failed to create Kubernetes client: %s", err)
+				} else {
+					ctx := context.Background()
+
+					// Create GCP service account secret
+					if gcpConfig != nil {
+						loggerRef.Info("Creating GCP service account secret...")
+						err = gcpConfig.CreateOrUpdateSecret(ctx, k8sClient, "stolos-system", "gcp-service-account")
+						if err != nil {
+							loggerRef.Errorf("Failed to create GCP secret: %s", err)
+						} else {
+							loggerRef.Success("GCP service account secret created successfully")
+						}
+					}
+
+					// Create GitHub credentials secret
+					if githubConfig != nil {
+						loggerRef.Info("Creating GitHub credentials secret...")
+						err = githubConfig.CreateOrUpdateSecret(ctx, k8sClient, "stolos-system", "github-credentials")
+						if err != nil {
+							loggerRef.Errorf("Failed to create GitHub secret: %s", err)
+						} else {
+							loggerRef.Success("GitHub credentials secret created successfully")
+						}
+					}
+				}
+
 				loggerRef.Infof("Deploying ArgoCD...")
 				release, err := helm.HelmInstallArgo(helmClient)
 				if err != nil {
