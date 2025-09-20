@@ -10,7 +10,7 @@ permissions:
 jobs:
   release-cli:
     # Only run if tag name starts with "cli-"
-    if: startsWith(github.event.release.tag_name, 'cli-')
+    if: contains(github.event.release.tag_name, '+cli')
     runs-on: ubuntu-latest
 
     steps:
