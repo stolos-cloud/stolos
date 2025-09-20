@@ -1,0 +1,34 @@
+project_name: talos-bootstrap
+builds:
+  - id: cli
+    dir: ./talos-bootstrap
+    main: .
+    binary: talos-bootstrap
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -extldflags "-static"
+      - -X main.GithubClientId={{ .Env.GITHUB_CLIENT_ID }}
+      - -X main.GithubClientSecret={{ .Env.GITHUB_CLIENT_SECRET }}
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - "386"
+      - amd64
+      - arm64
+      - arm
+    goarm:
+      - 6
+      - 7
+archives:
+  - id: default
+    format: tar.gz
+    builds:
+      - cli
+    name_template: >-
+      {{ .ProjectName }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}
+
+release:
+  prerelease: auto

@@ -1,0 +1,24 @@
+name: PR Check
+
+on:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Build (static binary)
+        run: |
+          cd talos-bootstrap
+          mkdir -p out
+          CGO_ENABLED=0 go build \
+            -ldflags='-extldflags="-static" -X main.GithubClientId=dummy -X main.GithubClientSecret=dummy' \
+            -o out/talos-bootstrap -a .
