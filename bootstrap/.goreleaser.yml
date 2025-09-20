@@ -1,6 +1,14 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/goreleaser/goreleaser/v2.12.2/www/docs/static/schema.json
 
+version: 2
+
 project_name: stolos-bootstrap
+
+before:
+  hooks:
+    - go mod tidy
+    - go mod download
+
 builds:
   - id: cli
     dir: ./bootstrap
@@ -9,23 +17,24 @@ builds:
     env:
       - CGO_ENABLED=0
     ldflags:
-      - -extldflags "-static"
-      - -X github.com/stolos-cloud/stolos-bootstrap/pkg/github.GithubClientId={{ .Env.GH_CLIENT_ID }}
-      - -X github.com/stolos-cloud/stolos-bootstrap/pkg/github.GithubClientSecret={{ .Env.GH_CLIENT_SECRET }}
-      - -X github.com/stolos-cloud/stolos-bootstrap/pkg/gcp.GCPClientId={{ .Env.GCP_CLIENT_ID }}
-      - -X github.com/stolos-cloud/stolos-bootstrap/pkg/gcp.GCPClientSecret={{ .Env.GCP_CLIENT_SECRET }}
+      - '-s -w'
+      - '-extldflags "-static"'
+      - '-X github.com/stolos-cloud/stolos-bootstrap/pkg/github.GithubClientId={{ .Env.GH_CLIENT_ID }}'
+      - '-X github.com/stolos-cloud/stolos-bootstrap/pkg/github.GithubClientSecret={{ .Env.GH_CLIENT_SECRET }}'
+      - '-X github.com/stolos-cloud/stolos-bootstrap/pkg/gcp.GCPClientId={{ .Env.GCP_CLIENT_ID }}'
+      - '-X github.com/stolos-cloud/stolos-bootstrap/pkg/gcp.GCPClientSecret={{ .Env.GCP_CLIENT_SECRET }}'
     goos:
       - linux
       - windows
       - darwin
     goarch:
-      - '386'
+      - 386
       - amd64
       - arm64
       - arm
     goarm:
-      - '6'
-      - '7'
+      - 6
+      - 7
 
 archives:
   - id: cli_archive
@@ -41,4 +50,9 @@ archives:
       - README.md
 
 checksum:
-  name_template: "checksums.txt"
+  name_template: "checksums-cli.txt"
+
+release:
+  github: {}
+  ids:
+    - cli_archive
