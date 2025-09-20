@@ -352,12 +352,35 @@ func renderLogLine(l logMsg, width int) string {
 	case levelSuccess:
 		level = lipgloss.NewStyle().Foreground(lipgloss.Color("82")).Render("OK")
 	}
-	msg := l.Text
-	line := fmt.Sprintf("%s %-5s %s", ts, level, msg)
-	if width > 0 {
-		return truncate(line, width-4) // keep inside the box
+
+	// prefix with timestamp and level
+	prefix := fmt.Sprintf("%s %-5s ", ts, level)
+
+	// split into lines
+	lines := strings.Split(l.Text, "\n")
+	for i, msgLine := range lines {
+		full := prefix + msgLine
+		if width > 0 {
+			lines[i] = truncateLine(full, width-4)
+		} else {
+			lines[i] = full
+		}
+		// for following lines, don't repeat timestamp/level
+		prefix = strings.Repeat(" ", len(ts)+1+5+1) // align with previous prefix length
 	}
-	return line
+	return strings.Join(lines, "\n")
+}
+
+// truncateLine shortens a single line if it exceeds width.
+func truncateLine(s string, width int) string {
+	if width <= 0 || len([]rune(s)) <= width {
+		return s
+	}
+	if width <= 1 {
+		return "…"
+	}
+	r := []rune(s)
+	return string(r[:width-1]) + "…"
 }
 
 // Nav breadcrumbs
