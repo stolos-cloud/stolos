@@ -9,12 +9,16 @@ require (
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/cosi-project/runtime v1.10.7
 	github.com/goccy/go-json v0.10.5
+	github.com/goccy/go-yaml v1.18.0
+	github.com/google/go-github/v74 v74.0.0
 	github.com/mittwald/go-helm-client v0.12.18
+	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/siderolabs/image-factory v0.8.3
 	github.com/siderolabs/talos v1.11.0-beta.0
 	github.com/siderolabs/talos/pkg/machinery v1.11.0-beta.0
+	golang.org/x/oauth2 v0.30.0
 	google.golang.org/grpc v1.73.0
-	k8s.io/client-go v0.34.0-beta.0
+	helm.sh/helm/v3 v3.18.4
 )
 
 require (
@@ -113,6 +117,7 @@ require (
 	github.com/google/gnostic-models v0.7.0 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/go-containerregistry v0.20.6 // indirect
+	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/go-tpm v0.9.5 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/google/uuid v1.6.0 // indirect
@@ -173,7 +178,6 @@ require (
 	github.com/opencontainers/runtime-spec v1.2.1 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/petermattis/goid v0.0.0-20250508124226-395b08cebbdb // indirect
-	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/planetscale/vtprotobuf v0.6.1-0.20241121165744-79df5c4772f2 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
@@ -237,7 +241,6 @@ require (
 	golang.org/x/crypto v0.40.0 // indirect
 	golang.org/x/exp v0.0.0-20250506013437-ce4c2cf36ca6 // indirect
 	golang.org/x/net v0.42.0 // indirect
-	golang.org/x/oauth2 v0.30.0 // indirect
 	golang.org/x/sync v0.16.0 // indirect
 	golang.org/x/sys v0.34.0 // indirect
 	golang.org/x/term v0.33.0 // indirect
@@ -251,12 +254,12 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	helm.sh/helm/v3 v3.18.4 // indirect
 	k8s.io/api v0.34.0-beta.0 // indirect
 	k8s.io/apiextensions-apiserver v0.33.2 // indirect
 	k8s.io/apimachinery v0.34.0-beta.0 // indirect
 	k8s.io/apiserver v0.34.0-beta.0 // indirect
 	k8s.io/cli-runtime v0.34.0-beta.0 // indirect
+	k8s.io/client-go v0.34.0-beta.0 // indirect
 	k8s.io/component-base v0.34.0-beta.0 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20250710124328-f3f2b991d03b // indirect
