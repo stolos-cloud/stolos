@@ -1,0 +1,125 @@
+{
+    "applicationName": "Stolos",
+    "default": {
+        "title": "Stolos"
+    },
+    "userPreferences": {
+        "myAccount": "Mon compte",
+        "language": "Langue",
+        "languages": {
+            "en": "Anglais",
+            "fr": "Français"
+        },
+        "logout": "Se Déconnecter"
+    },
+     "connexion": {
+        "title": "Se connecter à votre compte",
+        "email": "Courriel",
+        "password": "Mot de passe",
+        "rememberMe": "Se souvenir de moi",
+        "forgotPassword": "Mot de passe oublié ?",
+        "noAccount": "Vous n'avez pas de compte ?",
+        "buttons": {
+            "login": "Se Connecter",
+            "signup": "S'inscrire"
+        }
+    },
+    "dashboard": {
+        "title": "Tableau de Bord",
+        "subheading": "Bienvenue sur Stolos",
+        "dialogs": {
+            "downloadISOOnPremise":  {
+                "title": "Télécharger l'ISO On-Premise",
+                "noticeText": "Pour utiliser le mode On-Prem, commencez par télécharger l'ISO (AMD ou ARM) et installez-le sur vos serveurs physiques. Une fois que les serveurs sont démarrés avec l'ISO, ils apparaîtront dans la page de Provisionnement pour être configurés."
+            }
+        },
+        "buttons": {
+            "downloadISOOnPremise": "Télécharger l'ISO On-Premise",
+            "cancel": "Annuler",
+            "download": "Télécharger"
+        }
+    },
+    "applications": {
+        "title": "Applications"
+    },
+    "deployments": {
+        "title": "Déploiements"
+    },
+    "observability": {
+        "title": "Observabilité"
+    },
+    "scaling": {
+        "title": "Mise à l'Échelle"
+    },
+    "workflows": {
+        "title": "Flux de travail"
+    },
+    "functionsVms": {
+        "title": "Fonctions & VMs"
+    },
+    "secrets": {
+        "title": "Secrets"
+    },
+    "provisioning": {
+        "title": "Provisionnement",
+        "subheading": "Gérez vos ressources cloud"
+    },
+    "cloudProvider": {
+        "title": "Fournisseur de Cloud"
+    },
+    "templates": {
+        "title": "Modèles"
+    },
+    "secretsSecurity": {
+        "title": "Secrets & sécurité"
+    },
+    "policiesCompliance": {
+        "title": "Politiques & Conformité"
+    },
+    "gitopsSynchronization": {
+        "title": "GitOps Synchronisation"
+    },
+    "rules": {
+        "validation": {
+            "email": {
+                "required": "Email est requis",
+                "invalid": "Email doit être valide"
+            },
+            "password": {
+                "required": "Le mot de passe est requis",
+                "invalid": "Le mot de passe doit contenir au moins 8 caractères",
+                "uppercase": "Le mot de passe doit contenir au moins une lettre majuscule",
+                "lowercase": "Le mot de passe doit contenir au moins une lettre minuscule",
+                "number": "Le mot de passe doit contenir au moins un chiffre",
+                "special": "Le mot de passe doit contenir au moins un caractère spécial"
+            },
+            "textfield": {
+                "required": "Ce champ est requis"
+            }
+        }
+    },
+    "actionButtons": {
+        "add": "Ajouter",
+        "edit": "Modifier",
+        "delete": "Supprimer",
+        "save": "Enregistrer",
+        "cancel": "Annuler",
+        "confirm": "Confirmer",
+        "back": "Retour",
+        "next": "Suivant",
+        "finish": "Terminer",
+        "viewDetails": "Voir les détails",
+        "refresh": "Rafraîchir",
+        "search": "Rechercher"
+    },
+    "errors": {
+        "403": {
+            "title": "403 - Interdit",
+            "message": "Vous n'avez pas la permission d'accéder à cette page."
+        },
+        "404": {
+            "title": "404 - Non Trouvé",
+            "message": "La page que vous recherchez n'existe pas."
+        }
+    }
+}
