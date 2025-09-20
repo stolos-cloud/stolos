@@ -9,6 +9,7 @@ require (
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/cosi-project/runtime v1.10.7
 	github.com/goccy/go-json v0.10.5
+	github.com/goccy/go-yaml v1.18.0
 	github.com/google/go-github/v74 v74.0.0
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/siderolabs/image-factory v0.8.3

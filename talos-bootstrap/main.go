@@ -31,6 +31,8 @@ type BootstrapInfo struct {
 	PXEPort           string `json:"PXEPort" field_label:"PXE Server Port (Optional)"`
 	RepoOwner         string `json:"RepoOwner" field_label:"Github Repository Owner" field_required:"true"`
 	RepoName          string `json:"RepoName" field_label:"Github Repository Name" field_required:"true"`
+	BaseDomain        string `json:"BaseDomain" field_label:"BaseDomain" field_required:"true"`
+	LoadBalancerIp    string `json:"LoadBalancerIp" field_label:"LoadBalancer IP" field_required:"true"`
 }
 
 var bootstrapInfos *BootstrapInfo
@@ -159,20 +161,10 @@ func main() {
 	steps = []Step{step1, step1_1, step1_2, step2, step21, step22, step23}
 	p, logger := NewWizard(steps)
 	loggerRef := logger
+	logger.Infof("Authenticating github client id %s", GithubClientId)
 
 	steps[1].OnEnter = func(m *Model) tea.Cmd {
 		return func() tea.Msg {
-			githubClient, err := authenticateGithubClient(loggerRef)
-			if err != nil {
-				panic(err)
-			}
-			_, err = initRepo(githubClient, bootstrapInfos.RepoOwner, bootstrapInfos.RepoName, false)
-			return nil
-		}
-	}
-	steps[2].OnEnter = func(m *Model) tea.Cmd {
-		return func() tea.Msg {
-
 			var err error
 			if !didReadConfig {
 				bootstrapInfos, err = retrieveStructFromFields[BootstrapInfo](step1.Fields)
@@ -183,6 +175,21 @@ func main() {
 			if err != nil {
 				panic(err)
 			}
+
+			githubClient, err := authenticateGithubClient(loggerRef)
+			if err != nil {
+				panic(err)
+			}
+			_, err = initRepo(githubClient, bootstrapInfos, false)
+
+			loggerRef.Successf("Repo initialized: https://github.com/%s/%s.git", bootstrapInfos.RepoOwner, bootstrapInfos.RepoName)
+
+			steps[1].IsDone = true
+			return nil
+		}
+	}
+	steps[2].OnEnter = func(m *Model) tea.Cmd {
+		return func() tea.Msg {
 
 			if doRestoreProgress {
 				loggerRef.Info("State file found, skipping to steps[5]")
@@ -233,7 +240,7 @@ func main() {
 
 				loggerRef.Successf("Download saved to: %s", resp.Filename)
 
-				steps[1].IsDone = true
+				steps[2].IsDone = true
 			}()
 
 			return nil

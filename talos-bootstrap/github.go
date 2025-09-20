@@ -5,22 +5,25 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/url"
+	"os"
+	"time"
+
+	"github.com/goccy/go-yaml"
 	"github.com/google/go-github/v74/github"
 	"github.com/pkg/browser"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/endpoints"
-	"net/http"
-	"net/url"
-	"os"
 )
 
-var githubClientId string
-var githubClientSecret string
+var GithubClientId string     // To set using ldflags
+var GithubClientSecret string // To set using ldflags
 
 func authenticateGithubClient(log *UILogger) (*github.Client, error) {
 	config := &oauth2.Config{
-		ClientID:     githubClientId,
-		ClientSecret: githubClientSecret,
+		ClientID:     GithubClientId,
+		ClientSecret: GithubClientSecret,
 		Scopes:       []string{"repo"},
 		Endpoint:     endpoints.GitHub,
 		RedirectURL:  "http://localhost:9999/oauth/callback",
@@ -68,7 +71,7 @@ func authenticateGithubClient(log *UILogger) (*github.Client, error) {
 
 	// Redirect user to consent page to ask for permission
 	// for the scopes specified above
-	fmt.Printf("Your browser has been opened to visit::\n%s\n", oauthUrl)
+	log.Infof("Your browser has been opened to visit::\n%s\n", oauthUrl)
 
 	// open user's browser to login page
 	if err := browser.OpenURL(oauthUrl); err != nil {
@@ -104,7 +107,7 @@ func authenticateGithubClient(log *UILogger) (*github.Client, error) {
 	/*--- Fin du code emprunté --- */
 }
 
-func initRepo(client *github.Client, owner string, repoName string, isPrivate bool) (*github.Repository, error) {
+func initRepo(client *github.Client, info *BootstrapInfo, isPrivate bool) (*github.Repository, error) {
 	templateRepoOwner := os.Getenv("GITHUB_TEMPLATE_REPO_OWNER")
 	templateRepoName := os.Getenv("GITHUB_TEMPLATE_REPO_NAME")
 	if templateRepoOwner == "" {
@@ -115,10 +118,43 @@ func initRepo(client *github.Client, owner string, repoName string, isPrivate bo
 	}
 
 	repo, response, err := client.Repositories.CreateFromTemplate(context.Background(), templateRepoOwner, templateRepoName, &github.TemplateRepoRequest{
-		Name:               &repoName,
-		Owner:              &owner,
+		Name:               &info.RepoName,
+		Owner:              &info.RepoOwner,
 		IncludeAllBranches: github.Ptr(false),
 		Private:            &isPrivate,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	if response.StatusCode != 201 {
+		return nil, fmt.Errorf("CreateFromTemplate returned %d", response.StatusCode)
+	}
+
+	time.Sleep(5 * time.Second) // Wait for github to init repo, as createfile can happen before it is fully initialized
+
+	commonConfig := struct {
+		BaseDomain string `yaml:"base_domain"`
+		LbIp       string `yaml:"lb_ip"`
+	}{
+		BaseDomain: info.BaseDomain,
+		LbIp:       info.LoadBalancerIp,
+	}
+	commonConfigYaml, err := yaml.Marshal(commonConfig)
+	author := github.CommitAuthor{
+		Name:  github.Ptr("Bot Stolos"),
+		Email: github.Ptr("bot@stolos.cloud"),
+		Date: &github.Timestamp{
+			Time: time.Now(),
+		},
+	}
+
+	_, response, err = client.Repositories.CreateFile(context.Background(), info.RepoOwner, info.RepoName, "common.yml", &github.RepositoryContentFileOptions{
+		Message:   github.Ptr("Initial config file"),
+		Content:   commonConfigYaml,
+		Branch:    github.Ptr("main"),
+		Committer: &author,
 	})
 
 	if err != nil {
