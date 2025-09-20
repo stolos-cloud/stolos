@@ -32,7 +32,7 @@ jobs:
           shopt -s extglob dotglob
           cd target
           rm -r !(.??*)
-          cp -r ../source/k8s-manifest/* .
+          cp -r ../source/k8s-manifests/* .
           git add .
       - name: commit changes
         run: |
