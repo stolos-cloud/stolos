@@ -1,31 +1,33 @@
 // Ref: GPT5 - OpenAI
 // io.Writer wrapper for the Bubbletea UILogger
-package main
+package logging
 
 import (
 	"bytes"
 	"strings"
+
+	"github.com/stolos-cloud/stolos-bootstrap/internal/tui"
 )
 
 // UILoggerWriter implements io.Writer so it can be used in libraries
 // expecting an Output writer. Each Write call emits a log line
 // into the UILogger as INFO by default.
 type UILoggerWriter struct {
-	logger *UILogger
-	level  logLevel
+	logger *tui.UILogger
+	level  tui.LogLevel
 	buf    bytes.Buffer
 }
 
 // NewUILoggerWriter creates a writer that forwards to UILogger.Info by default.
-func NewUILoggerWriter(l *UILogger) *UILoggerWriter {
+func NewUILoggerWriter(l *tui.UILogger) *UILoggerWriter {
 	return &UILoggerWriter{
 		logger: l,
-		level:  levelInfo,
+		level:  tui.LevelInfo,
 	}
 }
 
 // SetLevel changes the log level for emitted lines.
-func (w *UILoggerWriter) SetLevel(level logLevel) {
+func (w *UILoggerWriter) SetLevel(level tui.LogLevel) {
 	w.level = level
 }
 
@@ -49,11 +51,11 @@ func (w *UILoggerWriter) emit(line string) {
 		return
 	}
 	switch w.level {
-	case levelWarn:
+	case tui.LevelWarn:
 		w.logger.Warn(line)
-	case levelError:
+	case tui.LevelError:
 		w.logger.Error(line)
-	case levelSuccess:
+	case tui.LevelSuccess:
 		w.logger.Success(line)
 	default:
 		w.logger.Info(line)

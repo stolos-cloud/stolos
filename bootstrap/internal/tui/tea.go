@@ -1,5 +1,5 @@
 // tea.go
-package main
+package tui
 
 import (
 	"fmt"
@@ -14,6 +14,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
+
+var Steps []Step
 
 // StepKind describes what the step renders.
 type StepKind int
@@ -58,16 +60,16 @@ func NewTextField(label, placeholder string, optional bool) Field {
 }
 
 // UILogger lets external goroutines (e.g., HTTP handlers) push log messages to the TUI.
-// It uses program.Send under the hood
+// It uses Program.Send under the hood
 type UILogger struct {
 	send func(msg tea.Msg)
 }
 
-// Info logs an info line (non-blocking).
-func (l *UILogger) Info(s string)    { l.emit(logMsg{Level: levelInfo, Text: s, At: time.Now()}) }
-func (l *UILogger) Warn(s string)    { l.emit(logMsg{Level: levelWarn, Text: s, At: time.Now()}) }
-func (l *UILogger) Error(s string)   { l.emit(logMsg{Level: levelError, Text: s, At: time.Now()}) }
-func (l *UILogger) Success(s string) { l.emit(logMsg{Level: levelSuccess, Text: s, At: time.Now()}) }
+// Info Logs an info line (non-blocking).
+func (l *UILogger) Info(s string)    { l.emit(logMsg{Level: LevelInfo, Text: s, At: time.Now()}) }
+func (l *UILogger) Warn(s string)    { l.emit(logMsg{Level: LevelWarn, Text: s, At: time.Now()}) }
+func (l *UILogger) Error(s string)   { l.emit(logMsg{Level: LevelError, Text: s, At: time.Now()}) }
+func (l *UILogger) Success(s string) { l.emit(logMsg{Level: LevelSuccess, Text: s, At: time.Now()}) }
 
 func (l *UILogger) Infof(f string, a ...any)    { l.Info(fmt.Sprintf(f, a...)) }
 func (l *UILogger) Warnf(f string, a ...any)    { l.Warn(fmt.Sprintf(f, a...)) }
@@ -79,27 +81,27 @@ func (l *UILogger) emit(m tea.Msg) {
 	go func() { l.send(m) }()
 }
 
-// NewWizard constructs the Bubble Tea program + UILogger from the provided steps.
+// NewWizard constructs the Bubble Tea Program + UILogger from the provided Steps.
 func NewWizard(steps []Step) (*tea.Program, *UILogger) {
 	m := newModel(steps)
 	p := tea.NewProgram(&m, tea.WithAltScreen())
-	m.program = p
+	m.Program = p
 	l := &UILogger{send: p.Send}
 	return p, l
 }
 
 // Log levels & message type injected via UILogger.
-type logLevel int
+type LogLevel int
 
 const (
-	levelInfo logLevel = iota
-	levelWarn
-	levelError
-	levelSuccess
+	LevelInfo LogLevel = iota
+	LevelWarn
+	LevelError
+	LevelSuccess
 )
 
 type logMsg struct {
-	Level logLevel
+	Level LogLevel
 	Text  string
 	At    time.Time
 }
@@ -110,38 +112,38 @@ type tickMsg struct{}
 
 // Model holds UI state.
 type Model struct {
-	steps             []Step
-	currentStepIndex  int
-	width             int
-	height            int
-	spinner           spinner.Model
-	focusedFieldIndex int
-	logs              []logMsg
-	maxLogs           int
-	program           *tea.Program // Backref for internal Cmds that may need Send
+	Steps             []Step
+	CurrentStepIndex  int
+	Width             int
+	Height            int
+	Spinner           spinner.Model
+	FocusedFieldIndex int
+	Logs              []logMsg
+	MaxLogs           int
+	Program           *tea.Program // Backref for internal Cmds that may need Send
 }
 
 func newModel(steps []Step) Model {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	return Model{
-		steps:            steps,
-		currentStepIndex: 0,
-		spinner:          s,
-		maxLogs:          500,
+		Steps:            steps,
+		CurrentStepIndex: 0,
+		Spinner:          s,
+		MaxLogs:          500,
 	}
 }
 
 func (m *Model) Init() tea.Cmd {
-	// Enter the first step; we also kick the spinner in case first step needs it.
-	return tea.Batch(m.enterStepCmd(0), m.spinner.Tick)
+	// Enter the first step; we also kick the Spinner in case first step needs it.
+	return tea.Batch(m.enterStepCmd(0), m.Spinner.Tick)
 }
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.width, m.height = msg.Width, msg.Height
+		m.Width, m.Height = msg.Width, msg.Height
 		return m, tea.ClearScreen
 	}
 
@@ -152,7 +154,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.width, m.height = msg.Width, msg.Height
+		m.Width, m.Height = msg.Width, msg.Height
 		return m, nil
 
 	case tea.KeyMsg:
@@ -165,20 +167,20 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "tab", "down":
 			if m.getCurrentStep().Kind == StepForm && len(m.getCurrentStep().Fields) > 0 {
-				m.steps[m.currentStepIndex].Fields[m.focusedFieldIndex].Input.Blur()
-				m.focusedFieldIndex = (m.focusedFieldIndex + 1) % len(m.getCurrentStep().Fields)
-				m.steps[m.currentStepIndex].Fields[m.focusedFieldIndex].Input.Focus()
+				m.Steps[m.CurrentStepIndex].Fields[m.FocusedFieldIndex].Input.Blur()
+				m.FocusedFieldIndex = (m.FocusedFieldIndex + 1) % len(m.getCurrentStep().Fields)
+				m.Steps[m.CurrentStepIndex].Fields[m.FocusedFieldIndex].Input.Focus()
 			}
 			return m, nil
 
 		case "shift+tab", "up":
 			if m.getCurrentStep().Kind == StepForm && len(m.getCurrentStep().Fields) > 0 {
-				m.steps[m.currentStepIndex].Fields[m.focusedFieldIndex].Input.Blur()
-				m.focusedFieldIndex--
-				if m.focusedFieldIndex < 0 {
-					m.focusedFieldIndex = len(m.getCurrentStep().Fields) - 1
+				m.Steps[m.CurrentStepIndex].Fields[m.FocusedFieldIndex].Input.Blur()
+				m.FocusedFieldIndex--
+				if m.FocusedFieldIndex < 0 {
+					m.FocusedFieldIndex = len(m.getCurrentStep().Fields) - 1
 				}
-				m.steps[m.currentStepIndex].Fields[m.focusedFieldIndex].Input.Focus()
+				m.Steps[m.CurrentStepIndex].Fields[m.FocusedFieldIndex].Input.Focus()
 			}
 			return m, nil
 
@@ -188,7 +190,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case spinner.TickMsg:
 		var cmd tea.Cmd
-		m.spinner, cmd = m.spinner.Update(msg)
+		m.Spinner, cmd = m.Spinner.Update(msg)
 		return m, cmd
 
 	case logMsg:
@@ -198,7 +200,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case stepEnteredMsg:
 		cmds := []tea.Cmd{}
 		if m.getCurrentStep().Kind == StepSpinner {
-			cmds = append(cmds, m.spinner.Tick)
+			cmds = append(cmds, m.Spinner.Tick)
 		}
 		if m.getCurrentStep().OnEnter != nil {
 			cmds = append(cmds, m.getCurrentStep().OnEnter(m))
@@ -217,7 +219,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) View() string {
-	if m.width == 0 {
+	if m.Width == 0 {
 		return "initializing..."
 	}
 	var b strings.Builder
@@ -237,7 +239,7 @@ func (m *Model) View() string {
 		b.WriteString(m.renderSpinnerBody())
 	default:
 		// Plain
-		b.WriteString(m.wrap(m.getCurrentStep().Body, m.width))
+		b.WriteString(m.wrap(m.getCurrentStep().Body, m.Width))
 	}
 
 	// Logs
@@ -249,25 +251,25 @@ func (m *Model) View() string {
 
 // Steps helper / processing
 
-func (m *Model) getCurrentStep() Step { return m.steps[m.currentStepIndex] }
+func (m *Model) getCurrentStep() Step { return m.Steps[m.CurrentStepIndex] }
 
 func (m *Model) enterStepCmd(i int) tea.Cmd {
-	m.currentStepIndex = i
+	m.CurrentStepIndex = i
 	if m.getCurrentStep().Kind == StepForm && len(m.getCurrentStep().Fields) > 0 {
 		for j := range m.getCurrentStep().Fields {
-			m.steps[m.currentStepIndex].Fields[j].Input.Blur()
+			m.Steps[m.CurrentStepIndex].Fields[j].Input.Blur()
 		}
-		m.focusedFieldIndex = 0
-		m.steps[m.currentStepIndex].Fields[0].Input.Focus()
+		m.FocusedFieldIndex = 0
+		m.Steps[m.CurrentStepIndex].Fields[0].Input.Focus()
 	}
 	return func() tea.Msg { return stepEnteredMsg{idx: i} }
 }
 
 func (m *Model) advanceCmd() tea.Cmd {
-	if m.currentStepIndex >= len(m.steps)-1 {
+	if m.CurrentStepIndex >= len(m.Steps)-1 {
 		return tea.Quit
 	}
-	next := m.currentStepIndex + 1
+	next := m.CurrentStepIndex + 1
 	return m.enterStepCmd(next)
 }
 
@@ -278,7 +280,7 @@ func (m *Model) updateForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	// Route to the focused input
-	curField := &m.steps[m.currentStepIndex].Fields[m.focusedFieldIndex]
+	curField := &m.Steps[m.CurrentStepIndex].Fields[m.FocusedFieldIndex]
 	var cmd tea.Cmd
 	curField.Input, cmd = curField.Input.Update(msg)
 	return m, cmd
@@ -302,7 +304,7 @@ func (m *Model) renderForm() string {
 // Spinner
 
 func (m *Model) renderSpinnerBody() string {
-	sp := m.spinner.View()
+	sp := m.Spinner.View()
 	body := m.getCurrentStep().Body
 	if body == "" {
 		body = "Working..."
@@ -313,10 +315,10 @@ func (m *Model) renderSpinnerBody() string {
 // Custom Logging
 
 func (m *Model) appendLog(l logMsg) {
-	m.logs = append(m.logs, l)
-	if len(m.logs) > m.maxLogs {
+	m.Logs = append(m.Logs, l)
+	if len(m.Logs) > m.MaxLogs {
 		// Drop oldest
-		m.logs = m.logs[len(m.logs)-m.maxLogs:]
+		m.Logs = m.Logs[len(m.Logs)-m.MaxLogs:]
 	}
 }
 
@@ -325,14 +327,14 @@ func (m *Model) renderLogsPane() string {
 
 	// Convert each logMsg to rendered lines first
 	var allLines []string
-	for _, lm := range m.logs {
-		rendered := renderLogLine(lm, m.width)
+	for _, lm := range m.Logs {
+		rendered := renderLogLine(lm, m.Width)
 		parts := strings.Split(rendered, "\n")
 		allLines = append(allLines, parts...)
 	}
 
-	// Keep only the last lines that fit into available height
-	maxLines := max(m.height - 10) // adaptive height
+	// Keep only the last lines that fit into available Height
+	maxLines := max(m.Height - 10) // adaptive Height
 	if len(allLines) > maxLines {
 		allLines = allLines[len(allLines)-maxLines:]
 	}
@@ -340,7 +342,7 @@ func (m *Model) renderLogsPane() string {
 	box := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("240")).
-		Width(m.width - 2).
+		Width(m.Width - 2).
 		Render(title + "\n" + strings.Join(allLines, "\n"))
 	return box
 }
@@ -349,13 +351,13 @@ func renderLogLine(l logMsg, width int) string {
 	ts := l.At.Format("15:04:05")
 	level := ""
 	switch l.Level {
-	case levelInfo:
+	case LevelInfo:
 		level = lipgloss.NewStyle().Foreground(lipgloss.Color("39")).Render("INFO")
-	case levelWarn:
+	case LevelWarn:
 		level = lipgloss.NewStyle().Foreground(lipgloss.Color("214")).Render("WARN")
-	case levelError:
+	case LevelError:
 		level = lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Render("ERROR")
-	case levelSuccess:
+	case LevelSuccess:
 		level = lipgloss.NewStyle().Foreground(lipgloss.Color("82")).Render("OK")
 	}
 
@@ -379,7 +381,7 @@ func renderLogLine(l logMsg, width int) string {
 	return strings.Join(lines, "\n")
 }
 
-// truncateLine shortens a single line if it exceeds width.
+// truncateLine shortens a single line if it exceeds Width.
 func truncateLine(s string, width int) string {
 	if width <= 0 || len([]rune(s)) <= width {
 		return s
@@ -395,9 +397,9 @@ func truncateLine(s string, width int) string {
 
 func (m *Model) renderBreadcrumbs() string {
 	var parts []string
-	for idx, s := range m.steps {
+	for idx, s := range m.Steps {
 		label := s.Title
-		if idx == m.currentStepIndex {
+		if idx == m.CurrentStepIndex {
 			label = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("212")).Render(label)
 		} else {
 			label = lipgloss.NewStyle().Faint(true).Render(label)
@@ -406,7 +408,7 @@ func (m *Model) renderBreadcrumbs() string {
 	}
 	sep := lipgloss.NewStyle().Faint(true).Render(" > ")
 	line := strings.Join(parts, sep)
-	return wrapBreadcrumbs(line, m.width)
+	return wrapBreadcrumbs(line, m.Width)
 }
 
 // wrapBreadcrumbs bespoke text wrap for the breadcrumbs header.
@@ -512,7 +514,7 @@ func safeCallDefault(fn DefaultFunc) (val string, ok bool) {
 	return fn(), true
 }
 
-func createFieldsForStruct[T any]() []Field {
+func CreateFieldsForStruct[T any]() []Field {
 	formFields := []Field{}
 
 	t := reflect.TypeFor[T]()
@@ -550,7 +552,7 @@ func createFieldsForStruct[T any]() []Field {
 	return formFields
 }
 
-func retrieveStructFromFields[T any](fields []Field) (*T, error) {
+func RetrieveStructFromFields[T any](fields []Field) (*T, error) {
 	result := reflect.New(reflect.TypeFor[T]())
 	numFields := result.Elem().Type().NumField()
 	for i := 0; i < numFields; i++ {

@@ -1,4 +1,4 @@
-package main
+package github
 
 import (
 	"context"
@@ -13,6 +13,8 @@ import (
 	"github.com/goccy/go-yaml"
 	"github.com/google/go-github/v74/github"
 	"github.com/pkg/browser"
+	"github.com/stolos-cloud/stolos-bootstrap/internal/tui"
+	"github.com/stolos-cloud/stolos-bootstrap/pkg/state"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/endpoints"
 )
@@ -20,7 +22,7 @@ import (
 var GithubClientId string     // To set using ldflags
 var GithubClientSecret string // To set using ldflags
 
-func authenticateGithubClient(log *UILogger) (*github.Client, error) {
+func AuthenticateGithubClient(log *tui.UILogger) (*github.Client, error) {
 	config := &oauth2.Config{
 		ClientID:     GithubClientId,
 		ClientSecret: GithubClientSecret,
@@ -107,7 +109,7 @@ func authenticateGithubClient(log *UILogger) (*github.Client, error) {
 	/*--- Fin du code emprunté --- */
 }
 
-func initRepo(client *github.Client, info *BootstrapInfo, isPrivate bool) (*github.Repository, error) {
+func InitRepo(client *github.Client, info *state.BootstrapInfo, isPrivate bool) (*github.Repository, error) {
 	templateRepoOwner := os.Getenv("GITHUB_TEMPLATE_REPO_OWNER")
 	templateRepoName := os.Getenv("GITHUB_TEMPLATE_REPO_NAME")
 	if templateRepoOwner == "" {

@@ -1,4 +1,4 @@
-module main
+module github.com/stolos-cloud/stolos-bootstrap
 
 go 1.25
 

@@ -1,4 +1,4 @@
-package main
+package talos
 
 import (
 	"context"
@@ -19,6 +19,9 @@ import (
 	"github.com/siderolabs/talos/pkg/machinery/config/bundle"
 	"github.com/siderolabs/talos/pkg/machinery/config/types/v1alpha1"
 	clusterres "github.com/siderolabs/talos/pkg/machinery/resources/cluster"
+	"github.com/stolos-cloud/stolos-bootstrap/internal/logging"
+	"github.com/stolos-cloud/stolos-bootstrap/internal/tui"
+	"github.com/stolos-cloud/stolos-bootstrap/pkg/state"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -48,7 +51,7 @@ func CreateMachineryClientFromTalosconfig(talosConfig *config.Config) machineryC
 	return *machinery
 }
 
-func CreateMachineConfigBundle(controlPlaneIp string) (*bundle.Bundle, error) {
+func CreateMachineConfigBundle(controlPlaneIp string, bootstrapInfos state.BootstrapInfo) (*bundle.Bundle, error) {
 
 	var secretsBundle *secrets.Bundle
 
@@ -101,7 +104,7 @@ func ReadSplitConfigBundleFiles() (*bundle.Bundle, error) {
 }
 
 // SaveSplitConfigBundleFiles take a config bundle and saves each composite part to individual files for later loading
-func SaveSplitConfigBundleFiles(logger *UILogger, configBundle bundle.Bundle) error {
+func SaveSplitConfigBundleFiles(configBundle bundle.Bundle) error {
 	initBytes, err := configBundle.InitCfg.Bytes()
 	err = os.WriteFile("init.yaml", initBytes, 0644)
 	workerBytes, err := configBundle.WorkerCfg.Bytes()
@@ -128,7 +131,7 @@ func ExecuteBootstrap(talosApiClient machineryClient.Client) error {
 	return talosApiClient.Bootstrap(context.Background(), &bootrapRequest)
 }
 
-func RunBasicClusterHealthCheck(err error, talosApiClient machineryClient.Client, loggerRef *UILogger) {
+func RunBasicClusterHealthCheck(err error, talosApiClient machineryClient.Client, loggerRef *tui.UILogger) {
 	healthCheckClient, err := talosApiClient.ClusterHealthCheck(context.Background(), 20*time.Minute, &clusterapi.ClusterInfo{})
 	if err != nil {
 		loggerRef.Errorf("Failed to get cluster health: %v", err)
@@ -157,7 +160,7 @@ func RunBasicClusterHealthCheck(err error, talosApiClient machineryClient.Client
 // ======================
 // Reference: The following code is heavily based on `health.go` part of the talosctl command line utility.
 // https://github.com/siderolabs/talos/tree/main/cmd/talosctl/cmd/talos/health.go
-func RunDetailedClusterHealthCheck(talosApiClient machineryClient.Client, loggerRef *UILogger) {
+func RunDetailedClusterHealthCheck(talosApiClient machineryClient.Client, loggerRef *tui.UILogger) {
 	// Create ClientProvider
 	clientProvider := &cluster.ConfigClientProvider{
 		DefaultClient: &talosApiClient,
@@ -182,7 +185,7 @@ func RunDetailedClusterHealthCheck(talosApiClient machineryClient.Client, logger
 	}
 
 	// Run Healthcheck and report to custom logger
-	err = check.Wait(context.Background(), &checkClusterInfo, append(check.DefaultClusterChecks(), check.ExtraClusterChecks()...), UILoggerReporter(loggerRef))
+	err = check.Wait(context.Background(), &checkClusterInfo, append(check.DefaultClusterChecks(), check.ExtraClusterChecks()...), logging.UILoggerReporter(loggerRef))
 	if err != nil {
 		loggerRef.Info("Failure running health checks!")
 	}

@@ -1,5 +1,5 @@
 // configserver.go
-package main
+package configserver
 
 import (
 	"fmt"
@@ -7,47 +7,35 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/siderolabs/talos/pkg/machinery/config/bundle"
 	"github.com/siderolabs/talos/pkg/machinery/config/configpatcher"
 	"github.com/siderolabs/talos/pkg/machinery/config/container"
 	"github.com/siderolabs/talos/pkg/machinery/config/encoder"
 	"github.com/siderolabs/talos/pkg/machinery/config/machine"
 	"github.com/siderolabs/talos/pkg/machinery/config/types/v1alpha1"
+	"github.com/stolos-cloud/stolos-bootstrap/internal/tui"
+	"github.com/stolos-cloud/stolos-bootstrap/pkg/marshal"
+	"github.com/stolos-cloud/stolos-bootstrap/pkg/state"
+	"github.com/stolos-cloud/stolos-bootstrap/pkg/talos"
 )
-
-var configBundle *bundle.Bundle
 
 // Machines stores the Machines we have already seen in IP-Hostname pairs
 
-type SaveState struct {
-	ClusterEndpoint string        `json:"ClusterEndpoint"`
-	BootstrapInfo   BootstrapInfo `json:"BootstrapInfo"`
-	MachinesCache   Machines      `json:"MachinesCache"`
-}
-
-type Machines struct {
-	ControlPlanes map[string][]byte `json:"ControlPlanes"` // map IP : Hostname
-	Workers       map[string][]byte `json:"Workers"`       // map IP : Hostname
-}
-
-var saveState SaveState
-
 // StartConfigServer starts a minimal HTTP server with /machineconfig.
-func StartConfigServer(logger *UILogger, addr string) error {
+func StartConfigServer(logger *tui.UILogger, addr string, doRestoreProgress bool, saveState *state.SaveState, bootstrapInfos *state.BootstrapInfo) error {
 
 	if !doRestoreProgress {
-		machines := Machines{
+		machines := state.Machines{
 			ControlPlanes: make(map[string][]byte),
 			Workers:       make(map[string][]byte),
 		}
-		saveState = SaveState{
+		saveState = &state.SaveState{
 			BootstrapInfo: *bootstrapInfos,
 			MachinesCache: machines,
 		}
 	}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/machineconfig", machineConfigHandler(logger))
+	mux.HandleFunc("/machineconfig", machineConfigHandler(logger, saveState, bootstrapInfos))
 	srv := &http.Server{
 		Addr:              addr,
 		Handler:           mux,
@@ -58,7 +46,7 @@ func StartConfigServer(logger *UILogger, addr string) error {
 }
 
 // machineConfigHandler handles GET /machineconfig?h=${hostname}&m=${mac}&s=${serial}&u=${uuid}
-func machineConfigHandler(logger *UILogger) http.HandlerFunc {
+func machineConfigHandler(logger *tui.UILogger, saveState *state.SaveState, bootstrapInfos *state.BootstrapInfo) http.HandlerFunc {
 	return func(responseWriter http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
 		//host := q.Get("h")
@@ -73,7 +61,7 @@ func machineConfigHandler(logger *UILogger) http.HandlerFunc {
 		isFirstMachine := len(saveState.MachinesCache.ControlPlanes) == 0
 
 		if isFirstMachine || isSeenControlPlane {
-			configBytes, err := handleControlPlane(logger, ip, mac, uuid)
+			configBytes, err := handleControlPlane(logger, ip, mac, uuid, *saveState, *bootstrapInfos)
 			if err != nil {
 				logger.Errorf("Error handling control plane request: %v", err)
 				responseWriter.WriteHeader(http.StatusInternalServerError)
@@ -87,9 +75,9 @@ func machineConfigHandler(logger *UILogger) http.HandlerFunc {
 			}
 			saveState.MachinesCache.ControlPlanes[uuid] = configBytes
 			saveState.ClusterEndpoint = fmt.Sprintf("https://%s:6443", ip)
-			saveStateToJSON(logger)
+			marshal.SaveStateToJSON(logger, *saveState)
 		} else {
-			configBytes, err := handleWorker(logger, ip, mac, uuid)
+			configBytes, err := handleWorker(logger, ip, mac, uuid, *saveState)
 			if err != nil {
 				logger.Errorf("Error handling control plane request: %v", err)
 				responseWriter.WriteHeader(http.StatusInternalServerError)
@@ -102,12 +90,12 @@ func machineConfigHandler(logger *UILogger) http.HandlerFunc {
 				return
 			}
 			saveState.MachinesCache.Workers[uuid] = configBytes
-			saveStateToJSON(logger)
+			marshal.SaveStateToJSON(logger, *saveState)
 		}
 	}
 }
 
-func handleControlPlane(logger *UILogger, ip string, mac string, uuid string) ([]byte, error) {
+func handleControlPlane(logger *tui.UILogger, ip string, mac string, uuid string, saveState state.SaveState, bootstrapInfos state.BootstrapInfo) ([]byte, error) {
 	var err error
 	logger.Infof("HTTP Request from %s ! Generating controlplane machineconfig on the fly...", ip)
 
@@ -117,8 +105,8 @@ func handleControlPlane(logger *UILogger, ip string, mac string, uuid string) ([
 		return cachedConfig, nil
 	}
 
-	if configBundle == nil {
-		configBundle, err = CreateMachineConfigBundle(ip)
+	if state.ConfigBundle == nil {
+		state.ConfigBundle, err = talos.CreateMachineConfigBundle(ip, bootstrapInfos)
 		if err != nil {
 			logger.Errorf("Error generating talosconfig: %v", err)
 			logger.Errorf(err.Error())
@@ -136,13 +124,13 @@ func handleControlPlane(logger *UILogger, ip string, mac string, uuid string) ([
 
 	ctr := container.NewV1Alpha1(cfg)
 	patch := configpatcher.NewStrategicMergePatch(ctr)
-	err = configBundle.ApplyPatches([]configpatcher.Patch{patch}, true, false)
+	err = state.ConfigBundle.ApplyPatches([]configpatcher.Patch{patch}, true, false)
 
-	steps[3].IsDone = true
-	return configBundle.Serialize(encoder.CommentsDocs, machine.TypeControlPlane)
+	tui.Steps[3].IsDone = true
+	return state.ConfigBundle.Serialize(encoder.CommentsDocs, machine.TypeControlPlane)
 }
 
-func handleWorker(logger *UILogger, ip string, mac string, uuid string) ([]byte, error) {
+func handleWorker(logger *tui.UILogger, ip string, mac string, uuid string, saveState state.SaveState) ([]byte, error) {
 	cachedConfig, alreadyPresent := saveState.MachinesCache.Workers[uuid]
 	if alreadyPresent {
 		logger.Infof("Worker with IP (%s) and hostname (%s) already seen! Re-sending config...", ip)
@@ -161,7 +149,7 @@ func handleWorker(logger *UILogger, ip string, mac string, uuid string) ([]byte,
 	}
 	ctr := container.NewV1Alpha1(cfg)
 	patch := configpatcher.NewStrategicMergePatch(ctr)
-	_ = configBundle.ApplyPatches([]configpatcher.Patch{patch}, false, true)
+	_ = state.ConfigBundle.ApplyPatches([]configpatcher.Patch{patch}, false, true)
 
-	return configBundle.Serialize(encoder.CommentsDocs, machine.TypeWorker)
+	return state.ConfigBundle.Serialize(encoder.CommentsDocs, machine.TypeWorker)
 }
