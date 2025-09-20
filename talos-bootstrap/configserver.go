@@ -81,7 +81,7 @@ func machineConfigHandler(logger *UILogger) http.HandlerFunc {
 			}
 			_, err = responseWriter.Write(configBytes)
 			if err != nil {
-				logger.Errorf("ErError writing response: %v", err)
+				logger.Errorf("Error writing response: %v", err)
 				responseWriter.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -96,13 +96,13 @@ func machineConfigHandler(logger *UILogger) http.HandlerFunc {
 				return
 			}
 			_, err = responseWriter.Write(configBytes)
-			saveState.MachinesCache.Workers[uuid] = configBytes
-			saveStateToJSON(logger)
 			if err != nil {
 				logger.Errorf("Error writing response: %v", err)
 				responseWriter.WriteHeader(http.StatusInternalServerError)
 				return
 			}
+			saveState.MachinesCache.Workers[uuid] = configBytes
+			saveStateToJSON(logger)
 		}
 	}
 }

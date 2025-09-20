@@ -39,6 +39,7 @@ var bootstrapInfos *BootstrapInfo
 var doRestoreProgress = false
 var didReadConfig = false
 var steps []Step
+var kubeconfig []byte
 
 func readBootstrapInfos(filename string) {
 	configFile, err := os.ReadFile(filename)
@@ -155,16 +156,25 @@ func main() {
 		Title:       "2.3) Executing bootstrap…",
 		Kind:        StepSpinner,
 		Body:        "Bootstrapping the cluster…",
+		AutoAdvance: true,
+	}
+
+	step24 := Step{
+		Title:       "2.4) Deploying ArgoCD and the WebUI",
+		Kind:        StepSpinner,
+		Body:        "Deploying ArgoCD via Helm. ArgoCD will deploy the WebUI.",
 		AutoAdvance: false,
 	}
 
 	steps = []Step{step1, step1_1, step1_2, step2, step21, step22, step23}
+	steps = []Step{step1, step1_1, step2, step21, step22, step23, step24}
 	p, logger := NewWizard(steps)
 	loggerRef := logger
 	logger.Infof("Authenticating github client id %s", GithubClientId)
 
 	steps[1].OnEnter = func(m *Model) tea.Cmd {
 		return func() tea.Msg {
+
 			var err error
 			if !didReadConfig {
 				bootstrapInfos, err = retrieveStructFromFields[BootstrapInfo](step1.Fields)
@@ -320,7 +330,7 @@ func main() {
 				RunBasicClusterHealthCheck(err, talosApiClient, loggerRef)
 				loggerRef.Success("Cluster health check succeeded!")
 
-				kubeconfig, err := talosApiClient.Kubeconfig(context.Background())
+				kubeconfig, err = talosApiClient.Kubeconfig(context.Background())
 				if err != nil {
 					loggerRef.Errorf("Failed to get kubeconfig: %v", err)
 					panic(err)
@@ -335,6 +345,32 @@ func main() {
 
 				loggerRef.Successf("Wrote kubeconfig to ./kubeconfig")
 				loggerRef.Success("Your cluster is ready! You may now use kubectl to interact with the cluster")
+
+				steps[5].IsDone = true
+			}()
+
+			return nil
+		}
+	}
+
+	steps[6].OnEnter = func(m *Model) tea.Cmd {
+		return func() tea.Msg {
+			loggerRef.Info("steps[6]")
+
+			go func() {
+				loggerRef.Info("Setting up helm...")
+				helmClient, err := setupHelmClient(loggerRef)
+				if err != nil {
+					loggerRef.Errorf("Failed to setup helm client: %s", err)
+					return
+				}
+				loggerRef.Infof("Deploying ArgoCD...")
+				release, err := helmInstallArgo(helmClient)
+				if err != nil {
+					loggerRef.Errorf("Failed to deploy ArgoCD: %s", err)
+					return
+				}
+				loggerRef.Successf("Successfully Installed release %s in namespace %s ; Notes:%s\n", release.Name, release.Namespace, release.Info.Notes)
 			}()
 
 			return nil
