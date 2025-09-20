@@ -29,6 +29,8 @@ type BootstrapInfo struct {
 	HTTPPort          string `json:"HTTPPort" field_label:"HTTP Machineconfig Server Port" field_required:"true" field_default:"8082"`
 	PXEEnabled        string `json:"PXEEnabled" field_label:"PXE Server Enabled (true/false)" field_default:"false"`
 	PXEPort           string `json:"PXEPort" field_label:"PXE Server Port (Optional)"`
+	RepoOwner         string `json:"RepoOwner" field_label:"Github Repository Owner" field_required:"true"`
+	RepoName          string `json:"RepoName" field_label:"Github Repository Name" field_required:"true"`
 }
 
 var bootstrapInfos *BootstrapInfo
@@ -112,7 +114,14 @@ func main() {
 	}
 
 	step1_1 := Step{
-		Title:       "1.1) Generate Talos Image...",
+		Title:       "1.1) Creating Repository...",
+		Kind:        StepSpinner,
+		Body:        "Creating github repository...",
+		AutoAdvance: true,
+	}
+
+	step1_2 := Step{
+		Title:       "1.2) Generate Talos Image...",
 		Kind:        StepSpinner,
 		Body:        "Generating talos image via image factory...",
 		AutoAdvance: true,
@@ -147,11 +156,21 @@ func main() {
 		AutoAdvance: false,
 	}
 
-	steps = []Step{step1, step1_1, step2, step21, step22, step23}
+	steps = []Step{step1, step1_1, step1_2, step2, step21, step22, step23}
 	p, logger := NewWizard(steps)
 	loggerRef := logger
 
 	steps[1].OnEnter = func(m *Model) tea.Cmd {
+		return func() tea.Msg {
+			githubClient, err := authenticateGithubClient(loggerRef)
+			if err != nil {
+				panic(err)
+			}
+			_, err = initRepo(githubClient, bootstrapInfos.RepoOwner, bootstrapInfos.RepoName, false)
+			return nil
+		}
+	}
+	steps[2].OnEnter = func(m *Model) tea.Cmd {
 		return func() tea.Msg {
 
 			var err error
@@ -222,7 +241,7 @@ func main() {
 	}
 
 	// Step 2 (Boot): start HTTP server as soon as we enter the step.
-	steps[2].OnEnter = func(m *Model) tea.Cmd {
+	steps[3].OnEnter = func(m *Model) tea.Cmd {
 		loggerRef.Infof("steps[2]")
 
 		// Read Step 1 values from the model
@@ -253,7 +272,7 @@ func main() {
 	}
 
 	// Step 2.1 - Waiting for first node
-	steps[3].OnEnter = func(m *Model) tea.Cmd {
+	steps[4].OnEnter = func(m *Model) tea.Cmd {
 		return func() tea.Msg {
 			loggerRef.Info("steps[3]") // Control Plane Step
 
@@ -264,7 +283,7 @@ func main() {
 	}
 
 	// Step 2.2: Waiting for worker nodes
-	steps[4].OnEnter = func(m *Model) tea.Cmd {
+	steps[5].OnEnter = func(m *Model) tea.Cmd {
 		return func() tea.Msg {
 			loggerRef.Info("steps[4]")
 
@@ -273,7 +292,7 @@ func main() {
 	}
 
 	// Step 2.3: Bootstrap
-	steps[5].OnEnter = func(m *Model) tea.Cmd {
+	steps[6].OnEnter = func(m *Model) tea.Cmd {
 		return func() tea.Msg {
 			loggerRef.Info("steps[5]")
 			endpoint := configBundle.ControlPlaneCfg.Cluster().Endpoint() //get machineconfig cluster endpoint
