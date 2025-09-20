@@ -1,0 +1,34 @@
+name: Iteration report
+on:
+  workflow_dispatch:
+    inputs:
+      iteration_number:
+        type: number
+        description: iteration number
+      publish:
+        type: boolean
+        default: true
+        description: publish to discussion
+  pull_request: {}
+
+permissions:
+  issues: write
+  discussions: write
+  repository-projects: write
+
+jobs:
+  create-report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get issues
+        uses: actions/github-script@v8
+        env:
+          iteration_number: "${{ inputs.iteration_number || '1' }}"
+        with:
+          script: |
+            const iteration_items = await github.request('GET /orgs/{org}/projectsV2/{project_number}/items', {
+              project_number: '1',
+              org: 'stolos-cloud',
+              q: `iteration:"Iteration+${process.env.iteration_number}"`
+            })
+            console.log(iteration_items.data)
