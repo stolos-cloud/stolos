@@ -18,7 +18,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23' # set to your project’s Go version
+          go-version: '1.25.1' # set to your project’s Go version
 
       - name: Set up Goreleaser
         uses: goreleaser/goreleaser-action@v6

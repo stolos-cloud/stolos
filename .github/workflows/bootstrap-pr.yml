@@ -13,12 +13,9 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: '1.25.1'
 
       - name: Build (static binary)
         run: |
-          cd talos-bootstrap
-          mkdir -p out
-          CGO_ENABLED=0 go build \
-            -ldflags='-extldflags="-static" -X main.GithubClientId=dummy -X main.GithubClientSecret=dummy' \
-            -o out/talos-bootstrap -a .
+          cd bootstrap
+          CGO_ENABLED=0 go build ./cmd/bootstrap -ldflags='-extldflags="-static" -X main.GithubClientId=FakeID -X main.GithubClientSecret=FakeSecret -X main.GCPClientId=FakeId -X main.GCPClientSecret=FakeSecret

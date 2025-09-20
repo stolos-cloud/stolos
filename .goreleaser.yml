@@ -1,15 +1,17 @@
 project_name: talos-bootstrap
 builds:
   - id: cli
-    dir: ./talos-bootstrap
+    dir: ./bootstrap
     main: .
-    binary: talos-bootstrap
+    binary: stolos-bootstrap
     env:
       - CGO_ENABLED=0
     ldflags:
       - -extldflags "-static"
       - -X main.GithubClientId={{ .Env.GITHUB_CLIENT_ID }}
       - -X main.GithubClientSecret={{ .Env.GITHUB_CLIENT_SECRET }}
+      - -X main.GCPClientId={{ .Env.GCP_CLIENT_ID }}
+      - -X main.GCPClientSecret={{ .Env.GCP_CLIENT_SECRET }}
     goos:
       - linux
       - windows
@@ -28,7 +30,7 @@ archives:
     builds:
       - cli
     name_template: >-
-      {{ .ProjectName }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}
+      stolos-bootstrap_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}
 
 release:
   prerelease: auto
