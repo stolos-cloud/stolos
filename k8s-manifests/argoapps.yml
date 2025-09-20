@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argoapps
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  source:
+    path: .
+    targetRevision: HEAD
+    directory:
+      recurse: true
+      include: "{*.argoapp.yaml,*.argoapp.yml}"
+      exclude: "TEMPLATE/*"
+  syncPolicy:
+        automated:
+          selfHeal: true
+          prune: true
+        syncOptions:
+          - CreateNamespace=true

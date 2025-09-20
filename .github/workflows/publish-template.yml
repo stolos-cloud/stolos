@@ -1,0 +1,43 @@
+name: Publish K8s configs to template repo
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - k8s-manifests
+  workflow_dispatch:
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: source
+      - uses: actions/create-github-app-token@v2
+        id: app-token
+        with:
+          app-id: ${{ vars.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIV_KEY }}
+          repositories: etsmtl-pfe-cloudnative-template
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          ref: main
+          repository: 'Simon-Boyer/etsmtl-pfe-cloudnative-template'
+          persist-credentials: true
+          path: target
+      - name: Replace files with current
+        run: |
+          shopt -s extglob dotglob
+          cd target
+          rm -r !(.??*)
+          cp -r ../source/k8s-manifests/* .
+          git add .
+      - name: commit changes
+        run: |
+          cd target
+          git config user.name "stolos-bot"
+          git config user.email "bot@stolos.cloud"
+          git add .
+          git commit -m "Update k8s manifests from source repo"
+          git push origin main

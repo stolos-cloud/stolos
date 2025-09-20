@@ -1,0 +1,47 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: TEMPLATE
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - git:
+        repoURL: https://github.com/Simon-Boyer/etsmtl-pfe-cloudnative.git
+        revision: HEAD
+        files:
+          - path: k8s-manifest/common.yml
+  template:
+    metadata:
+      name: "TEMPLATE"
+      namespace: argocd
+      annotations:
+        argocd.argoproj.io/sync-wave: "0"
+    spec:
+      destination:
+        namespace: template
+        server: "https://kubernetes.default.svc"
+      project: "default"
+      source:
+        repoURL: https://github.com/Simon-Boyer/etsmtl-pfe-cloudnative.git
+        targetRevision: HEAD
+        path: k8s-manifests/TEMPLATE
+      syncPolicy:
+        automated:
+          selfHeal: true
+          prune: true
+        syncOptions:
+          - CreateNamespace=true
+        managedNamespaceMetadata:
+          labels:
+            pod-security.kubernetes.io/enforce: privileged
+      kustomize:
+        patches:
+          - target:
+              kind: Ingress
+              name: demo
+            patch: |-
+              - op: replace
+                path: /rules/0/host
+                value: demo.{{.base_domain}}
