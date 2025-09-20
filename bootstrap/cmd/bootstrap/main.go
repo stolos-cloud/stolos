@@ -38,7 +38,8 @@ func main() {
 	_, err := os.Stat("bootstrap-state.json")
 
 	if !(errors.Is(err, os.ErrNotExist)) {
-		marshal.ReadStateFromJSON(saveState, bootstrapInfos)
+		saveState = marshal.ReadStateFromJSON()
+		bootstrapInfos = &saveState.BootstrapInfo
 		didReadConfig = true
 		doRestoreProgress = true
 	}
@@ -149,7 +150,7 @@ func main() {
 				loggerRef.Info("State file found, skipping to tui.Steps[5]")
 				addr := bootstrapInfos.HTTPHostname + ":" + bootstrapInfos.HTTPPort
 				StartMachineconfigServerInBackground(loggerRef, addr)
-				m.CurrentStepIndex = 4
+				m.CurrentStepIndex = 5
 				return nil
 			}
 

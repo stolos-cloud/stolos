@@ -75,7 +75,10 @@ func machineConfigHandler(logger *tui.UILogger, saveState *state.SaveState, boot
 			}
 			saveState.MachinesCache.ControlPlanes[uuid] = configBytes
 			saveState.ClusterEndpoint = fmt.Sprintf("https://%s:6443", ip)
-			marshal.SaveStateToJSON(logger, *saveState)
+			err = marshal.SaveStateToJSON(*saveState)
+			if err != nil {
+				logger.Errorf("Error saving state: %v", err)
+			}
 		} else {
 			configBytes, err := handleWorker(logger, ip, mac, uuid, *saveState)
 			if err != nil {
@@ -90,7 +93,10 @@ func machineConfigHandler(logger *tui.UILogger, saveState *state.SaveState, boot
 				return
 			}
 			saveState.MachinesCache.Workers[uuid] = configBytes
-			marshal.SaveStateToJSON(logger, *saveState)
+			err = marshal.SaveStateToJSON(*saveState)
+			if err != nil {
+				logger.Errorf("Error saving state: %v", err)
+			}
 		}
 	}
 }

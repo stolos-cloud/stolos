@@ -4,7 +4,6 @@ import (
 	"os"
 
 	"github.com/goccy/go-json"
-	"github.com/stolos-cloud/stolos-bootstrap/internal/tui"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/state"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/talos"
 )
@@ -20,25 +19,24 @@ func ReadBootstrapInfos(filename string, bootstrapInfos *state.BootstrapInfo) {
 	}
 }
 
-func SaveStateToJSON(logger *tui.UILogger, saveState state.SaveState) {
+func SaveStateToJSON(saveState state.SaveState) error {
 	jsonData, err := json.Marshal(saveState)
 	if err != nil {
-		logger.Errorf("Error saving state to JSON: %v\n", err)
-		return
+		return err
 	}
 	err = os.WriteFile("bootstrap-state.json", jsonData, 0644)
 	if err != nil {
-		logger.Errorf("Error saving state to JSON: %v\n", err)
-		return
+		return err
 	}
 	err = talos.SaveSplitConfigBundleFiles(*state.ConfigBundle)
 	if err != nil {
-		logger.Errorf("Error saving state to JSON: %v\n", err)
-		return
+		return err
 	}
+	return nil
 }
 
-func ReadStateFromJSON(saveState state.SaveState, bootstrapInfos *state.BootstrapInfo) {
+func ReadStateFromJSON() state.SaveState {
+	var saveState state.SaveState
 	stateFile, err := os.ReadFile("bootstrap-state.json")
 	if err != nil {
 		panic(err)
@@ -47,9 +45,6 @@ func ReadStateFromJSON(saveState state.SaveState, bootstrapInfos *state.Bootstra
 	if err != nil {
 		panic(err)
 	}
-	bootstrapInfos = &saveState.BootstrapInfo
 	state.ConfigBundle, err = talos.ReadSplitConfigBundleFiles()
-	if err != nil {
-		panic(err)
-	}
+	return saveState
 }
