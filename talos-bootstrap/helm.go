@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"time"
 
 	"github.com/mittwald/go-helm-client"
 	"github.com/mittwald/go-helm-client/values"
@@ -52,6 +53,7 @@ func helmInstallArgo(helmClient helmclient.Client) (*release.Release, error) {
 		DisableHooks:    false,
 		Wait:            true,
 		UpgradeCRDs:     true,
+		Timeout:         2 * time.Minute,
 	}
 
 	return helmClient.InstallChart(context.Background(), &chartSpec, &helmclient.GenericHelmOptions{})
