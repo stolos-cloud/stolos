@@ -10,104 +10,50 @@ import (
 	"strings"
 	"time"
 
+	"github.com/stolos-cloud/stolos-bootstrap/internal/configserver"
+	"github.com/stolos-cloud/stolos-bootstrap/internal/tui"
+	"github.com/stolos-cloud/stolos-bootstrap/pkg/github"
+	"github.com/stolos-cloud/stolos-bootstrap/pkg/helm"
+	"github.com/stolos-cloud/stolos-bootstrap/pkg/marshal"
+	"github.com/stolos-cloud/stolos-bootstrap/pkg/state"
+	"github.com/stolos-cloud/stolos-bootstrap/pkg/talos"
+
 	"github.com/cavaliergopher/grab/v3"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/goccy/go-json"
 	"github.com/siderolabs/image-factory/pkg/schematic"
 )
 
-type BootstrapInfo struct {
-	ClusterName       string `json:"ClusterName" field_label:"Cluster Name" field_required:"true" field_default:"mycluster"`
-	KubernetesVersion string `json:"KubernetesVersion" field_label:"Kubernetes versions" field_default:"1.34.1"`
-	TalosVersion      string `json:"TalosVersion" field_label:"Talos Version (Optional)" field_default:"v1.11.1"`
-	TalosArchitecture string `json:"TalosArchitecture" field_label:"Talos architecture" field_default:"amd64" field_required:"true"`
-	TalosExtraArgs    string `json:"TalosExtraArgs" field_label:"Extra Linux cmdline args"`
-	TalosInstallDisk  string `json:"TalosInstallDisk" field_label:"Talos install disk" field_default:"/dev/sda" field_required:"true"`
-	TalosOverlayImage string `json:"TalosOverlayImage" field_label:"Talos Overlay Image (For SBC, ex: siderolabs/sbc-rockchip)"`
-	TalosOverlayName  string `json:"TalosOverlayName" field_label:"Talos Overlay Name (For SBC, ex: turingrk1)"`
-	HTTPHostname      string `json:"HTTPHostname" field_label:"HTTP Machineconfig Server External Hostname" field_required:"true" field_default_func:"GetOutboundIP"`
-	HTTPPort          string `json:"HTTPPort" field_label:"HTTP Machineconfig Server Port" field_required:"true" field_default:"8082"`
-	PXEEnabled        string `json:"PXEEnabled" field_label:"PXE Server Enabled (true/false)" field_default:"false"`
-	PXEPort           string `json:"PXEPort" field_label:"PXE Server Port (Optional)"`
-	RepoOwner         string `json:"RepoOwner" field_label:"Github Repository Owner" field_required:"true"`
-	RepoName          string `json:"RepoName" field_label:"Github Repository Name" field_required:"true"`
-	BaseDomain        string `json:"BaseDomain" field_label:"BaseDomain" field_required:"true"`
-	LoadBalancerIp    string `json:"LoadBalancerIp" field_label:"LoadBalancer IP" field_required:"true"`
-}
-
-var bootstrapInfos *BootstrapInfo
+var bootstrapInfos *state.BootstrapInfo
 var doRestoreProgress = false
 var didReadConfig = false
-var steps []Step
+
+// var tui.Steps []tui.Step
 var kubeconfig []byte
-
-func readBootstrapInfos(filename string) {
-	configFile, err := os.ReadFile(filename)
-	if err != nil {
-		panic(err)
-	}
-	err = json.Unmarshal(configFile, &bootstrapInfos)
-	if err != nil {
-		panic(err)
-	}
-}
-
-func saveStateToJSON(logger *UILogger) {
-	jsonData, err := json.Marshal(saveState)
-	if err != nil {
-		logger.Errorf("Error saving state to JSON: %v\n", err)
-		return
-	}
-	err = os.WriteFile("talos-bootstrap-state.json", jsonData, 0644)
-	if err != nil {
-		logger.Errorf("Error saving state to JSON: %v\n", err)
-		return
-	}
-	err = SaveSplitConfigBundleFiles(logger, *configBundle)
-	if err != nil {
-		logger.Errorf("Error saving state to JSON: %v\n", err)
-		return
-	}
-}
-
-func readStateFromJSON() {
-	stateFile, err := os.ReadFile("talos-bootstrap-state.json")
-	if err != nil {
-		panic(err)
-	}
-	err = json.Unmarshal(stateFile, &saveState)
-	if err != nil {
-		panic(err)
-	}
-	bootstrapInfos = &saveState.BootstrapInfo
-	configBundle, err = ReadSplitConfigBundleFiles()
-	if err != nil {
-		panic(err)
-	}
-}
+var saveState state.SaveState
 
 func main() {
 
-	RegisterDefaultFunc("GetOutboundIP", GetOutboundIP)
+	tui.RegisterDefaultFunc("GetOutboundIP", GetOutboundIP)
 
-	_, err := os.Stat("talos-bootstrap-state.json")
+	_, err := os.Stat("bootstrap-state.json")
 
 	if !(errors.Is(err, os.ErrNotExist)) {
-		readStateFromJSON()
+		saveState = marshal.ReadStateFromJSON()
+		bootstrapInfos = &saveState.BootstrapInfo
 		didReadConfig = true
 		doRestoreProgress = true
 	}
 
-	_, err = os.Stat("talos-bootstrap-config.json")
+	_, err = os.Stat("bootstrap-config.json")
 	if !(errors.Is(err, os.ErrNotExist)) {
-		readBootstrapInfos("talos-bootstrap-config.json")
+		marshal.ReadBootstrapInfos("bootstrap-config.json", bootstrapInfos)
 		didReadConfig = true
 	}
 
-	step1 := Step{
+	step1 := tui.Step{
 		Title:       "1) Basic Information and Image Factory",
-		Kind:        StepForm,
-		Fields:      createFieldsForStruct[BootstrapInfo](),
+		Kind:        tui.StepForm,
+		Fields:      tui.CreateFieldsForStruct[state.BootstrapInfo](),
 		IsDone:      true,
 		AutoAdvance: false,
 	}
@@ -116,67 +62,67 @@ func main() {
 		step1.AutoAdvance = true
 	}
 
-	step1_1 := Step{
+	step1_1 := tui.Step{
 		Title:       "1.1) Creating Repository...",
-		Kind:        StepSpinner,
+		Kind:        tui.StepSpinner,
 		Body:        "Creating github repository...",
 		AutoAdvance: true,
 	}
 
-	step1_2 := Step{
+	step1_2 := tui.Step{
 		Title:       "1.2) Generate Talos Image...",
-		Kind:        StepSpinner,
+		Kind:        tui.StepSpinner,
 		Body:        "Generating talos image via image factory...",
 		AutoAdvance: true,
 	}
 
-	step2 := Step{
+	step2 := tui.Step{
 		Title:       "2) Boot",
-		Kind:        StepPlain,
+		Kind:        tui.StepPlain,
 		Body:        "Note: The first node that accesses the config server will be configured as a Kubernetes Control Plane",
 		AutoAdvance: true,
 	}
 
-	step21 := Step{
+	step21 := tui.Step{
 		Title:       "2.1) Waiting for First Node (Control Plane)",
-		Kind:        StepSpinner,
+		Kind:        tui.StepSpinner,
 		Body:        "Waiting for the first node to request machineconfig...",
 		AutoAdvance: true,
 	}
 
-	step22 := Step{
+	step22 := tui.Step{
 		Title:       "2.2) Waiting for three worker nodes…",
-		Kind:        StepSpinner,
+		Kind:        tui.StepSpinner,
 		Body:        "Generating worker base machine config and waiting for 3 workers to fetch their configs…",
 		AutoAdvance: false,
 		IsDone:      true,
 	}
 
-	step23 := Step{
+	step23 := tui.Step{
 		Title:       "2.3) Executing bootstrap…",
-		Kind:        StepSpinner,
+		Kind:        tui.StepSpinner,
 		Body:        "Bootstrapping the cluster…",
 		AutoAdvance: true,
 	}
 
-	step24 := Step{
+	step24 := tui.Step{
 		Title:       "2.4) Deploying ArgoCD and the WebUI",
-		Kind:        StepSpinner,
+		Kind:        tui.StepSpinner,
 		Body:        "Deploying ArgoCD via Helm. ArgoCD will deploy the WebUI.",
 		AutoAdvance: false,
 	}
 
-	steps = []Step{step1, step1_1, step1_2, step2, step21, step22, step23, step24}
-	p, logger := NewWizard(steps)
+	tui.Steps = []tui.Step{step1, step1_1, step1_2, step2, step21, step22, step23, step24}
+	p, logger := tui.NewWizard(tui.Steps)
 	loggerRef := logger
-	logger.Infof("Authenticating github client id %s", GithubClientId)
+	logger.Infof("Authenticating github client id %s", github.GithubClientId)
 
-	steps[1].OnEnter = func(m *Model) tea.Cmd {
+	tui.Steps[1].OnEnter = func(m *tui.Model) tea.Cmd {
 		return func() tea.Msg {
 
 			var err error
 			if !didReadConfig {
-				bootstrapInfos, err = retrieveStructFromFields[BootstrapInfo](step1.Fields)
+				bootstrapInfos, err = tui.RetrieveStructFromFields[state.BootstrapInfo](step1.Fields)
 			} else {
 				loggerRef.Infof("Read bootstrap infos from file, clusterName: %s", bootstrapInfos.ClusterName)
 			}
@@ -185,26 +131,26 @@ func main() {
 				panic(err)
 			}
 
-			githubClient, err := authenticateGithubClient(loggerRef)
+			githubClient, err := github.AuthenticateGithubClient(loggerRef)
 			if err != nil {
 				panic(err)
 			}
-			_, err = initRepo(githubClient, bootstrapInfos, false)
+			_, err = github.InitRepo(githubClient, bootstrapInfos, false)
 
 			loggerRef.Successf("Repo initialized: https://github.com/%s/%s.git", bootstrapInfos.RepoOwner, bootstrapInfos.RepoName)
 
-			steps[1].IsDone = true
+			tui.Steps[1].IsDone = true
 			return nil
 		}
 	}
-	steps[2].OnEnter = func(m *Model) tea.Cmd {
+	tui.Steps[2].OnEnter = func(m *tui.Model) tea.Cmd {
 		return func() tea.Msg {
 
 			if doRestoreProgress {
-				loggerRef.Info("State file found, skipping to steps[5]")
+				loggerRef.Info("State file found, skipping to tui.Steps[5]")
 				addr := bootstrapInfos.HTTPHostname + ":" + bootstrapInfos.HTTPPort
 				StartMachineconfigServerInBackground(loggerRef, addr)
-				m.currentStepIndex = 4
+				m.CurrentStepIndex = 5
 				return nil
 			}
 
@@ -217,7 +163,7 @@ func main() {
 
 				loggerRef.Infof("Generating image with kernelParam: %s", talosConfigArg)
 
-				factory := CreateFactoryClient()
+				factory := talos.CreateFactoryClient()
 				sch := schematic.Schematic{
 					Overlay: schematic.Overlay{
 						Image: bootstrapInfos.TalosOverlayImage,
@@ -249,7 +195,7 @@ func main() {
 
 				loggerRef.Successf("Download saved to: %s", resp.Filename)
 
-				steps[2].IsDone = true
+				tui.Steps[2].IsDone = true
 			}()
 
 			return nil
@@ -257,10 +203,10 @@ func main() {
 	}
 
 	// Step 2 (Boot): start HTTP server as soon as we enter the step.
-	steps[3].OnEnter = func(m *Model) tea.Cmd {
-		loggerRef.Infof("steps[2]")
+	tui.Steps[3].OnEnter = func(m *tui.Model) tea.Cmd {
+		loggerRef.Infof("tui.Steps[2]")
 
-		// Read Step 1 values from the model
+		// Read Step 1 values from the tui.Model
 		cluster := strings.TrimSpace(bootstrapInfos.ClusterName)
 		if cluster == "" {
 			cluster = "mycluster"
@@ -281,16 +227,16 @@ func main() {
 			func() tea.Msg {
 				// Start the server in a goroutine; never block the TUI.
 				StartMachineconfigServerInBackground(loggerRef, addr)
-				steps[2].IsDone = true
+				tui.Steps[2].IsDone = true
 				return nil
 			},
 		)
 	}
 
 	// Step 2.1 - Waiting for first node
-	steps[4].OnEnter = func(m *Model) tea.Cmd {
+	tui.Steps[4].OnEnter = func(m *tui.Model) tea.Cmd {
 		return func() tea.Msg {
-			loggerRef.Info("steps[3]") // Control Plane Step
+			loggerRef.Info("tui.Steps[3]") // Control Plane Step
 
 			// NOTE : IsDone is set in handleControlPlane
 
@@ -299,23 +245,23 @@ func main() {
 	}
 
 	// Step 2.2: Waiting for worker nodes
-	steps[5].OnEnter = func(m *Model) tea.Cmd {
+	tui.Steps[5].OnEnter = func(m *tui.Model) tea.Cmd {
 		return func() tea.Msg {
-			loggerRef.Info("steps[4]")
+			loggerRef.Info("tui.Steps[4]")
 
 			return nil
 		}
 	}
 
 	// Step 2.3: Bootstrap
-	steps[6].OnEnter = func(m *Model) tea.Cmd {
+	tui.Steps[6].OnEnter = func(m *tui.Model) tea.Cmd {
 		return func() tea.Msg {
-			loggerRef.Info("steps[5]")
-			endpoint := configBundle.ControlPlaneCfg.Cluster().Endpoint() //get machineconfig cluster endpoint
+			loggerRef.Info("tui.Steps[5]")
+			endpoint := state.ConfigBundle.ControlPlaneCfg.Cluster().Endpoint() //get machineconfig cluster endpoint
 
-			talosApiClient := CreateMachineryClientFromTalosconfig(configBundle.TalosConfig())
+			talosApiClient := talos.CreateMachineryClientFromTalosconfig(state.ConfigBundle.TalosConfig())
 			loggerRef.Infof("Executing bootstrap with clustername %s and endpoint %s....", bootstrapInfos.ClusterName, endpoint)
-			err = ExecuteBootstrap(talosApiClient)
+			err = talos.ExecuteBootstrap(talosApiClient)
 			if err != nil {
 				loggerRef.Errorf("Failed to execute bootstrap: %s", err)
 			}
@@ -326,7 +272,7 @@ func main() {
 			go func() {
 
 				//RunDetailedClusterHealthCheck(talosApiClient, loggerRef)
-				RunBasicClusterHealthCheck(err, talosApiClient, loggerRef)
+				talos.RunBasicClusterHealthCheck(err, talosApiClient, loggerRef)
 				loggerRef.Success("Cluster health check succeeded!")
 
 				kubeconfig, err = talosApiClient.Kubeconfig(context.Background())
@@ -345,26 +291,26 @@ func main() {
 				loggerRef.Successf("Wrote kubeconfig to ./kubeconfig")
 				loggerRef.Success("Your cluster is ready! You may now use kubectl to interact with the cluster")
 
-				steps[5].IsDone = true
+				tui.Steps[5].IsDone = true
 			}()
 
 			return nil
 		}
 	}
 
-	steps[7].OnEnter = func(m *Model) tea.Cmd {
+	tui.Steps[7].OnEnter = func(m *tui.Model) tea.Cmd {
 		return func() tea.Msg {
-			loggerRef.Info("steps[7]")
+			loggerRef.Info("tui.Steps[7]")
 
 			go func() {
 				loggerRef.Info("Setting up helm...")
-				helmClient, err := setupHelmClient(loggerRef)
+				helmClient, err := helm.SetupHelmClient(loggerRef, kubeconfig)
 				if err != nil {
 					loggerRef.Errorf("Failed to setup helm client: %s", err)
 					return
 				}
 				loggerRef.Infof("Deploying ArgoCD...")
-				release, err := helmInstallArgo(helmClient)
+				release, err := helm.HelmInstallArgo(helmClient)
 				if err != nil {
 					loggerRef.Errorf("Failed to deploy ArgoCD: %s", err)
 					return
@@ -381,10 +327,10 @@ func main() {
 	}
 }
 
-func StartMachineconfigServerInBackground(loggerRef *UILogger, addr string) {
+func StartMachineconfigServerInBackground(loggerRef *tui.UILogger, addr string) {
 	loggerRef.Infof("Starting HTTP Machineconfig Server on %s …", addr)
 	go func() {
-		if err := StartConfigServer(loggerRef, addr); err != nil {
+		if err := configserver.StartConfigServer(loggerRef, addr, doRestoreProgress, &saveState, bootstrapInfos); err != nil {
 			loggerRef.Errorf("Config server stopped: %v", err)
 		}
 	}()

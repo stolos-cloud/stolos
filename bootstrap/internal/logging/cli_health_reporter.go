@@ -1,4 +1,4 @@
-package main
+package logging
 
 // Reference:
 // This code is based on the Talos StderrReporter originally licensed under the MPL.
@@ -9,12 +9,13 @@ import (
 	"strings"
 
 	"github.com/siderolabs/talos/pkg/conditions"
+	"github.com/stolos-cloud/stolos-bootstrap/internal/tui"
 )
 
 // ConditionReporter is a reporter that reports conditions to a reporter.Reporter.
 type ConditionReporter struct {
 	//w *reporter.Reporter
-	l        *UILogger
+	l        *tui.UILogger
 	lastLine string
 }
 
@@ -24,7 +25,7 @@ func (r *ConditionReporter) Update(condition conditions.Condition) {
 }
 
 // UILoggerReporter returns a reporter with Bubbletea logger output
-func UILoggerReporter(logger *UILogger) *ConditionReporter {
+func UILoggerReporter(logger *tui.UILogger) *ConditionReporter {
 	return &ConditionReporter{
 		l: logger,
 	}

@@ -1,4 +1,4 @@
-package main
+package helm
 
 import (
 	"context"
@@ -6,13 +6,15 @@ import (
 
 	"github.com/mittwald/go-helm-client"
 	"github.com/mittwald/go-helm-client/values"
+	"github.com/stolos-cloud/stolos-bootstrap/internal/logging"
+	"github.com/stolos-cloud/stolos-bootstrap/internal/tui"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/repo"
 )
 
-func setupHelmClient(logger *UILogger) (helmclient.Client, error) {
+func SetupHelmClient(logger *tui.UILogger, kubeconfig []byte) (helmclient.Client, error) {
 	helmClientOptions := &helmclient.Options{
-		Output: NewUILoggerWriter(logger),
+		Output: logging.NewUILoggerWriter(logger),
 		Debug:  true, // Enable debug logging for Helm operations
 		DebugLog: func(format string, v ...interface{}) {
 			logger.Infof(format, v...)
@@ -28,7 +30,7 @@ func setupHelmClient(logger *UILogger) (helmclient.Client, error) {
 	return helmclient.NewClientFromKubeConf(&kubeclientOptions)
 }
 
-func helmInstallArgo(helmClient helmclient.Client) (*release.Release, error) {
+func HelmInstallArgo(helmClient helmclient.Client) (*release.Release, error) {
 	err := helmClient.AddOrUpdateChartRepo(repo.Entry{
 		Name: "argo",
 		URL:  "https://argoproj.github.io/argo-helm",
