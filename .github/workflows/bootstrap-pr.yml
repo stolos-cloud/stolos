@@ -8,14 +8,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: '1.25.1'
 
       - name: Build (static binary)
         run: |
           cd bootstrap
-          CGO_ENABLED=0 go build -ldflags='-extldflags="-static" -X main.GithubClientId=FakeID -X main.GithubClientSecret=FakeSecret -X main.GCPClientId=FakeId -X main.GCPClientSecret=FakeSecret' ./cmd/bootstrap
+          CGO_ENABLED=0 go build -ldflags='-extldflags="-static" -X github.com/stolos-cloud/stolos-bootstrap/pkg/github.GithubClientId=Fake -X github.com/stolos-cloud/stolos-bootstrap/pkg/github.GithubClientSecret=Fake -X github.com/stolos-cloud/stolos-bootstrap/pkg/gcp.GCPClientId=Fake -X github.com/stolos-cloud/stolos-bootstrap/pkg/gcp.GCPClientSecret=Fake' -o out/bootstrap ./cmd/bootstrap

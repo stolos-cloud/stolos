@@ -1,29 +1,33 @@
-name: Release
+name: Release CLI
 
 on:
-  push:
-    branches:
-      - main
+  release:
+    types: [created]
 
 permissions:
-  contents: write  # needed for creating releases
+  contents: write
 
 jobs:
-  release:
+  release-cli:
+    # Only run if tag name starts with "cli-"
+    if: startsWith(github.event.release.tag_name, 'cli-')
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
-          go-version: '1.25.1' # set to your project’s Go version
+          go-version: '1.25.1'  # adjust to your Go version
 
-      - name: Set up Goreleaser
+      - name: Run GoReleaser for CLI
         uses: goreleaser/goreleaser-action@v6
         with:
           version: latest
-          args: release --clean
+          args: release --clean --config ./bootstrap/.goreleaser.yml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

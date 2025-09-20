@@ -1,0 +1,44 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/goreleaser/goreleaser/v2.12.2/www/docs/static/schema.json
+
+project_name: stolos-bootstrap
+builds:
+  - id: cli
+    dir: ./bootstrap
+    main: ./cmd/bootstrap
+    binary: stolos-bootstrap
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -extldflags "-static"
+      - -X github.com/stolos-cloud/stolos-bootstrap/pkg/github.GithubClientId={{ .Env.GITHUB_CLIENT_ID }}
+      - -X github.com/stolos-cloud/stolos-bootstrap/pkg/github.GithubClientSecret={{ .Env.GITHUB_CLIENT_SECRET }}
+      - -X github.com/stolos-cloud/stolos-bootstrap/pkg/gcp.GCPClientId={{ .Env.GCP_CLIENT_ID }}
+      - -X github.com/stolos-cloud/stolos-bootstrap/pkg/gcp.GCPClientSecret={{ .Env.GCP_CLIENT_SECRET }}
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - '386'
+      - amd64
+      - arm64
+      - arm
+    goarm:
+      - '6'
+      - '7'
+
+archives:
+  - id: cli_archive
+    builds:
+      - cli
+    format: tar.gz
+    format_overrides:
+      - goos: windows
+        format: zip
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: "checksums.txt"
