@@ -11,7 +11,7 @@ before:
 
 builds:
   - id: cli
-    dir: ./bootstrap
+    dir: .
     main: ./cmd/bootstrap
     binary: stolos-bootstrap
     env:

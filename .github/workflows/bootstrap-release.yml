@@ -1,33 +1,60 @@
-name: Release CLI
+# yaml-language-server: $schema=https://raw.githubusercontent.com/goreleaser/goreleaser/v2.12.2/www/docs/static/schema.json
 
-on:
-  release:
-    types: [created]
+version: 2
 
-permissions:
-  contents: write
+project_name: stolos-bootstrap
 
-jobs:
-  release-cli:
-    # Only run if tag name starts with "cli-"
-    if: contains(github.event.release.tag_name, '+cli')
-    runs-on: ubuntu-latest
+before:
+  hooks:
+    # Run these from repo root
+    - go mod tidy
+    - go mod download
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
+builds:
+  - id: cli
+    dir: ./bootstrap
+    main: ./cmd/bootstrap
+    binary: stolos-bootstrap
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - '-s -w'
+      - '-extldflags "-static"'
+      - '-X github.com/stolos-cloud/stolos-bootstrap/pkg/github.GithubClientId={{ .Env.GH_CLIENT_ID }}'
+      - '-X github.com/stolos-cloud/stolos-bootstrap/pkg/github.GithubClientSecret={{ .Env.GH_CLIENT_SECRET }}'
+      - '-X github.com/stolos-cloud/stolos-bootstrap/pkg/gcp.GCPClientId={{ .Env.GCP_CLIENT_ID }}'
+      - '-X github.com/stolos-cloud/stolos-bootstrap/pkg/gcp.GCPClientSecret={{ .Env.GCP_CLIENT_SECRET }}'
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - 386
+      - amd64
+      - arm64
+    goarm:
+      - 6
+      - 7
 
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: '1.25.1'  # adjust to your Go version
+archives:
+  - id: cli_archive
+    ids:
+      - cli
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
+    files:
+      - LICENSE
+      - README.md
 
-      - name: Run GoReleaser for CLI
-        uses: goreleaser/goreleaser-action@v6
-        with:
-          version: latest
-          args: release --clean --config ./bootstrap/.goreleaser.yml
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+checksum:
+  name_template: "checksums-cli.txt"
+
+release:
+  github: {}
+  ids:
+    - cli_archive
