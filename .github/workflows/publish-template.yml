@@ -6,6 +6,7 @@ on:
     paths:
       - k8s-manifests
   workflow_run:
+  pull_request:
 jobs:
   publish:
     runs-on: ubuntu-latest
