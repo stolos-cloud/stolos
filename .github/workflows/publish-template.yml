@@ -24,7 +24,7 @@ jobs:
         with:
           token: ${{ steps.app-token.outputs.token }}
           ref: main
-          repository: 'etsmtl-pfe-cloudnative-template'
+          repository: 'Simon-Boyer/etsmtl-pfe-cloudnative-template'
           persist-credentials: false
           path: target
       - name: Replace files with current
