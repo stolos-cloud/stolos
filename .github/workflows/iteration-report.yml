@@ -9,7 +9,6 @@ on:
         type: boolean
         default: true
         description: publish to discussion
-  pull_request: {}
 
 permissions:
   issues: write
@@ -28,7 +27,7 @@ jobs:
         id: get-issues
         uses: actions/github-script@v8
         env:
-          iteration_number: "${{ inputs.iteration_number || '1' }}"
+          iteration_number: "${{ inputs.iteration_number }}"
         with:
           script: |
             fs = require('fs')
@@ -75,7 +74,7 @@ jobs:
       - name: Template report
         uses: actions/github-script@v8
         env:
-          iteration_number: "${{ inputs.iteration_number || '1' }}"
+          iteration_number: "${{ inputs.iteration_number}}"
         with:
           script: |
             fs = require('fs')
