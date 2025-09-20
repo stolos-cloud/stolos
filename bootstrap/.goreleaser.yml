@@ -53,8 +53,8 @@ archives:
         format: zip
     name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
     files:
-      - LICENSE
-      - README.md
+      - '../LICENSE'
+      - '../README.md'
 
 checksum:
   name_template: "checksums-cli.txt"
