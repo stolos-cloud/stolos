@@ -322,20 +322,26 @@ func (m *Model) appendLog(l logMsg) {
 
 func (m *Model) renderLogsPane() string {
 	title := lipgloss.NewStyle().Faint(true).Render("Logs")
-	var lines []string
-	maxLines := max(m.height - 5) // adaptive height-ish
-	start := 0
-	if len(m.logs) > maxLines {
-		start = len(m.logs) - maxLines
+
+	// Convert each logMsg to rendered lines first
+	var allLines []string
+	for _, lm := range m.logs {
+		rendered := renderLogLine(lm, m.width)
+		parts := strings.Split(rendered, "\n")
+		allLines = append(allLines, parts...)
 	}
-	for i := start; i < len(m.logs); i++ {
-		lines = append(lines, renderLogLine(m.logs[i], m.width))
+
+	// Keep only the last lines that fit into available height
+	maxLines := max(m.height - 10) // adaptive height
+	if len(allLines) > maxLines {
+		allLines = allLines[len(allLines)-maxLines:]
 	}
+
 	box := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("240")).
 		Width(m.width - 2).
-		Render(title + "\n" + strings.Join(lines, "\n"))
+		Render(title + "\n" + strings.Join(allLines, "\n"))
 	return box
 }
 
@@ -352,12 +358,37 @@ func renderLogLine(l logMsg, width int) string {
 	case levelSuccess:
 		level = lipgloss.NewStyle().Foreground(lipgloss.Color("82")).Render("OK")
 	}
-	msg := l.Text
-	line := fmt.Sprintf("%s %-5s %s", ts, level, msg)
-	if width > 0 {
-		return truncate(line, width-4) // keep inside the box
+
+	line := strings.TrimSuffix(l.Text, "\n")
+
+	// prefix with timestamp and level
+	prefix := fmt.Sprintf("%s %-5s ", ts, level)
+
+	// split into lines
+	lines := strings.Split(line, "\n")
+	for i, msgLine := range lines {
+		full := prefix + msgLine
+		if width > 0 {
+			lines[i] = truncateLine(full, width-4)
+		} else {
+			lines[i] = full
+		}
+		// for following lines, don't repeat timestamp/level
+		prefix = strings.Repeat(" ", len(ts)+1+5+1) // align with previous prefix length
 	}
-	return line
+	return strings.Join(lines, "\n")
+}
+
+// truncateLine shortens a single line if it exceeds width.
+func truncateLine(s string, width int) string {
+	if width <= 0 || len([]rune(s)) <= width {
+		return s
+	}
+	if width <= 1 {
+		return "…"
+	}
+	r := []rune(s)
+	return string(r[:width-1]) + "…"
 }
 
 // Nav breadcrumbs
