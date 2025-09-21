@@ -28,7 +28,7 @@ func AuthenticateGithubClient(log *tui.UILogger) (*github.Client, error) {
 		ClientSecret: GithubClientSecret,
 		Scopes:       []string{"repo"},
 		Endpoint:     endpoints.GitHub,
-		RedirectURL:  "http://localhost:9999/oauth/callback",
+		RedirectURL:  "http://localhost:9999/oauth/github/callback",
 	}
 
 	/*---Code emprunté: https://www.iamyadav.com/blogs/how-to-authenticate-cli-using-oauth ---
@@ -47,7 +47,7 @@ func AuthenticateGithubClient(log *tui.UILogger) (*github.Client, error) {
 	// create a channel to receive the authorization code
 	codeChan := make(chan string)
 
-	http.HandleFunc("/oauth/callback", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/oauth/github/callback", func(w http.ResponseWriter, r *http.Request) {
 		queryParts, _ := url.ParseQuery(r.URL.RawQuery)
 
 		// Use the authorization code that is pushed to the redirect URL.
