@@ -132,7 +132,7 @@ func handleControlPlane(logger *tui.UILogger, ip string, mac string, uuid string
 	patch := configpatcher.NewStrategicMergePatch(ctr)
 	err = state.ConfigBundle.ApplyPatches([]configpatcher.Patch{patch}, true, false)
 
-	tui.Steps[3].IsDone = true
+	tui.Steps[4].IsDone = true
 	return state.ConfigBundle.Serialize(encoder.CommentsDocs, machine.TypeControlPlane)
 }
 

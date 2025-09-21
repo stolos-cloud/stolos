@@ -122,8 +122,16 @@ func main() {
 	loggerRef := logger
 	logger.Infof("Authenticating github client id %s", github.GithubClientId)
 
+	var step2counter int
+
 	tui.Steps[1].OnEnter = func(m *tui.Model) tea.Cmd {
 		return func() tea.Msg {
+
+			if step2counter > 0 {
+				return nil
+			}
+
+			step2counter += 1
 
 			var err error
 			if !didReadConfig {
@@ -136,73 +144,75 @@ func main() {
 				panic(err)
 			}
 
-			// Setup OAuth server
-			oauthServer := oauth.NewServer("9999", loggerRef)
+			go func() {
+				// Setup OAuth server
+				oauthServer := oauth.NewServer("9999", loggerRef)
 
-			// Register providers
-			if gcp.GCPClientId != "" && gcp.GCPClientSecret != "" {
-				gcpProvider := oauth.NewGCPProvider(gcp.GCPClientId, gcp.GCPClientSecret)
-				oauthServer.RegisterProvider(gcpProvider)
-			}
-
-			githubProvider := oauth.NewGitHubProvider(github.GithubClientId, github.GithubClientSecret)
-			oauthServer.RegisterProvider(githubProvider)
-
-			ctx := context.Background()
-			if err := oauthServer.Start(ctx); err != nil {
-				panic(err)
-			}
-			defer oauthServer.Stop(ctx)
-
-			githubToken, err := oauthServer.Authenticate(ctx, "GitHub")
-			if err != nil {
-				panic(err)
-			}
-
-			// Create GitHub client and initialize repository
-			githubClient := github.NewClient(githubToken)
-			githubBootstrapInfo := &github.BootstrapInfo{
-				RepoName:       bootstrapInfos.RepoName,
-				RepoOwner:      bootstrapInfos.RepoOwner,
-				BaseDomain:     bootstrapInfos.BaseDomain,
-				LoadBalancerIP: bootstrapInfos.LoadBalancerIp,
-			}
-
-			_, err = githubClient.InitRepo(githubBootstrapInfo, false)
-			if err != nil {
-				panic(err)
-			}
-
-			// Create GitHub config for backend
-			githubConfig = github.NewConfig(githubToken, bootstrapInfos.RepoOwner, bootstrapInfos.RepoName)
-
-			loggerRef.Infof("Repo initialized: https://github.com/%s/%s.git", bootstrapInfos.RepoOwner, bootstrapInfos.RepoName)
-
-			if gcp.GCPClientId != "" && gcp.GCPClientSecret != "" {
-				gcpToken, err := oauthServer.Authenticate(ctx, "GCP")
-				if err != nil {
-					loggerRef.Errorf("Failed to authenticate with GCP: %v", err)
-				} else {
-					// Create GCP service account
-					gcpConfig, err = gcp.CreateServiceAccountWithOAuth(
-						ctx,
-						bootstrapInfos.GCPProjectID,
-						bootstrapInfos.GCPRegion,
-						gcpToken,
-						"stolos-platform-sa",
-					)
-					if err != nil {
-						loggerRef.Errorf("Failed to create GCP service account: %v", err)
-					} else {
-						loggerRef.Success("GCP service account created successfully")
-					}
+				// Register providers
+				if gcp.GCPClientId != "" && gcp.GCPClientSecret != "" {
+					gcpProvider := oauth.NewGCPProvider(gcp.GCPClientId, gcp.GCPClientSecret)
+					oauthServer.RegisterProvider(gcpProvider)
 				}
-			} else {
-				loggerRef.Infof("GCP OAuth credentials not provided, skipping GCP service account creation")
-			}
 
+				githubProvider := oauth.NewGitHubProvider(github.GithubClientId, github.GithubClientSecret)
+				oauthServer.RegisterProvider(githubProvider)
 
-			tui.Steps[1].IsDone = true
+				ctx := context.Background()
+				if err := oauthServer.Start(ctx); err != nil {
+					panic(err)
+				}
+				defer oauthServer.Stop(ctx)
+
+				githubToken, err := oauthServer.Authenticate(ctx, "GitHub")
+				if err != nil {
+					panic(err)
+				}
+
+				// Create GitHub client and initialize repository
+				githubClient := github.NewClient(githubToken)
+				githubBootstrapInfo := &github.BootstrapInfo{
+					RepoName:       bootstrapInfos.RepoName,
+					RepoOwner:      bootstrapInfos.RepoOwner,
+					BaseDomain:     bootstrapInfos.BaseDomain,
+					LoadBalancerIP: bootstrapInfos.LoadBalancerIp,
+				}
+
+				_, err = githubClient.InitRepo(githubBootstrapInfo, false)
+				if err != nil {
+					panic(err)
+				}
+
+				// Create GitHub config for backend
+				githubConfig = github.NewConfig(githubToken, bootstrapInfos.RepoOwner, bootstrapInfos.RepoName)
+
+				loggerRef.Infof("Repo initialized: https://github.com/%s/%s.git", bootstrapInfos.RepoOwner, bootstrapInfos.RepoName)
+
+				if gcp.GCPClientId != "" && gcp.GCPClientSecret != "" {
+					gcpToken, err := oauthServer.Authenticate(ctx, "GCP")
+					if err != nil {
+						loggerRef.Errorf("Failed to authenticate with GCP: %v", err)
+					} else {
+						// Create GCP service account
+						gcpConfig, err = gcp.CreateServiceAccountWithOAuth(
+							ctx,
+							bootstrapInfos.GCPProjectID,
+							bootstrapInfos.GCPRegion,
+							gcpToken,
+							"stolos-platform-sa",
+						)
+						if err != nil {
+							loggerRef.Errorf("Failed to create GCP service account: %v", err)
+						} else {
+							loggerRef.Success("GCP service account created successfully")
+						}
+					}
+				} else {
+					loggerRef.Infof("GCP OAuth credentials not provided, skipping GCP service account creation")
+				}
+
+				tui.Steps[1].IsDone = true
+			}()
+
 			return nil
 		}
 	}
@@ -290,7 +300,7 @@ func main() {
 			func() tea.Msg {
 				// Start the server in a goroutine; never block the TUI.
 				StartMachineconfigServerInBackground(loggerRef, addr)
-				tui.Steps[2].IsDone = true
+				tui.Steps[3].IsDone = true
 				return nil
 			},
 		)
@@ -299,7 +309,7 @@ func main() {
 	// Step 2.1 - Waiting for first node
 	tui.Steps[4].OnEnter = func(m *tui.Model) tea.Cmd {
 		return func() tea.Msg {
-			loggerRef.Info("tui.Steps[3]") // Control Plane Step
+			loggerRef.Info("tui.Steps[4]") // Control Plane Step
 
 			// NOTE : IsDone is set in handleControlPlane
 
@@ -310,7 +320,7 @@ func main() {
 	// Step 2.2: Waiting for worker nodes
 	tui.Steps[5].OnEnter = func(m *tui.Model) tea.Cmd {
 		return func() tea.Msg {
-			loggerRef.Info("tui.Steps[4]")
+			loggerRef.Info("tui.Steps[5]")
 
 			return nil
 		}
@@ -319,7 +329,7 @@ func main() {
 	// Step 2.3: Bootstrap
 	tui.Steps[6].OnEnter = func(m *tui.Model) tea.Cmd {
 		return func() tea.Msg {
-			loggerRef.Info("tui.Steps[5]")
+			loggerRef.Info("tui.Steps[6]")
 			endpoint := state.ConfigBundle.ControlPlaneCfg.Cluster().Endpoint() //get machineconfig cluster endpoint
 
 			talosApiClient := talos.CreateMachineryClientFromTalosconfig(state.ConfigBundle.TalosConfig())
@@ -354,7 +364,7 @@ func main() {
 				loggerRef.Successf("Wrote kubeconfig to ./kubeconfig")
 				loggerRef.Success("Your cluster is ready! You may now use kubectl to interact with the cluster")
 
-				tui.Steps[5].IsDone = true
+				tui.Steps[6].IsDone = true
 			}()
 
 			return nil

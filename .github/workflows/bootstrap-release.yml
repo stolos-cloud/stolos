@@ -10,7 +10,7 @@ permissions:
 jobs:
   release-cli:
     # Only run if tag name starts with "cli-"
-    if: startsWith(github.event.release.tag_name, 'cli-')
+    if: contains(github.event.release.tag_name, '+cli')
     runs-on: ubuntu-latest
 
     steps:
@@ -28,6 +28,11 @@ jobs:
         uses: goreleaser/goreleaser-action@v6
         with:
           version: latest
-          args: release --clean --config ./bootstrap/.goreleaser.yml
+          workdir: './bootstrap'
+          args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_CLIENT_ID: ${{ secrets.GH_CLIENT_ID }}
+          GH_CLIENT_SECRET: ${{ secrets.GH_CLIENT_SECRET }}
+          GCP_CLIENT_ID: ${{ secrets.GCP_CLIENT_ID }}
+          GCP_CLIENT_SECRET: ${{ secrets.GCP_CLIENT_SECRET }}
