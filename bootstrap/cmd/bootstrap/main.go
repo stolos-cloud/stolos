@@ -117,8 +117,16 @@ func main() {
 	loggerRef := logger
 	logger.Infof("Authenticating github client id %s", github.GithubClientId)
 
+	var step2counter int
+
 	tui.Steps[1].OnEnter = func(m *tui.Model) tea.Cmd {
 		return func() tea.Msg {
+
+			if step2counter > 0 {
+				return nil
+			}
+
+			step2counter += 1
 
 			var err error
 			if !didReadConfig {
@@ -131,15 +139,21 @@ func main() {
 				panic(err)
 			}
 
-			githubClient, err := github.AuthenticateGithubClient(loggerRef)
-			if err != nil {
-				panic(err)
-			}
-			_, err = github.InitRepo(githubClient, bootstrapInfos, false)
+			go func() {
+				githubClient, err := github.AuthenticateGithubClient(loggerRef)
+				if err != nil {
+					logger.Errorf("Failed to authenticate github client: %v", err)
+				}
+				_, err = github.InitRepo(githubClient, bootstrapInfos, false)
+				if err != nil {
+					logger.Errorf("Failed to init repo: %v", err)
+				}
 
-			loggerRef.Successf("Repo initialized: https://github.com/%s/%s.git", bootstrapInfos.RepoOwner, bootstrapInfos.RepoName)
+				tui.Steps[1].IsDone = true
 
-			tui.Steps[1].IsDone = true
+				loggerRef.Successf("Repo initialized: https://github.com/%s/%s.git", bootstrapInfos.RepoOwner, bootstrapInfos.RepoName)
+			}()
+
 			return nil
 		}
 	}
@@ -227,7 +241,7 @@ func main() {
 			func() tea.Msg {
 				// Start the server in a goroutine; never block the TUI.
 				StartMachineconfigServerInBackground(loggerRef, addr)
-				tui.Steps[2].IsDone = true
+				tui.Steps[3].IsDone = true
 				return nil
 			},
 		)
@@ -236,7 +250,7 @@ func main() {
 	// Step 2.1 - Waiting for first node
 	tui.Steps[4].OnEnter = func(m *tui.Model) tea.Cmd {
 		return func() tea.Msg {
-			loggerRef.Info("tui.Steps[3]") // Control Plane Step
+			loggerRef.Info("tui.Steps[4]") // Control Plane Step
 
 			// NOTE : IsDone is set in handleControlPlane
 
@@ -247,7 +261,7 @@ func main() {
 	// Step 2.2: Waiting for worker nodes
 	tui.Steps[5].OnEnter = func(m *tui.Model) tea.Cmd {
 		return func() tea.Msg {
-			loggerRef.Info("tui.Steps[4]")
+			loggerRef.Info("tui.Steps[5]")
 
 			return nil
 		}
@@ -256,7 +270,7 @@ func main() {
 	// Step 2.3: Bootstrap
 	tui.Steps[6].OnEnter = func(m *tui.Model) tea.Cmd {
 		return func() tea.Msg {
-			loggerRef.Info("tui.Steps[5]")
+			loggerRef.Info("tui.Steps[6]")
 			endpoint := state.ConfigBundle.ControlPlaneCfg.Cluster().Endpoint() //get machineconfig cluster endpoint
 
 			talosApiClient := talos.CreateMachineryClientFromTalosconfig(state.ConfigBundle.TalosConfig())
@@ -291,7 +305,7 @@ func main() {
 				loggerRef.Successf("Wrote kubeconfig to ./kubeconfig")
 				loggerRef.Success("Your cluster is ready! You may now use kubectl to interact with the cluster")
 
-				tui.Steps[5].IsDone = true
+				tui.Steps[6].IsDone = true
 			}()
 
 			return nil
