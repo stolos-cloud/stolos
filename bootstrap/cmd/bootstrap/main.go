@@ -136,13 +136,13 @@ func main() {
 			var err error
 			if !didReadConfig {
 				bootstrapInfos, err = tui.RetrieveStructFromFields[state.BootstrapInfo](step1.Fields)
-			} else {
-				loggerRef.Infof("Read bootstrap infos from file, clusterName: %s", bootstrapInfos.ClusterName)
 			}
 
 			if err != nil {
 				panic(err)
 			}
+
+			loggerRef.Infof("Read bootstrap infos from file, clusterName: %s", bootstrapInfos.ClusterName)
 
 			go func() {
 				// Setup OAuth server
@@ -159,13 +159,17 @@ func main() {
 
 				ctx := context.Background()
 				if err := oauthServer.Start(ctx); err != nil {
-					panic(err)
+					loggerRef.Errorf("skipping, oauth server start failed: %v", err)
+					tui.Steps[1].IsDone = true
+					return
 				}
 				defer oauthServer.Stop(ctx)
 
 				githubToken, err := oauthServer.Authenticate(ctx, "GitHub")
 				if err != nil {
-					panic(err)
+					loggerRef.Errorf("skipping, oauth server authenticate failed: %v", err)
+					tui.Steps[1].IsDone = true
+					return
 				}
 
 				// Create GitHub client and initialize repository
@@ -179,7 +183,7 @@ func main() {
 
 				_, err = githubClient.InitRepo(githubBootstrapInfo, false)
 				if err != nil {
-					panic(err)
+					loggerRef.Errorf("github init repo failed: %v", err)
 				}
 
 				// Create GitHub config for backend
