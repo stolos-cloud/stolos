@@ -2,7 +2,9 @@ package talos
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
+	"github.com/siderolabs/talos/pkg/machinery/api/storage"
 	"io"
 	"os"
 	"time"
@@ -155,6 +157,21 @@ func RunBasicClusterHealthCheck(err error, talosApiClient machineryClient.Client
 			panic(msg.GetMetadata().GetError())
 		}
 	}
+}
+
+func GetDisks(ctx context.Context, ip string) ([]*storage.Disk, error) {
+	c, err := machineryClient.New(ctx, machineryClient.WithTLSConfig(&tls.Config{
+		InsecureSkipVerify: true,
+	}), machineryClient.WithEndpoints(ip))
+	if err != nil {
+		return nil, err
+	}
+	disksRes, err := c.Disks(ctx)
+	if err != nil {
+		return nil, err
+	}
+	disks := disksRes.GetMessages()[0].Disks
+	return disks, nil
 }
 
 // ======================
