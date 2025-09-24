@@ -33,12 +33,12 @@ func NewClient(token *oauth2.Token) *Client {
 	}
 }
 
-// BootstrapInfo contains repository setup information
-type BootstrapInfo struct {
-	RepoName        string
-	RepoOwner       string
-	BaseDomain      string
-	LoadBalancerIP  string
+// GitHubInfo contains repository setup information
+type GitHubInfo struct {
+	RepoOwner      string `json:"RepoOwner" field_label:"Github Repository Owner" field_required:"true"`
+	RepoName       string `json:"RepoName" field_label:"Github Repository Name" field_required:"true"`
+	BaseDomain     string `json:"BaseDomain" field_label:"BaseDomain" field_required:"true"`
+	LoadBalancerIP string `json:"LoadBalancerIP" field_label:"LoadBalancer IP" field_required:"true"`
 }
 
 // Config contains GitHub credentials for backend usage
@@ -48,7 +48,7 @@ type Config struct {
 	RepoName    string `json:"repo_name"`
 }
 
-func (client *Client) InitRepo(info *BootstrapInfo, isPrivate bool) (*github.Repository, error) {
+func (client *Client) InitRepo(info *GitHubInfo, isPrivate bool) (*github.Repository, error) {
 	templateRepoOwner := os.Getenv("GITHUB_TEMPLATE_REPO_OWNER")
 	templateRepoName := os.Getenv("GITHUB_TEMPLATE_REPO_NAME")
 	if templateRepoOwner == "" {
@@ -84,7 +84,7 @@ func (client *Client) InitRepo(info *BootstrapInfo, isPrivate bool) (*github.Rep
 }
 
 // createInitialConfig creates the initial common.yml configuration file
-func (c *Client) createInitialConfig(info *BootstrapInfo) error {
+func (c *Client) createInitialConfig(info *GitHubInfo) error {
 	commonConfig := struct {
 		BaseDomain string `yaml:"base_domain"`
 		LbIP       string `yaml:"lb_ip"`
@@ -136,7 +136,7 @@ func (c *Client) GetToken() *oauth2.Token {
 }
 
 // AuthenticateAndSetup performs OAuth authentication and repository initialization
-func AuthenticateAndSetup(oauthServer *oauth.Server, clientID, clientSecret string, info *BootstrapInfo, logger oauth.Logger) (*Client, error) {
+func AuthenticateAndSetup(oauthServer *oauth.Server, clientID, clientSecret string, info *GitHubInfo, logger oauth.Logger) (*Client, error) {
 	ctx := context.Background()
 
 	provider := oauth.NewGitHubProvider(clientID, clientSecret)
