@@ -12,7 +12,7 @@
         },
         "logout": "Logout"
     },
-    "connexion": {
+    "login": {
         "title": "Log into your account",
         "email": "Email",
         "password": "Password",
@@ -21,7 +21,20 @@
         "noAccount": "Don't have an account ?",
         "buttons": {
             "login": "Login",
-            "signup": "Sign Up"
+            "signup": "Sign up"
+        }
+    },
+    "register": {
+        "title": "Create your account",
+        "firstname": "First name",
+        "lastname": "Last name",
+        "email": "Email",
+        "password": "Password",
+        "confirmPassword": "Confirm password",
+        "alreadyHaveAccount": "Already have an account ?",
+        "buttons": {
+            "register": "Register",
+            "login": "Login"
         }
     },
     "dashboard": {
@@ -96,7 +109,8 @@
                 "uppercase": "Password must contain at least one uppercase letter",
                 "lowercase": "Password must contain at least one lowercase letter",
                 "number": "Password must contain at least one number",
-                "special": "Password must contain at least one special character"
+                "special": "Password must contain at least one special character",
+                "mismatch": "Passwords do not match"
             },
             "textfield": {
                 "required": "This field is required"

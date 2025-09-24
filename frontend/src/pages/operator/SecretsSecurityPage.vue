@@ -1,6 +1,6 @@
 <template>
     <PortalLayout>
-        <CCLabelBar 
+        <BaseLabelBar 
             :title="$t('secretsSecurity.title')"
             :subheading="$t('secretsSecurity.subheading')"
         />
@@ -9,6 +9,6 @@
 
 <script setup>
 import PortalLayout from '@/components/layouts/PortalLayout.vue';
-import CCLabelBar from '@/components/base/BaseLabelBar.vue';
+import BaseLabelBar from '@/components/base/BaseLabelBar.vue';
 
 </script>

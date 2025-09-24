@@ -42,6 +42,10 @@ const props = defineProps({
 </script>
 
 <style scoped>
+.v-btn:hover {
+    background-color: #bf5b26 !important;
+}
+
 .v-btn.v-btn--disabled {
   background-color: #ff9248 !important;
   opacity: 0.5 !important;

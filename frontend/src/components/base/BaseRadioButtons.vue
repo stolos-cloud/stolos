@@ -18,12 +18,14 @@
       :key="option.value"
       :label="option.label"
       :value="option.value"
+      color="primary"
     />
   </v-radio-group>
 </template>
 
 <script setup>
 import { computed } from 'vue';
+
 const props = defineProps({
     RadioGroup: {
         type: Object,

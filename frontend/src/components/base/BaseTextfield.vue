@@ -8,6 +8,8 @@
         :disabled="Textfield.readonly"
         :min="Textfield.minDate"
         :max="Textfield.maxDate"
+        :append-inner-icon="iconAction"
+        @click:append-inner="emit('clickIcon')"
         class="mt-4"
     ></v-text-field>
 </template>
@@ -19,6 +21,10 @@ const props = defineProps({
     Textfield: {
         type: Object,
         required: true
+    },
+    iconAction: {
+        type: String,
+        default: ''
     }
 });
 const emit = defineEmits(['changed']);
@@ -32,19 +38,4 @@ const model = computed({
     emit('changed', value);
   }
 });
-
-// model: {
-//             get() {
-//                 return this.localTextBox._unformatedText || ''
-//             },
-//             set(value) {
-//                 if(this.localTextBox){
-//                     this.localTextBox._unformatedText = value;
-//                     this.TextBox.unformatedText = value;
-//                     this.localTextBox._text = value;
-//                     this.TextBox.text = value;
-//                     this.$emit('changed', value);
-//                 }
-//             }
-//         },
 </script>

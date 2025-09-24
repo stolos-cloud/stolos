@@ -1,4 +1,4 @@
-import ConnexionPage from '@/pages/ConnexionPage.vue'
+import LoginPage from '@/pages/LoginPage.vue'
 import RegisterPage from '@/pages/RegisterPage.vue'
 import DashboardPage from '@/pages/DashboardPage.vue'
 import CloudProviderPage from '@/pages/operator/CloudProviderPage.vue'
@@ -15,10 +15,10 @@ const routes = [
     redirect: '/connexion',
   },
   {
-    path: '/connexion',
-    name: 'connexion',
-    component: ConnexionPage,
-    meta: { title: 'connexion.title' }
+    path: '/login',
+    name: 'login',
+    component: LoginPage,
+    meta: { title: 'login.title' }
   },
   {
     path: '/register',

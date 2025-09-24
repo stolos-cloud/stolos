@@ -12,7 +12,7 @@
         },
         "logout": "Se Déconnecter"
     },
-     "connexion": {
+     "login": {
         "title": "Se connecter à votre compte",
         "email": "Courriel",
         "password": "Mot de passe",
@@ -22,6 +22,19 @@
         "buttons": {
             "login": "Se Connecter",
             "signup": "S'inscrire"
+        }
+    },
+    "register": {
+        "title": "Créer votre compte",
+        "firstname": "Prénom",
+        "lastname": "Nom de famille",
+        "email": "Courriel",
+        "password": "Mot de passe",
+        "confirmPassword": "Confirmer le mot de passe",
+        "alreadyHaveAccount": "Avez-vous déjà un compte ?",
+        "buttons": {
+            "register": "S'inscrire",
+            "login": "Se connecter"
         }
     },
     "dashboard": {
@@ -91,7 +104,8 @@
                 "uppercase": "Le mot de passe doit contenir au moins une lettre majuscule",
                 "lowercase": "Le mot de passe doit contenir au moins une lettre minuscule",
                 "number": "Le mot de passe doit contenir au moins un chiffre",
-                "special": "Le mot de passe doit contenir au moins un caractère spécial"
+                "special": "Le mot de passe doit contenir au moins un caractère spécial",
+                "mismatch": "Les mots de passe ne correspondent pas"
             },
             "textfield": {
                 "required": "Ce champ est requis"
