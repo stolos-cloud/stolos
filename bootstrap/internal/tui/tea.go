@@ -45,6 +45,7 @@ type Step struct {
 	IsDone      bool
 	AutoAdvance bool
 	OnEnter     func(*Model, *Step) tea.Cmd // hook called when step is entered
+	OnExit      func(*Model, *Step)
 }
 
 // NewTextField constructs a text input field
@@ -86,13 +87,13 @@ func (l *UILogger) emit(m tea.Msg) {
 }
 
 // NewWizard constructs the Bubble Tea Program + UILogger from the provided Steps.
-func NewWizard(steps []Step) (*tea.Program, *UILogger) {
+func NewWizard(steps []Step) (*tea.Program, *Model) {
 	m := newModel(steps)
 	p := tea.NewProgram(&m, tea.WithAltScreen())
 	m.Program = p
 	l := &UILogger{send: p.Send}
 	m.Logger = l
-	return p, l
+	return p, &m
 }
 
 // Log levels & message type injected via UILogger.
@@ -224,6 +225,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(cmds...)
 
 	case advanceMsg:
+		currentStep := m.getCurrentStep()
+		currentStep.OnExit(m, &currentStep)
 		return m, m.advanceCmd()
 	}
 
@@ -263,6 +266,22 @@ func (m *Model) View() string {
 	b.WriteString(m.renderLogsPane())
 
 	return b.String()
+}
+
+func SetStepIsDone(model *Model, name string, done bool) {
+	_, step := FindStepByName(model, name)
+	step.IsDone = done
+}
+
+// DisableStep .
+func DisableStep(model *Model, name string, isDisabled bool) {
+	if !isDisabled {
+		return // avoid lookup for no reason.
+	}
+	_, step := FindStepByName(model, name)
+	step.AutoAdvance = false
+	step.IsDone = false
+	// Will skip as soon as entered.
 }
 
 // FindStepByName returns the index and pointer to the step with the given name.
@@ -310,6 +329,7 @@ func (m *Model) enterStepCmd(i int) tea.Cmd {
 }
 
 func (m *Model) advanceCmd() tea.Cmd {
+	// TODO : Execute OnExit
 	if m.CurrentStepIndex >= len(m.Steps)-1 {
 		return tea.Quit
 	}

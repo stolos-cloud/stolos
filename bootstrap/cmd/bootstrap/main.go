@@ -19,6 +19,7 @@ import (
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/oauth"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/state"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/talos"
+	"golang.org/x/oauth2"
 
 	"github.com/cavaliergopher/grab/v3"
 	tea "github.com/charmbracelet/bubbletea"
@@ -27,13 +28,15 @@ import (
 
 var bootstrapInfos = &state.BootstrapInfo{}
 var doRestoreProgress = false
-var didReadConfig = false
+var didReadBootstrapInfos = false
 
 // var tui.Steps []tui.Step
 var kubeconfig []byte
 var saveState state.SaveState
 var gcpConfig *gcp.Config
 var githubConfig *github.Config
+var oauthServer *oauth.Server
+var githubToken *oauth2.Token
 
 func main() {
 
@@ -44,181 +47,251 @@ func main() {
 	if !(errors.Is(err, os.ErrNotExist)) {
 		saveState = marshal.ReadStateFromJSON()
 		bootstrapInfos = &saveState.BootstrapInfo
-		didReadConfig = true
+		didReadBootstrapInfos = true
 		doRestoreProgress = true
 	}
 
 	_, err = os.Stat("bootstrap-config.json")
 	if !(errors.Is(err, os.ErrNotExist)) {
 		marshal.ReadBootstrapInfos("bootstrap-config.json", bootstrapInfos)
-		didReadConfig = true
+		didReadBootstrapInfos = true
 	}
 
-	step1 := tui.Step{
+	if !didReadBootstrapInfos {
+		bootstrapInfos = &state.BootstrapInfo{}
+	}
+
+	if didReadBootstrapInfos {
+		// TODO
+		//talosStep.AutoAdvance = true
+		//githubStep.AutoAdvance = true
+	}
+
+	githubInfoStep := tui.Step{
+		Name:        "GitHubInfo",
+		Title:       "1) Enter GitHub Repository Information",
+		Kind:        tui.StepForm,
+		Fields:      tui.CreateFieldsForStruct[github.GitHubInfo](),
+		IsDone:      true,
+		AutoAdvance: false,
+		OnEnter: func(m *tui.Model, s *tui.Step) tea.Cmd {
+			oauthServer = RunOAuthServerInBackround(m.Logger)
+			return nil
+		},
+	}
+
+	githubAuthStep := tui.Step{
+		Name:        "GitHubAuth",
+		Title:       "1.1) Authenticate with GitHub",
+		Kind:        tui.StepSpinner,
+		IsDone:      false,
+		AutoAdvance: true,
+		OnEnter:     RunGitHubAuthStepInBackground,
+		OnExit: func(m *tui.Model, s *tui.Step) {
+			// TODO CHECK GH AUTH
+		},
+	}
+
+	githubRepoStep := tui.Step{
+		Name:        "GitHubRepo",
+		Title:       "1.2) Create GitHub Repository",
+		Kind:        tui.StepSpinner,
+		IsDone:      false,
+		AutoAdvance: true,
+		OnEnter:     RunGitHubRepoStepInBackground,
+		//OnExit: //TODO validate,
+	}
+
+	githubAppStep := tui.Step{
+		// TODO: Implement GitHub
+		Name:        "GitHubApp",
+		Title:       "1.3) Create GitHub App",
+		Kind:        tui.StepSpinner,
+		IsDone:      true,
+		AutoAdvance: true,
+	}
+
+	gcpInfoStep := tui.Step{
+		Name:        "GCPInfo",
+		Title:       "2) GCP Information",
+		Kind:        tui.StepForm,
+		Fields:      tui.CreateFieldsForStruct[state.GCPInfo](),
+		IsDone:      true,
+		AutoAdvance: false,
+		OnEnter: func(m *tui.Model, s *tui.Step) tea.Cmd {
+			// TODO
+			return nil
+		},
+	}
+
+	gcpAuthStep := tui.Step{
+		Name:        "GCPAuth",
+		Title:       "2.1) GCP Authentication",
+		Kind:        tui.StepSpinner,
+		IsDone:      false,
+		AutoAdvance: true,
+		OnEnter: func(m *tui.Model, s *tui.Step) tea.Cmd {
+			// TODO
+			return nil
+		},
+	}
+
+	gcpSAStep := tui.Step{
+		Name:        "GCPServiceAccount",
+		Title:       "2.2) GCP Service Account",
+		Kind:        tui.StepSpinner,
+		IsDone:      false,
+		AutoAdvance: true,
+		OnEnter: func(m *tui.Model, s *tui.Step) tea.Cmd {
+			// TODO
+			return nil
+		},
+	}
+
+	talosInfoStep := tui.Step{
 		Name:        "TalosInfo",
-		Title:       "1) Basic Information and Image Factory",
+		Title:       "3) Talos and Kubernetes Information",
 		Kind:        tui.StepForm,
 		Fields:      tui.CreateFieldsForStruct[state.TalosInfo](),
 		IsDone:      true,
 		AutoAdvance: false,
+		OnExit: func(m *tui.Model, s *tui.Step) {
+			if !didReadBootstrapInfos {
+				talosInfo, err := tui.RetrieveStructFromFields[state.TalosInfo](s.Fields)
+				if err != nil {
+				}
+				bootstrapInfos.TalosInfo = *talosInfo
+			}
+		},
 	}
 
-	if didReadConfig {
-		step1.AutoAdvance = true
-	}
-
-	step1_1 := tui.Step{
-		Name:        "CreateRepo",
-		Title:       "1.1) Creating Repository...",
+	talosISOStep := tui.Step{
+		Name:        "TalosISOStep",
+		Title:       "3.1) Download Talos ISO",
 		Kind:        tui.StepSpinner,
-		Body:        "Creating github repository...",
+		IsDone:      false,
+		AutoAdvance: true,
+		OnEnter:     RunTalosISOStep,
+	}
+
+	waitControlPlaneStep := tui.Step{
+		Name:        "WaitControlPlaneStep",
+		Title:       "3.2) Wait Control Plane",
+		Kind:        tui.StepSpinner,
+		IsDone:      false, // Set by server
 		AutoAdvance: true,
 	}
 
-	step1_2 := tui.Step{
-		Name:        "GenerateISO",
-		Title:       "1.2) Generate Talos Image...",
+	waitWorkerStep := tui.Step{
+		Name:        "WaitWorkerStep",
+		Title:       "3.3) Wait Worker",
 		Kind:        tui.StepSpinner,
-		Body:        "Generating talos image via image factory...",
+		IsDone:      false, // Set by server
 		AutoAdvance: true,
 	}
 
-	step2 := tui.Step{
-		Name:        "Boot",
-		Title:       "2) Boot",
-		Kind:        tui.StepPlain,
-		Body:        "Note: The first node that accesses the config server will be configured as a Kubernetes Control Plane",
+	deployArgoStep := tui.Step{
+		Name:        "DeployArgo",
+		Title:       "4.1) Deploy Argo",
+		Kind:        tui.StepSpinner,
+		IsDone:      false,
 		AutoAdvance: true,
+		OnEnter:     RunArgoStepInBackground,
 	}
 
-	step21 := tui.Step{
-		Name:        "WaitControlPlane",
-		Title:       "2.1) Waiting for First Node (Control Plane)",
+	deployPortalStep := tui.Step{
+		Name:        "DeployPortal",
+		Title:       "4.2) Deploy Portal",
 		Kind:        tui.StepSpinner,
-		Body:        "Waiting for the first node to request machineconfig...",
+		IsDone:      false,
 		AutoAdvance: true,
+		OnEnter:     RunPortalStepInBackground,
 	}
 
-	step22 := tui.Step{
-		Name:        "WaitWorkers",
-		Title:       "2.2) Waiting for three worker nodes…",
-		Kind:        tui.StepSpinner,
-		Body:        "Generating worker base machine config and waiting for 3 workers to fetch their configs…",
-		AutoAdvance: false,
-		IsDone:      true,
+	tui.Steps = []tui.Step{
+		githubInfoStep,
+		githubAuthStep,
+		githubRepoStep,
+		githubAppStep,
+		gcpInfoStep,
+		gcpAuthStep,
+		gcpSAStep,
+		talosInfoStep,
+		talosISOStep,
+		waitControlPlaneStep,
+		waitWorkerStep,
+		deployArgoStep,
+		deployPortalStep,
 	}
 
-	step23 := tui.Step{
-		Name:        "Bootstrap",
-		Title:       "2.3) Executing bootstrap…",
-		Kind:        tui.StepSpinner,
-		Body:        "Bootstrapping the cluster…",
-		AutoAdvance: true,
-	}
-
-	step24 := tui.Step{
-		Name:        "Kubernetes",
-		Title:       "2.4) Deploying ArgoCD and the WebUI",
-		Kind:        tui.StepSpinner,
-		Body:        "Deploying ArgoCD via Helm. ArgoCD will deploy the WebUI.",
-		AutoAdvance: false,
-	}
-
-	tui.Steps = []tui.Step{step1, step1_1, step1_2, step2, step21, step22, step23, step24}
-	p, logger := tui.NewWizard(tui.Steps)
-	logger.Infof("Authenticating github client id %s", github.GithubClientId)
-
-	tui.Steps[1].OnEnter = RunRepoGCPStepInBackground
-
-	tui.Steps[2].OnEnter = RunClusterBootupStepInBackground
-
-	// Step 2 (Boot): start HTTP server as soon as we enter the step.
-	tui.Steps[3].OnEnter = RunStartMachineconfigServerStep
-
-	// Step 2.1 - Waiting for first node
-	tui.Steps[4].OnEnter = nil
-
-	// Step 2.2: Waiting for worker nodes
-	tui.Steps[5].OnEnter = nil
-
-	// Step 2.3: Bootstrap
-	tui.Steps[6].OnEnter = RunClusterBootstrapStepInBackground
-
-	tui.Steps[7].OnEnter = RunKubernetesStepInBackground
-
+	p, model := tui.NewWizard(tui.Steps)
 	if _, err := p.Run(); err != nil {
 		fmt.Println("Error:", err)
 	}
+
+	oauthServer = SetupOAuthServer(model.Logger)
+	gcpEnabled := SetupGCP()
+	gitHubEnabled := SetupGitHub()
+
+	tui.DisableStep(model, gcpInfoStep.Name, !gcpEnabled)
+	tui.DisableStep(model, gcpAuthStep.Name, !gcpEnabled)
+	tui.DisableStep(model, gcpSAStep.Name, !gcpEnabled)
+
+	tui.DisableStep(model, githubInfoStep.Name, !gitHubEnabled)
+	tui.DisableStep(model, githubAuthStep.Name, !gitHubEnabled)
+	tui.DisableStep(model, githubRepoStep.Name, !gitHubEnabled)
+	tui.DisableStep(model, githubAppStep.Name, !gitHubEnabled)
 }
 
-func RunRepoGCPStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
-	if !didReadConfig {
-		_, talosInfoStep := tui.FindStepByName(m, "TalosInfo")
-		talosInfo, err := tui.RetrieveStructFromFields[state.TalosInfo](talosInfoStep.Fields)
-		if err != nil {
-			m.Logger.Errorf("Error getting TalosInfo from form fields: %v", err)
-			panic(err)
-		}
-		bootstrapInfos.TalosInfo = *talosInfo
-	}
-
-	m.Logger.Infof("Read bootstrap infos from file, clusterName: %s", bootstrapInfos.TalosInfo.ClusterName)
-
+func RunOAuthServerInBackround(logger *tui.UILogger) {
 	go func() {
-		// Setup OAuth server
-		oauthServer := oauth.NewServer("9999", m.Logger)
-
-		// Register providers
-		if gcp.GCPClientId != "" && gcp.GCPClientSecret != "" {
-			gcpProvider := oauth.NewGCPProvider(gcp.GCPClientId, gcp.GCPClientSecret)
-			oauthServer.RegisterProvider(gcpProvider)
-		}
-
-		githubProvider := oauth.NewGitHubProvider(github.GithubClientId, github.GithubClientSecret)
-		oauthServer.RegisterProvider(githubProvider)
-
 		ctx := context.Background()
 		if err := oauthServer.Start(ctx); err != nil {
-			m.Logger.Errorf("skipping, oauth server start failed: %v", err)
+			logger.Errorf("skipping, oauth server start failed: %v", err)
 			tui.Steps[1].IsDone = true
 			return
 		}
 		defer oauthServer.Stop(ctx)
+	}()
+}
 
-		githubToken, err := oauthServer.Authenticate(ctx, "GitHub")
-		if err != nil {
-			m.Logger.Errorf("skipping, oauth server authenticate failed: %v", err)
-			tui.Steps[1].IsDone = true
-			return
-		}
+func SetupOAuthServer(logger *tui.UILogger) *oauth.Server {
+	// Setup OAuth server
+	server := oauth.NewServer("9999", logger)
+	return server
+}
 
-		// Create GitHub client and initialize repository
-		githubClient := github.NewClient(githubToken)
-		githubBootstrapInfo := &github.GitHubInfo{
-			RepoName:       bootstrapInfos.GitHubInfo.RepoName,
-			RepoOwner:      bootstrapInfos.GitHubInfo.RepoOwner,
-			BaseDomain:     bootstrapInfos.GitHubInfo.BaseDomain,
-			LoadBalancerIP: bootstrapInfos.GitHubInfo.LoadBalancerIP,
-		}
+func SetupGitHub() bool {
+	if github.GithubClientId != "" && github.GithubClientSecret != "" {
+		githubProvider := oauth.NewGitHubProvider(github.GithubClientId, github.GithubClientSecret)
+		oauthServer.RegisterProvider(githubProvider)
+		return true
+	}
+	return false
+}
 
-		_, err = githubClient.InitRepo(githubBootstrapInfo, false)
-		if err != nil {
-			m.Logger.Errorf("github init repo failed: %v", err)
-		}
+func SetupGCP() bool {
+	if gcp.GCPClientId != "" && gcp.GCPClientSecret != "" {
+		gcpProvider := oauth.NewGCPProvider(gcp.GCPClientId, gcp.GCPClientSecret)
+		oauthServer.RegisterProvider(gcpProvider)
+		return true
+	}
+	return false
+}
 
-		// Create GitHub config for backend
-		githubConfig = github.NewConfig(githubToken, bootstrapInfos.GitHubInfo.RepoOwner, bootstrapInfos.GitHubInfo.RepoName)
+func RunGCPSAStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 
-		m.Logger.Infof("Repo initialized: https://github.com/%s/%s.git", bootstrapInfos.GitHubInfo.RepoOwner, bootstrapInfos.GitHubInfo.RepoName)
+	m.Logger.Infof("Read bootstrap infos from file, clusterName: %s", bootstrapInfos.TalosInfo.ClusterName)
 
+	go func() {
 		if gcp.GCPClientId != "" && gcp.GCPClientSecret != "" {
-			gcpToken, err := oauthServer.Authenticate(ctx, "GCP")
+			gcpToken, err := oauthServer.Authenticate(context.Background(), "GCP")
 			if err != nil {
 				m.Logger.Errorf("Failed to authenticate with GCP: %v", err)
 			} else {
 				// Create GCP service account
 				gcpConfig, err = gcp.CreateServiceAccountWithOAuth(
-					ctx,
+					context.Background(),
 					bootstrapInfos.GCPInfo.GCPProjectID,
 					bootstrapInfos.GCPInfo.GCPRegion,
 					gcpToken,
@@ -234,7 +307,42 @@ func RunRepoGCPStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 			m.Logger.Infof("GCP OAuth credentials not provided, skipping GCP service account creation")
 		}
 
-		tui.Steps[1].IsDone = true
+		s.IsDone = true
+	}()
+	return nil
+}
+
+func RunGitHubRepoStepInBackground(m *tui.Model, _ *tui.Step) tea.Cmd {
+	// Create GitHub client and initialize repository
+	githubClient := github.NewClient(githubToken)
+	githubBootstrapInfo := &github.GitHubInfo{
+		RepoName:       bootstrapInfos.GitHubInfo.RepoName,
+		RepoOwner:      bootstrapInfos.GitHubInfo.RepoOwner,
+		BaseDomain:     bootstrapInfos.GitHubInfo.BaseDomain,
+		LoadBalancerIP: bootstrapInfos.GitHubInfo.LoadBalancerIP,
+	}
+
+	_, err := githubClient.InitRepo(githubBootstrapInfo, false)
+	if err != nil {
+		m.Logger.Errorf("github init repo failed: %v", err)
+	}
+
+	// Create GitHub config for backend
+	githubConfig = github.NewConfig(githubToken, bootstrapInfos.GitHubInfo.RepoOwner, bootstrapInfos.GitHubInfo.RepoName)
+
+	m.Logger.Infof("Repo initialized: https://github.com/%s/%s.git", bootstrapInfos.GitHubInfo.RepoOwner, bootstrapInfos.GitHubInfo.RepoName)
+	return nil
+}
+
+func RunGitHubAuthStepInBackground(m *tui.Model, _ *tui.Step) tea.Cmd {
+	go func() {
+		var err error
+		githubToken, err = oauthServer.Authenticate(context.Background(), "GitHub")
+		if err != nil {
+			m.Logger.Errorf("skipping, oauth server authenticate failed: %v", err)
+			tui.Steps[1].IsDone = true
+			return
+		}
 	}()
 	return nil
 }
@@ -247,7 +355,7 @@ func RunStartMachineconfigServerStep(m *tui.Model, s *tui.Step) tea.Cmd {
 	return nil
 }
 
-func RunClusterBootupStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
+func RunTalosISOStep(m *tui.Model, s *tui.Step) tea.Cmd {
 	if doRestoreProgress {
 		m.Logger.Info("State file found, skipping to tui.Steps[5]")
 		addr := bootstrapInfos.TalosInfo.HTTPHostname + ":" + bootstrapInfos.TalosInfo.HTTPPort
@@ -341,11 +449,19 @@ func RunClusterBootstrapStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 	return nil
 }
 
-func RunKubernetesStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
+func RunArgoStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 	go func() {
-		m.Logger.Debug("RunKubernetesStepInBackground")
-		CreateProviderSecrets(m.Logger)
+		m.Logger.Debug("RunArgoStepInBackground")
 		DeployArgoCD(m.Logger)
+		s.IsDone = true
+	}()
+	return nil
+}
+
+func RunPortalStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
+	go func() {
+		m.Logger.Debug("RunPortalStepInBackground")
+		CreateProviderSecrets(m.Logger)
 		s.IsDone = true
 	}()
 	return nil
