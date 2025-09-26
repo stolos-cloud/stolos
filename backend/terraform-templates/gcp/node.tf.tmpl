@@ -1,0 +1,10 @@
+# GCP Compute Instance for Talos Node
+# Template variables: {{.Name}}, {{.Zone}}, {{.MachineType}}
+
+resource "google_compute_instance" "{{.Name}}" {
+  name         = "{{.Name}}"
+  machine_type = "{{.MachineType}}"
+  zone         = "{{.Zone}}"
+
+  ...
+}
