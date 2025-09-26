@@ -60,7 +60,7 @@ func CreateMachineConfigBundle(controlPlaneIp string, bootstrapInfos state.Boots
 		generate.WithNetworkOptions(
 			v1alpha1.WithKubeSpan(),
 		),
-		generate.WithInstallDisk(bootstrapInfos.TalosInstallDisk),
+		generate.WithInstallDisk(bootstrapInfos.TalosInfo.TalosInstallDisk),
 		generate.WithInstallImage("ghcr.io/siderolabs/installer:latest"),
 		// generate.WithAdditionalSubjectAltNames([]string{_____}),// TODO : Add the right SAN for external IP / DNS
 		generate.WithPersist(true),
@@ -69,9 +69,9 @@ func CreateMachineConfigBundle(controlPlaneIp string, bootstrapInfos state.Boots
 
 	configBundle, err := talosgen.GenerateConfigBundle(
 		genOptions,
-		bootstrapInfos.ClusterName,
+		bootstrapInfos.TalosInfo.ClusterName,
 		fmt.Sprintf("https://%s:6443", controlPlaneIp),
-		bootstrapInfos.KubernetesVersion,
+		bootstrapInfos.TalosInfo.KubernetesVersion,
 		[]string{},
 		[]string{},
 		[]string{})
@@ -80,7 +80,7 @@ func CreateMachineConfigBundle(controlPlaneIp string, bootstrapInfos state.Boots
 		return nil, err
 	}
 
-	talosConfig := configBundle.TalosConfig().Contexts[bootstrapInfos.ClusterName]
+	talosConfig := configBundle.TalosConfig().Contexts[bootstrapInfos.TalosInfo.ClusterName]
 	talosConfig.Endpoints = append(talosConfig.Endpoints, fmt.Sprintf("https://%s:50000", controlPlaneIp))
 
 	return configBundle, nil

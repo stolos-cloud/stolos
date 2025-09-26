@@ -7,8 +7,8 @@ import (
 	"net/url"
 	"sync"
 
-	"github.com/stolos-cloud/stolos-bootstrap/pkg/oauth/providers"
 	"github.com/pkg/browser"
+	"github.com/stolos-cloud/stolos-bootstrap/pkg/oauth/providers"
 	"golang.org/x/oauth2"
 )
 
