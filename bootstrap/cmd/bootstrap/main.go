@@ -195,6 +195,7 @@ func main() {
 		Kind:        tui.StepSpinner,
 		IsDone:      false, // Set by server
 		AutoAdvance: true,
+		OnEnter:     RunStartMachineconfigServerStep,
 	}
 
 	waitWorkerStep := tui.Step{
