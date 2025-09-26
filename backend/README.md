@@ -62,8 +62,37 @@ curl -X POST http://localhost:8080/api/v1/gcp/initialize
 # Check GCP status:
 curl http://localhost:8080/api/v1/gcp/status
 
+# Configure gcp service-account
+source .env
+curl -X PUT http://localhost:8080/api/v1/gcp/service-account \
+    -H "Content-Type: application/json" \
+    -d "$(jq -n \
+      --arg project_id "$GCP_PROJECT_ID" \
+      --arg region "$GCP_REGION" \
+      --arg service_account_json "$GCP_SERVICE_ACCOUNT_JSON" \
+      '{
+        project_id: $project_id,
+        region: $region, 
+        service_account_json: $service_account_json
+      }')"
+
+# Create terraform bucket:
+curl -X POST http://localhost:8080/api/v1/gcp/bucket -d '{
+  "project_id": "your-project-id",
+  "region": "your-region"
+}'
+
+# init infra
+curl -X POST http://localhost:8080/api/v1/gcp/init-infra
+
+# destroy infra
+curl -X POST http://localhost:8080/api/v1/gcp/destroy-infra
+
 # List nodes:
 curl http://localhost:8080/api/v1/nodes
+
+# List pending nodes:
+curl http://localhost:8080/api/v1/nodes?status=pending
 
 # Create nodes:
 curl -X POST http://localhost:8080/api/v1/nodes
@@ -71,7 +100,7 @@ curl -X POST http://localhost:8080/api/v1/nodes
 # Get specific node:
 curl http://localhost:8080/api/v1/nodes/uuid-here
 
-# Sync GCP nodes (queries all GCP instances):
+# Sync GCP nodes:
 curl -X POST http://localhost:8080/api/v1/nodes/sync-gcp
 
 # Generate ISO:

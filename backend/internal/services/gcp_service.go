@@ -2,19 +2,12 @@ package services
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/json"
 	"fmt"
-	"math/big"
-	"net/http"
 
 	"github.com/etsmtl-pfe-cloudnative/backend/internal/config"
 	"github.com/etsmtl-pfe-cloudnative/backend/internal/models"
+	"github.com/etsmtl-pfe-cloudnative/backend/pkg/gcp"
 	"github.com/google/uuid"
-	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
-	"google.golang.org/api/option"
-	"google.golang.org/api/storage/v1"
 	"gorm.io/gorm"
 )
 
@@ -30,72 +23,34 @@ func NewGCPService(db *gorm.DB, cfg *config.Config) *GCPService {
 	}
 }
 
-func (s *GCPService) IsConfigured() bool {
+func (s *GCPService) IsConfiguredFromDatabase() bool {
+	config, err := s.GetCurrentConfig()
+	return err == nil && config != nil && config.IsConfigured
+}
+
+func (s *GCPService) IsConfiguredFromEnv() bool {
 	return s.cfg.GCP.ProjectID != "" && s.cfg.GCP.ServiceAccountJSON != ""
 }
 
 func (s *GCPService) InitializeGCP(ctx context.Context) (*models.GCPConfig, error) {
-	if !s.IsConfigured() {
-		return nil, fmt.Errorf("GCP not configured. Please set ProjectID and ServiceAccountJSON in config")
+	if s.IsConfiguredFromDatabase() {
+		return s.GetCurrentConfig()
 	}
 
-	existing, err := s.GetCurrentConfig()
-	if err != nil && err != gorm.ErrRecordNotFound {
-		return nil, fmt.Errorf("failed to check existing config: %w", err)
-	}
-	if existing != nil && existing.IsConfigured {
-		return existing, nil
+	if !s.IsConfiguredFromEnv() {
+		return nil, fmt.Errorf("GCP not configured. Please set ProjectID and ServiceAccountJSON in config or database")
 	}
 
-	client, err := s.createGCPClient(ctx)
+	bucketName, err := s.CreateTerraformBucket(ctx, s.cfg.GCP.ProjectID, s.cfg.GCP.Region)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create GCP client: %w", err)
+		return nil, fmt.Errorf("failed to create terraform bucket: %w", err)
 	}
 
-	// Create storage service
-	storageService, err := storage.NewService(ctx, option.WithHTTPClient(client))
+	gcpConfig, err := s.UpdateServiceAccount(ctx, s.cfg.GCP.ProjectID, s.cfg.GCP.Region, s.cfg.GCP.ServiceAccountJSON, bucketName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create storage service: %w", err)
-	}
-
-	bucketName := fmt.Sprintf("stolos-tf-state-%s", s.generateRandomString(8))
-
-	// Create storage bucket for Terraform state
-	bucket := &storage.Bucket{
-		Name:     bucketName,
-		Location: s.cfg.GCP.Region,
-		Versioning: &storage.BucketVersioning{
-			Enabled: true,
-		},
-		// Enable uniform bucket-level access
-		IamConfiguration: &storage.BucketIamConfiguration{
-			UniformBucketLevelAccess: &storage.BucketIamConfigurationUniformBucketLevelAccess{
-				Enabled: true,
-			},
-		},
-	}
-
-	_, err = storageService.Buckets.Insert(s.cfg.GCP.ProjectID, bucket).Context(ctx).Do()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create storage bucket: %w", err)
-	}
-
-	// Save config to db
-	gcpConfig := &models.GCPConfig{
-		ID:                    uuid.New(),
-		ProjectID:             s.cfg.GCP.ProjectID,
-		BucketName:            bucketName,
-		ServiceAccountEmail:   s.getServiceAccountEmail(),
-		ServiceAccountKeyJSON: s.cfg.GCP.ServiceAccountJSON, // talk about security..
-		Region:                s.cfg.GCP.Region,
-		IsConfigured:          true,
-	}
-
-	if err := s.db.Create(gcpConfig).Error; err != nil {
 		return nil, fmt.Errorf("failed to save GCP config: %w", err)
 	}
 
-	gcpConfig.ServiceAccountKeyJSON = ""
 	return gcpConfig, nil
 }
 
@@ -108,6 +63,16 @@ func (s *GCPService) GetCurrentConfig() (*models.GCPConfig, error) {
 
 	// clear key before returning
 	config.ServiceAccountKeyJSON = ""
+	return &config, nil
+}
+
+// returns config including service account credentials // TODO handle better
+func (s *GCPService) GetCurrentConfigWithCredentials() (*models.GCPConfig, error) {
+	var config models.GCPConfig
+	err := s.db.Where("is_configured = ?", true).First(&config).Error
+	if err != nil {
+		return nil, err
+	}
 	return &config, nil
 }
 
@@ -124,30 +89,108 @@ func (s *GCPService) GetTerraformBackendConfig() (map[string]string, error) {
 	}, nil
 }
 
-func (s *GCPService) createGCPClient(ctx context.Context) (*http.Client, error) {
-	creds, err := google.CredentialsFromJSON(ctx, []byte(s.cfg.GCP.ServiceAccountJSON), storage.CloudPlatformScope)
+
+
+func (s *GCPService) UpdateServiceAccount(ctx context.Context, projectID, region, serviceAccountJSON string, bucketName ...string) (*models.GCPConfig, error) {
+	gcpConfig := &gcp.Config{
+		ProjectID:          projectID,
+		Region:             region,
+		ServiceAccountJSON: serviceAccountJSON,
+	}
+
+	_, err := gcp.NewClientFromConfig(gcpConfig)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create credentials: %w", err)
+		return nil, fmt.Errorf("invalid service account configuration: %w", err)
 	}
 
-	ts := creds.TokenSource
-	return oauth2.NewClient(ctx, ts), nil
+	var dbConfig models.GCPConfig
+	err = s.db.Where("is_configured = ?", true).First(&dbConfig).Error
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return nil, fmt.Errorf("failed to fetch existing config: %w", err)
+	}
+
+	if err == gorm.ErrRecordNotFound {
+		dbConfig = models.GCPConfig{
+			ID:           uuid.New(),
+			IsConfigured: true,
+		}
+	}
+
+	dbConfig.ProjectID = projectID
+	dbConfig.Region = region
+	dbConfig.ServiceAccountEmail = gcpConfig.ServiceAccountEmail
+	dbConfig.ServiceAccountKeyJSON = serviceAccountJSON
+
+	// Set bucket name if provided
+	if len(bucketName) > 0 && bucketName[0] != "" {
+		dbConfig.BucketName = bucketName[0]
+	}
+
+	if err == gorm.ErrRecordNotFound {
+		err = s.db.Create(&dbConfig).Error
+	} else {
+		err = s.db.Save(&dbConfig).Error
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to save service account config: %w", err)
+	}
+
+	dbConfig.ServiceAccountKeyJSON = ""
+	return &dbConfig, nil
 }
 
-func (s *GCPService) getServiceAccountEmail() string {
-	var sa struct {
-		ClientEmail string `json:"client_email"`
+func (s *GCPService) CreateTerraformBucket(ctx context.Context, projectID, region string) (string, error) {
+	// Try to get from database first, if not available use env config
+	var gcpClient *gcp.Client
+	var err error
+
+	if s.IsConfiguredFromDatabase() {
+		config, err := s.GetCurrentConfig()
+		if err != nil {
+			return "", fmt.Errorf("failed to get database config: %w", err)
+		}
+		gcpClient, err = gcp.NewClientFromConfig(&gcp.Config{
+			ProjectID:           config.ProjectID,
+			Region:              config.Region,
+			ServiceAccountJSON:  config.ServiceAccountKeyJSON,
+			ServiceAccountEmail: config.ServiceAccountEmail,
+		})
+		if err != nil {
+			return "", fmt.Errorf("failed to create GCP client from database config: %w", err)
+		}
+	} else if s.IsConfiguredFromEnv() {
+		gcpClient, err = gcp.NewClientFromConfig(&gcp.Config{
+			ProjectID:          projectID,
+			Region:             region,
+			ServiceAccountJSON: s.cfg.GCP.ServiceAccountJSON,
+		})
+		if err != nil {
+			return "", fmt.Errorf("failed to create GCP client from env config: %w", err)
+		}
+	} else {
+		return "", fmt.Errorf("GCP not configured in database or environment")
 	}
-	json.Unmarshal([]byte(s.cfg.GCP.ServiceAccountJSON), &sa)
-	return sa.ClientEmail
+
+	bucketName, err := gcpClient.CreateTerraformBucket(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to create terraform bucket: %w", err)
+	}
+
+	// Only update database config if it exists
+	if s.IsConfiguredFromDatabase() {
+		config, err := s.GetCurrentConfig()
+		if err == nil {
+			config.BucketName = bucketName
+			if err := s.db.Save(config).Error; err != nil {
+				return "", fmt.Errorf("failed to update bucket name in config: %w", err)
+			}
+		}
+	}
+
+	return bucketName, nil
 }
 
-func (s *GCPService) generateRandomString(length int) string {
-	const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
-	b := make([]byte, length)
-	for i := range b {
-		n, _ := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))
-		b[i] = charset[n.Int64()]
-	}
-	return string(b)
-}
+
+
+

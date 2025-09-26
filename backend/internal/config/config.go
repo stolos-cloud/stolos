@@ -59,6 +59,11 @@ func Load() (*Config, error) {
 	if dbHost := os.Getenv("DB_HOST"); dbHost != "" {
 		config.Database.Host = dbHost
 	}
+	if dbPort := os.Getenv("DB_PORT"); dbPort != "" {
+		if port, err := strconv.Atoi(dbPort); err == nil {
+			config.Database.Port = port
+		}
+	}
 	if dbUser := os.Getenv("DB_USER"); dbUser != "" {
 		config.Database.User = dbUser
 	}

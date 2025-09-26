@@ -2,12 +2,16 @@ package gcp
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/json"
 	"fmt"
+	"math/big"
 	"os"
 
 	"golang.org/x/oauth2/google"
 	compute "google.golang.org/api/compute/v1"
 	"google.golang.org/api/option"
+	"google.golang.org/api/storage/v1"
 )
 
 type Config struct {
@@ -20,6 +24,7 @@ type Config struct {
 type Client struct {
 	config        *Config
 	computeClient *compute.Service
+	storageClient *storage.Service
 }
 
 func NewClientFromEnv() (*Client, error) {
@@ -28,8 +33,12 @@ func NewClientFromEnv() (*Client, error) {
 		return nil, fmt.Errorf("failed to load config from env: %w", err)
 	}
 
+	return NewClientFromConfig(config)
+}
+
+func NewClientFromConfig(config *Config) (*Client, error) {
 	ctx := context.Background()
-	credentials, err := google.CredentialsFromJSON(ctx, []byte(config.ServiceAccountJSON), compute.CloudPlatformScope)
+	credentials, err := google.CredentialsFromJSON(ctx, []byte(config.ServiceAccountJSON), compute.CloudPlatformScope, storage.CloudPlatformScope)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create GCP credentials: %w", err)
 	}
@@ -39,9 +48,19 @@ func NewClientFromEnv() (*Client, error) {
 		return nil, fmt.Errorf("failed to create compute service: %w", err)
 	}
 
+	storageService, err := storage.NewService(ctx, option.WithCredentials(credentials))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create storage service: %w", err)
+	}
+
+	if config.ServiceAccountEmail == "" {
+		config.ServiceAccountEmail = extractServiceAccountEmail(config.ServiceAccountJSON)
+	}
+
 	return &Client{
 		config:        config,
 		computeClient: computeService,
+		storageClient: storageService,
 	}, nil
 }
 
@@ -122,4 +141,46 @@ func (c *Client) getZonesInRegion(ctx context.Context) ([]*compute.Zone, error) 
 		return nil, err
 	}
 	return resp.Items, nil
+}
+
+func (c *Client) CreateTerraformBucket(ctx context.Context) (string, error) {
+	bucketName := fmt.Sprintf("stolos-tf-state-%s", generateRandomString(8))
+
+	bucket := &storage.Bucket{
+		Name:     bucketName,
+		Location: c.config.Region,
+		Versioning: &storage.BucketVersioning{
+			Enabled: true,
+		},
+		IamConfiguration: &storage.BucketIamConfiguration{
+			UniformBucketLevelAccess: &storage.BucketIamConfigurationUniformBucketLevelAccess{
+				Enabled: true,
+			},
+		},
+	}
+
+	_, err := c.storageClient.Buckets.Insert(c.config.ProjectID, bucket).Context(ctx).Do()
+	if err != nil {
+		return "", fmt.Errorf("failed to create storage bucket: %w", err)
+	}
+
+	return bucketName, nil
+}
+
+func extractServiceAccountEmail(serviceAccountJSON string) string {
+	var sa struct {
+		ClientEmail string `json:"client_email"`
+	}
+	json.Unmarshal([]byte(serviceAccountJSON), &sa)
+	return sa.ClientEmail
+}
+
+func generateRandomString(length int) string {
+	const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
+	b := make([]byte, length)
+	for i := range b {
+		n, _ := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))
+		b[i] = charset[n.Int64()]
+	}
+	return string(b)
 }
