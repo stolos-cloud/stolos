@@ -83,7 +83,8 @@
         "subheading": "Manage your cloud resources"
     },
     "cloudProvider": {
-        "title": "Cloud Provider"
+        "title": "Cloud Provider",
+        "subheading": "Manage your cloud provider settings"
     },
     "templates": {
         "title": "Templates"
