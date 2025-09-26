@@ -15,7 +15,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-var Steps []Step
+var Steps []*Step
 
 // StepKind describes what the step renders.
 type StepKind int
@@ -87,7 +87,7 @@ func (l *UILogger) emit(m tea.Msg) {
 }
 
 // NewWizard constructs the Bubble Tea Program + UILogger from the provided Steps.
-func NewWizard(steps []Step) (*tea.Program, *Model) {
+func NewWizard(steps []*Step) (*tea.Program, *Model) {
 	m := newModel(steps)
 	p := tea.NewProgram(&m, tea.WithAltScreen())
 	m.Program = p
@@ -119,7 +119,7 @@ type tickMsg struct{}
 
 // Model holds UI state.
 type Model struct {
-	Steps             []Step
+	Steps             []*Step
 	Logger            *UILogger
 	CurrentStepIndex  int
 	Width             int
@@ -131,7 +131,7 @@ type Model struct {
 	Program           *tea.Program // Backref for internal Cmds that may need Send
 }
 
-func newModel(steps []Step) Model {
+func newModel(steps []*Step) Model {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	return Model{
@@ -157,6 +157,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// AutoAdvance when step IsDone
 	if m.getCurrentStep().AutoAdvance && m.getCurrentStep().IsDone {
+		if m.getCurrentStep().OnExit != nil {
+			m.getCurrentStep().OnExit(m, m.getCurrentStep())
+		}
 		return m, m.enterStepCmd(m.CurrentStepIndex + 1)
 	}
 
@@ -169,6 +172,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "enter":
 			if m.getCurrentStep().IsDone {
+				if m.getCurrentStep().OnExit != nil {
+					m.getCurrentStep().OnExit(m, m.getCurrentStep())
+				}
 				return m, m.advanceCmd()
 			}
 			return m, nil
@@ -208,25 +214,27 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case stepEnteredMsg:
 		step := &m.Steps[msg.idx]
 
-		if step.isStarted {
+		if (*step).isStarted {
 			// Already entered, skip duplicate
 			return m, nil
 		}
 
-		step.isStarted = true
+		(*step).isStarted = true
 
 		var cmds []tea.Cmd
-		if step.Kind == StepSpinner {
+		if (*step).Kind == StepSpinner {
 			cmds = append(cmds, m.Spinner.Tick)
 		}
-		if step.OnEnter != nil {
-			cmds = append(cmds, step.OnEnter(m, step))
+		if (*step).OnEnter != nil {
+			cmds = append(cmds, (*step).OnEnter(m, *step))
 		}
 		return m, tea.Batch(cmds...)
 
 	case advanceMsg:
 		currentStep := m.getCurrentStep()
-		currentStep.OnExit(m, &currentStep)
+		if currentStep.OnExit != nil {
+			currentStep.OnExit(m, currentStep)
+		}
 		return m, m.advanceCmd()
 	}
 
@@ -268,19 +276,29 @@ func (m *Model) View() string {
 	return b.String()
 }
 
-func SetStepIsDone(model *Model, name string, done bool) {
+func SetStepIsDoneByName(model *Model, name string, done bool) {
 	_, step := FindStepByName(model, name)
 	step.IsDone = done
 }
 
 // DisableStep .
-func DisableStep(model *Model, name string, isDisabled bool) {
+func DisableStepByName(model *Model, name string, isDisabled bool) {
 	if !isDisabled {
 		return // avoid lookup for no reason.
 	}
 	_, step := FindStepByName(model, name)
-	step.AutoAdvance = false
-	step.IsDone = false
+	step.AutoAdvance = true
+	step.IsDone = true
+	// Will skip as soon as entered.
+}
+
+// DisableStep .
+func DisableStep(step *Step, isDisabled bool) {
+	if !isDisabled {
+		return
+	}
+	step.AutoAdvance = true
+	step.IsDone = true
 	// Will skip as soon as entered.
 }
 
@@ -289,7 +307,7 @@ func DisableStep(model *Model, name string, isDisabled bool) {
 func FindStepByName(model *Model, name string) (int, *Step) {
 	for i := range model.Steps {
 		if model.Steps[i].Name == name {
-			return i, &model.Steps[i]
+			return i, model.Steps[i]
 		}
 	}
 	return -1, nil
@@ -312,7 +330,7 @@ func SkipToStep(model *Model, name string) {
 
 // Steps helper / processing
 
-func (m *Model) getCurrentStep() Step { return m.Steps[m.CurrentStepIndex] }
+func (m *Model) getCurrentStep() *Step { return m.Steps[m.CurrentStepIndex] }
 
 func (m *Model) enterStepCmd(i int) tea.Cmd {
 	m.CurrentStepIndex = i
@@ -330,6 +348,7 @@ func (m *Model) enterStepCmd(i int) tea.Cmd {
 
 func (m *Model) advanceCmd() tea.Cmd {
 	// TODO : Execute OnExit
+	m.getCurrentStep()
 	if m.CurrentStepIndex >= len(m.Steps)-1 {
 		return tea.Quit
 	}

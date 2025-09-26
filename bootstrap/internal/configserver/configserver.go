@@ -132,7 +132,7 @@ func handleControlPlane(model *tui.Model, ip string, mac string, uuid string, sa
 	patch := configpatcher.NewStrategicMergePatch(ctr)
 	err = state.ConfigBundle.ApplyPatches([]configpatcher.Patch{patch}, true, false)
 
-	tui.SetStepIsDone(model, "WaitControlPlane", true)
+	tui.SetStepIsDoneByName(model, "WaitControlPlane", true)
 	return state.ConfigBundle.Serialize(encoder.CommentsDocs, machine.TypeControlPlane)
 }
 
@@ -158,6 +158,6 @@ func handleWorker(model *tui.Model, ip string, mac string, uuid string, saveStat
 	_ = state.ConfigBundle.ApplyPatches([]configpatcher.Patch{patch}, false, true)
 
 	// TODO : SET IS DONE WHEN 3 WORKER
-	// tui.SetStepIsDone(model, "WaitWorker", true)
+	// tui.SetStepIsDoneByName(model, "WaitWorker", true)
 	return state.ConfigBundle.Serialize(encoder.CommentsDocs, machine.TypeWorker)
 }

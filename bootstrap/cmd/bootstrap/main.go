@@ -38,6 +38,9 @@ var githubConfig *github.Config
 var oauthServer *oauth.Server
 var githubToken *oauth2.Token
 
+var gcpEnabled = gcp.GCPClientId != "" && gcp.GCPClientSecret != ""
+var gitHubEnabled = github.GithubClientId != "" && github.GithubClientSecret != ""
+
 func main() {
 
 	tui.RegisterDefaultFunc("GetOutboundIP", GetOutboundIP)
@@ -74,9 +77,13 @@ func main() {
 		Fields:      tui.CreateFieldsForStruct[github.GitHubInfo](),
 		IsDone:      true,
 		AutoAdvance: false,
-		OnEnter: func(m *tui.Model, s *tui.Step) tea.Cmd {
-			oauthServer = RunOAuthServerInBackround(m.Logger)
-			return nil
+		OnExit: func(m *tui.Model, s *tui.Step) {
+			if !didReadBootstrapInfos {
+				githubInfo, err := tui.RetrieveStructFromFields[github.GitHubInfo](s.Fields)
+				if err != nil {
+				}
+				bootstrapInfos.GitHubInfo = *githubInfo
+			}
 		},
 	}
 
@@ -121,6 +128,14 @@ func main() {
 		OnEnter: func(m *tui.Model, s *tui.Step) tea.Cmd {
 			// TODO
 			return nil
+		},
+		OnExit: func(m *tui.Model, s *tui.Step) {
+			if !didReadBootstrapInfos {
+				gcpInfo, err := tui.RetrieveStructFromFields[state.GCPInfo](s.Fields)
+				if err != nil {
+				}
+				bootstrapInfos.GCPInfo = *gcpInfo
+			}
 		},
 	}
 
@@ -186,8 +201,17 @@ func main() {
 		Name:        "WaitWorkerStep",
 		Title:       "3.3) Wait Worker",
 		Kind:        tui.StepSpinner,
-		IsDone:      false, // Set by server
+		IsDone:      true,  // Set by server
+		AutoAdvance: false, // TODO bypassed for now via ENTER key
+	}
+
+	clusterBootstrapStep := tui.Step{
+		Name:        "ClusterBootstrap",
+		Title:       "3.4) Bootstrap Kubernetes",
+		Kind:        tui.StepSpinner,
+		IsDone:      false,
 		AutoAdvance: true,
+		OnEnter:     RunClusterBootstrapStepInBackground,
 	}
 
 	deployArgoStep := tui.Step{
@@ -208,39 +232,55 @@ func main() {
 		OnEnter:     RunPortalStepInBackground,
 	}
 
-	tui.Steps = []tui.Step{
-		githubInfoStep,
-		githubAuthStep,
-		githubRepoStep,
-		githubAppStep,
-		gcpInfoStep,
-		gcpAuthStep,
-		gcpSAStep,
-		talosInfoStep,
-		talosISOStep,
-		waitControlPlaneStep,
-		waitWorkerStep,
-		deployArgoStep,
-		deployPortalStep,
+	// Skip all gcp steps if not enabled
+	tui.DisableStep(&gcpInfoStep, !gcpEnabled)
+	tui.DisableStep(&gcpAuthStep, !gcpEnabled)
+	tui.DisableStep(&gcpSAStep, !gcpEnabled)
+
+	// Skip all github steps if not enabled
+	tui.DisableStep(&githubInfoStep, !gitHubEnabled)
+	tui.DisableStep(&githubAuthStep, !gitHubEnabled)
+	tui.DisableStep(&githubRepoStep, !gitHubEnabled)
+	tui.DisableStep(&githubAppStep, !gitHubEnabled)
+
+	// Attn. sa fait des copies ici !
+	tui.Steps = []*tui.Step{
+		&githubInfoStep,
+		&githubAuthStep,
+		&githubRepoStep,
+		&githubAppStep,
+		&gcpInfoStep,
+		&gcpAuthStep,
+		&gcpSAStep,
+		&talosInfoStep,
+		&talosISOStep,
+		&waitControlPlaneStep,
+		&waitWorkerStep,
+		&clusterBootstrapStep,
+		&deployArgoStep,
+		&deployPortalStep,
 	}
 
 	p, model := tui.NewWizard(tui.Steps)
+
+	// Setup the OAuth providers and get feature enablement state
+	oauthServer = SetupOAuthServer(model.Logger)
+	if gcpEnabled {
+		SetupGCP()
+	}
+	if gitHubEnabled {
+		SetupGitHub()
+	}
+
+	if gitHubEnabled || gcpEnabled {
+		RunOAuthServerInBackround(model.Logger)
+	}
+
+	// Run will block.
 	if _, err := p.Run(); err != nil {
 		fmt.Println("Error:", err)
 	}
 
-	oauthServer = SetupOAuthServer(model.Logger)
-	gcpEnabled := SetupGCP()
-	gitHubEnabled := SetupGitHub()
-
-	tui.DisableStep(model, gcpInfoStep.Name, !gcpEnabled)
-	tui.DisableStep(model, gcpAuthStep.Name, !gcpEnabled)
-	tui.DisableStep(model, gcpSAStep.Name, !gcpEnabled)
-
-	tui.DisableStep(model, githubInfoStep.Name, !gitHubEnabled)
-	tui.DisableStep(model, githubAuthStep.Name, !gitHubEnabled)
-	tui.DisableStep(model, githubRepoStep.Name, !gitHubEnabled)
-	tui.DisableStep(model, githubAppStep.Name, !gitHubEnabled)
 }
 
 func RunOAuthServerInBackround(logger *tui.UILogger) {
@@ -261,22 +301,18 @@ func SetupOAuthServer(logger *tui.UILogger) *oauth.Server {
 	return server
 }
 
-func SetupGitHub() bool {
+func SetupGitHub() {
 	if github.GithubClientId != "" && github.GithubClientSecret != "" {
 		githubProvider := oauth.NewGitHubProvider(github.GithubClientId, github.GithubClientSecret)
 		oauthServer.RegisterProvider(githubProvider)
-		return true
 	}
-	return false
 }
 
-func SetupGCP() bool {
+func SetupGCP() {
 	if gcp.GCPClientId != "" && gcp.GCPClientSecret != "" {
 		gcpProvider := oauth.NewGCPProvider(gcp.GCPClientId, gcp.GCPClientSecret)
 		oauthServer.RegisterProvider(gcpProvider)
-		return true
 	}
-	return false
 }
 
 func RunGCPSAStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
@@ -350,7 +386,7 @@ func RunGitHubAuthStepInBackground(m *tui.Model, _ *tui.Step) tea.Cmd {
 func RunStartMachineconfigServerStep(m *tui.Model, s *tui.Step) tea.Cmd {
 	m.Logger.Infof("Cluster: %s", bootstrapInfos.TalosInfo.ClusterName)
 	addr := bootstrapInfos.TalosInfo.HTTPHostname + ":" + bootstrapInfos.TalosInfo.HTTPPort
-	StartMachineconfigServerInBackground(m.Logger, addr)
+	StartMachineconfigServerInBackground(m, addr)
 	s.IsDone = true
 	return nil
 }
@@ -359,7 +395,7 @@ func RunTalosISOStep(m *tui.Model, s *tui.Step) tea.Cmd {
 	if doRestoreProgress {
 		m.Logger.Info("State file found, skipping to tui.Steps[5]")
 		addr := bootstrapInfos.TalosInfo.HTTPHostname + ":" + bootstrapInfos.TalosInfo.HTTPPort
-		StartMachineconfigServerInBackground(m.Logger, addr)
+		StartMachineconfigServerInBackground(m, addr)
 		m.CurrentStepIndex = 5
 		return nil
 	}
@@ -516,11 +552,11 @@ func CreateProviderSecrets(loggerRef *tui.UILogger) {
 	}
 }
 
-func StartMachineconfigServerInBackground(loggerRef *tui.UILogger, addr string) {
-	loggerRef.Infof("Starting HTTP Machineconfig Server on %s …", addr)
+func StartMachineconfigServerInBackground(model *tui.Model, addr string) {
+	model.Logger.Infof("Starting HTTP Machineconfig Server on %s …", addr)
 	go func() {
-		if err := configserver.StartConfigServer(loggerRef, addr, doRestoreProgress, &saveState, bootstrapInfos); err != nil {
-			loggerRef.Errorf("Config server stopped: %v", err)
+		if err := configserver.StartConfigServer(model, addr, doRestoreProgress, &saveState, bootstrapInfos); err != nil {
+			model.Logger.Errorf("Config server stopped: %v", err)
 		}
 	}()
 }
