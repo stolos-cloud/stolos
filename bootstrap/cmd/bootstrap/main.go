@@ -37,11 +37,13 @@ var gcpConfig *gcp.Config
 var githubConfig *github.Config
 var oauthServer *oauth.Server
 var githubToken *oauth2.Token
-
+var gcpToken *oauth2.Token
 var gcpEnabled = gcp.GCPClientId != "" && gcp.GCPClientSecret != ""
 var gitHubEnabled = github.GithubClientId != "" && github.GithubClientSecret != ""
 
 func main() {
+
+	gcpEnabled = false
 
 	tui.RegisterDefaultFunc("GetOutboundIP", GetOutboundIP)
 
@@ -110,7 +112,7 @@ func main() {
 	}
 
 	githubAppStep := tui.Step{
-		// TODO: Implement GitHub
+		// TODO: Implement GitHub App Manifest Flow
 		Name:        "GitHubApp",
 		Title:       "1.3) Create GitHub App",
 		Kind:        tui.StepSpinner,
@@ -146,7 +148,16 @@ func main() {
 		IsDone:      false,
 		AutoAdvance: true,
 		OnEnter: func(m *tui.Model, s *tui.Step) tea.Cmd {
-			// TODO
+			if !gcpEnabled {
+				return nil
+			}
+			gcpToken, err = oauthServer.Authenticate(context.Background(), "GCP")
+			if err != nil {
+				m.Logger.Errorf("Failed to authenticate with GCP: %v", err)
+				s.IsDone = true
+				// TODO handle fail
+			}
+			s.IsDone = true
 			return nil
 		},
 	}
@@ -157,10 +168,7 @@ func main() {
 		Kind:        tui.StepSpinner,
 		IsDone:      false,
 		AutoAdvance: true,
-		OnEnter: func(m *tui.Model, s *tui.Step) tea.Cmd {
-			// TODO
-			return nil
-		},
+		OnEnter:     RunGCPSAStepInBackground,
 	}
 
 	talosInfoStep := tui.Step{
@@ -287,12 +295,14 @@ func main() {
 func RunOAuthServerInBackround(logger *tui.UILogger) {
 	go func() {
 		ctx := context.Background()
+		defer oauthServer.Stop(ctx)
 		if err := oauthServer.Start(ctx); err != nil {
 			logger.Errorf("skipping, oauth server start failed: %v", err)
 			tui.Steps[1].IsDone = true
 			return
 		}
-		defer oauthServer.Stop(ctx)
+		// Keep the server running
+		select {}
 	}()
 }
 
@@ -318,27 +328,26 @@ func SetupGCP() {
 
 func RunGCPSAStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 
+	if !gcpEnabled {
+		return nil
+	}
+
 	m.Logger.Infof("Read bootstrap infos from file, clusterName: %s", bootstrapInfos.TalosInfo.ClusterName)
 
 	go func() {
 		if gcp.GCPClientId != "" && gcp.GCPClientSecret != "" {
-			gcpToken, err := oauthServer.Authenticate(context.Background(), "GCP")
+			// Create GCP service account
+			_, err := gcp.CreateServiceAccountWithOAuth(
+				context.Background(),
+				bootstrapInfos.GCPInfo.GCPProjectID,
+				bootstrapInfos.GCPInfo.GCPRegion,
+				gcpToken,
+				"stolos-platform-sa",
+			)
 			if err != nil {
-				m.Logger.Errorf("Failed to authenticate with GCP: %v", err)
+				m.Logger.Errorf("Failed to create GCP service account: %v", err)
 			} else {
-				// Create GCP service account
-				gcpConfig, err = gcp.CreateServiceAccountWithOAuth(
-					context.Background(),
-					bootstrapInfos.GCPInfo.GCPProjectID,
-					bootstrapInfos.GCPInfo.GCPRegion,
-					gcpToken,
-					"stolos-platform-sa",
-				)
-				if err != nil {
-					m.Logger.Errorf("Failed to create GCP service account: %v", err)
-				} else {
-					m.Logger.Success("GCP service account created successfully")
-				}
+				m.Logger.Success("GCP service account created successfully")
 			}
 		} else {
 			m.Logger.Infof("GCP OAuth credentials not provided, skipping GCP service account creation")
@@ -349,7 +358,7 @@ func RunGCPSAStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 	return nil
 }
 
-func RunGitHubRepoStepInBackground(m *tui.Model, _ *tui.Step) tea.Cmd {
+func RunGitHubRepoStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 	// Create GitHub client and initialize repository
 	githubClient := github.NewClient(githubToken)
 	githubBootstrapInfo := &github.GitHubInfo{
@@ -368,18 +377,20 @@ func RunGitHubRepoStepInBackground(m *tui.Model, _ *tui.Step) tea.Cmd {
 	githubConfig = github.NewConfig(githubToken, bootstrapInfos.GitHubInfo.RepoOwner, bootstrapInfos.GitHubInfo.RepoName)
 
 	m.Logger.Infof("Repo initialized: https://github.com/%s/%s.git", bootstrapInfos.GitHubInfo.RepoOwner, bootstrapInfos.GitHubInfo.RepoName)
+	s.IsDone = true
 	return nil
 }
 
-func RunGitHubAuthStepInBackground(m *tui.Model, _ *tui.Step) tea.Cmd {
+func RunGitHubAuthStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 	go func() {
 		var err error
 		githubToken, err = oauthServer.Authenticate(context.Background(), "GitHub")
 		if err != nil {
 			m.Logger.Errorf("skipping, oauth server authenticate failed: %v", err)
-			tui.Steps[1].IsDone = true
+			s.IsDone = true
 			return
 		}
+		s.IsDone = true
 	}()
 	return nil
 }
