@@ -26,20 +26,21 @@ func NewHandlers(db *gorm.DB, cfg *config.Config) *Handlers {
 }
 
 func SetupRoutes(r *gin.Engine, handlers *Handlers) {
-	healthHandler := func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "healthy"})
-	}
+  r.GET("/health", func(c *gin.Context) {
+    c.JSON(http.StatusOK, gin.H{"status": "healthy"})
+  })
+  r.HEAD("/health", func(c *gin.Context) {
+    c.Status(http.StatusOK)
+  })
 
-	r.GET("/health", healthHandler)
-	r.HEAD("/health", healthHandler)
-
-	api := r.Group("/api/v1")
-	{
-		setupISORoutes(api, handlers)
-		setupNodeRoutes(api, handlers)
-		setupGCPRoutes(api, handlers)
-	}
+  api := r.Group("/api/v1")
+  {
+    setupISORoutes(api, handlers)
+    setupNodeRoutes(api, handlers)
+    setupGCPRoutes(api, handlers)
+  }
 }
+
 
 func setupISORoutes(api *gin.RouterGroup, handlers *Handlers) {
 	isos := api.Group("/isos")
