@@ -149,13 +149,15 @@ func main() {
 			if !gcpEnabled {
 				return nil
 			}
-			gcpToken, err = oauthServer.Authenticate(context.Background(), "GCP")
-			if err != nil {
-				m.Logger.Errorf("Failed to authenticate with GCP: %v", err)
+			go func() {
+				gcpToken, err = oauthServer.Authenticate(context.Background(), "GCP")
+				if err != nil {
+					m.Logger.Errorf("Failed to authenticate with GCP: %v", err)
+					s.IsDone = true
+					// TODO handle fail
+				}
 				s.IsDone = true
-				// TODO handle fail
-			}
-			s.IsDone = true
+			}()
 			return nil
 		},
 	}
