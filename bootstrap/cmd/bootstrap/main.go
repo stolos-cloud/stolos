@@ -43,8 +43,6 @@ var gitHubEnabled = github.GithubClientId != "" && github.GithubClientSecret != 
 
 func main() {
 
-	gcpEnabled = false
-
 	tui.RegisterDefaultFunc("GetOutboundIP", GetOutboundIP)
 
 	_, err := os.Stat("bootstrap-state.json")
