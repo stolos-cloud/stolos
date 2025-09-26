@@ -359,6 +359,7 @@ func RunGCPSAStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 }
 
 func RunGitHubRepoStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
+	m.Logger.Infof("Creating github repo %s...", bootstrapInfos.GitHubInfo.RepoName)
 	// Create GitHub client and initialize repository
 	githubClient := github.NewClient(githubToken)
 	githubBootstrapInfo := &github.GitHubInfo{
@@ -376,7 +377,7 @@ func RunGitHubRepoStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 	// Create GitHub config for backend
 	githubConfig = github.NewConfig(githubToken, bootstrapInfos.GitHubInfo.RepoOwner, bootstrapInfos.GitHubInfo.RepoName)
 
-	m.Logger.Infof("Repo initialized: https://github.com/%s/%s.git", bootstrapInfos.GitHubInfo.RepoOwner, bootstrapInfos.GitHubInfo.RepoName)
+	m.Logger.Successf("Repo initialized! : https://github.com/%s/%s.git", bootstrapInfos.GitHubInfo.RepoOwner, bootstrapInfos.GitHubInfo.RepoName)
 	s.IsDone = true
 	return nil
 }
