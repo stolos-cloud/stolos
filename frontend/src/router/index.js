@@ -12,7 +12,7 @@ const routes = [
   {
     path: '/',
     name: 'home',
-    redirect: '/connexion',
+    redirect: '/login',
   },
   {
     path: '/login',
