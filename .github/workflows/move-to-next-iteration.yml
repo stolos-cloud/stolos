@@ -14,11 +14,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - uses: actions/create-github-app-token@v1
+      id: token
+      with:
+        app-id: ${{ vars.GH_APP_ID }}
+        private-key: ${{ secrets.GH_APP_PRIV_KEY }}
+  
     - uses: blombard/move-to-next-iteration@master
       with:
         owner: stolos-cloud
         number: 1
-        token: ${{ secrets.GITHUB_TOKEN }}
+        token: ${{ steps.token.outputs.token }}
         iteration-field: Iteration
         iteration: last
         new-iteration: current
