@@ -8,10 +8,11 @@
     "lint": "eslint . --fix --ignore-path .gitignore"
   },
   "dependencies": {
-    "@mdi/font": "7.0.96",
+    "@mdi/font": "^7.0.96",
     "core-js": "^3.34.0",
     "roboto-fontface": "*",
     "vue": "^3.3.0",
+    "vue-i18n": "^12.0.0-alpha.3",
     "vuetify": "^3.9.7",
     "vuex": "^4.1.0"
   },

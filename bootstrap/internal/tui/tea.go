@@ -15,7 +15,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-var Steps []Step
+var Steps []*Step
 
 // StepKind describes what the step renders.
 type StepKind int
@@ -36,13 +36,16 @@ type Field struct {
 
 // Step defines one wizard step.
 type Step struct {
+	Name        string
 	Title       string
 	Kind        StepKind
 	Fields      []Field // used when Kind == StepForm
 	Body        string  // used when Kind == StepPlain or StepSpinner
+	isStarted   bool
 	IsDone      bool
 	AutoAdvance bool
-	OnEnter     func(*Model) tea.Cmd // hook called when step is entered
+	OnEnter     func(*Model, *Step) tea.Cmd // hook called when step is entered
+	OnExit      func(*Model, *Step)
 }
 
 // NewTextField constructs a text input field
@@ -66,11 +69,13 @@ type UILogger struct {
 }
 
 // Info Logs an info line (non-blocking).
+func (l *UILogger) Debug(s string)   { l.emit(logMsg{Level: LevelDebug, Text: s, At: time.Now()}) }
 func (l *UILogger) Info(s string)    { l.emit(logMsg{Level: LevelInfo, Text: s, At: time.Now()}) }
 func (l *UILogger) Warn(s string)    { l.emit(logMsg{Level: LevelWarn, Text: s, At: time.Now()}) }
 func (l *UILogger) Error(s string)   { l.emit(logMsg{Level: LevelError, Text: s, At: time.Now()}) }
 func (l *UILogger) Success(s string) { l.emit(logMsg{Level: LevelSuccess, Text: s, At: time.Now()}) }
 
+func (l *UILogger) Debugf(f string, a ...any)   { l.Debug(fmt.Sprintf(f, a...)) }
 func (l *UILogger) Infof(f string, a ...any)    { l.Info(fmt.Sprintf(f, a...)) }
 func (l *UILogger) Warnf(f string, a ...any)    { l.Warn(fmt.Sprintf(f, a...)) }
 func (l *UILogger) Errorf(f string, a ...any)   { l.Error(fmt.Sprintf(f, a...)) }
@@ -82,19 +87,21 @@ func (l *UILogger) emit(m tea.Msg) {
 }
 
 // NewWizard constructs the Bubble Tea Program + UILogger from the provided Steps.
-func NewWizard(steps []Step) (*tea.Program, *UILogger) {
+func NewWizard(steps []*Step) (*tea.Program, *Model) {
 	m := newModel(steps)
 	p := tea.NewProgram(&m, tea.WithAltScreen())
 	m.Program = p
 	l := &UILogger{send: p.Send}
-	return p, l
+	m.Logger = l
+	return p, &m
 }
 
 // Log levels & message type injected via UILogger.
 type LogLevel int
 
 const (
-	LevelInfo LogLevel = iota
+	LevelDebug LogLevel = iota
+	LevelInfo
 	LevelWarn
 	LevelError
 	LevelSuccess
@@ -112,7 +119,8 @@ type tickMsg struct{}
 
 // Model holds UI state.
 type Model struct {
-	Steps             []Step
+	Steps             []*Step
+	Logger            *UILogger
 	CurrentStepIndex  int
 	Width             int
 	Height            int
@@ -123,7 +131,7 @@ type Model struct {
 	Program           *tea.Program // Backref for internal Cmds that may need Send
 }
 
-func newModel(steps []Step) Model {
+func newModel(steps []*Step) Model {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	return Model{
@@ -149,7 +157,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// AutoAdvance when step IsDone
 	if m.getCurrentStep().AutoAdvance && m.getCurrentStep().IsDone {
-		return m, m.advanceCmd()
+		if m.getCurrentStep().OnExit != nil {
+			m.getCurrentStep().OnExit(m, m.getCurrentStep())
+		}
+		return m, m.enterStepCmd(m.CurrentStepIndex + 1)
 	}
 
 	switch msg := msg.(type) {
@@ -161,6 +172,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "enter":
 			if m.getCurrentStep().IsDone {
+				if m.getCurrentStep().OnExit != nil {
+					m.getCurrentStep().OnExit(m, m.getCurrentStep())
+				}
 				return m, m.advanceCmd()
 			}
 			return m, nil
@@ -198,16 +212,29 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case stepEnteredMsg:
-		cmds := []tea.Cmd{}
-		if m.getCurrentStep().Kind == StepSpinner {
+		step := &m.Steps[msg.idx]
+
+		if (*step).isStarted {
+			// Already entered, skip duplicate
+			return m, nil
+		}
+
+		(*step).isStarted = true
+
+		var cmds []tea.Cmd
+		if (*step).Kind == StepSpinner {
 			cmds = append(cmds, m.Spinner.Tick)
 		}
-		if m.getCurrentStep().OnEnter != nil {
-			cmds = append(cmds, m.getCurrentStep().OnEnter(m))
+		if (*step).OnEnter != nil {
+			cmds = append(cmds, (*step).OnEnter(m, *step))
 		}
 		return m, tea.Batch(cmds...)
 
 	case advanceMsg:
+		currentStep := m.getCurrentStep()
+		if currentStep.OnExit != nil {
+			currentStep.OnExit(m, currentStep)
+		}
 		return m, m.advanceCmd()
 	}
 
@@ -249,9 +276,61 @@ func (m *Model) View() string {
 	return b.String()
 }
 
+func SetStepIsDoneByName(model *Model, name string, done bool) {
+	_, step := FindStepByName(model, name)
+	step.IsDone = done
+}
+
+// DisableStep .
+func DisableStepByName(model *Model, name string, isDisabled bool) {
+	if !isDisabled {
+		return // avoid lookup for no reason.
+	}
+	_, step := FindStepByName(model, name)
+	step.AutoAdvance = true
+	step.IsDone = true
+	// Will skip as soon as entered.
+}
+
+// DisableStep .
+func DisableStep(step *Step, isDisabled bool) {
+	if !isDisabled {
+		return
+	}
+	step.AutoAdvance = true
+	step.IsDone = true
+	// Will skip as soon as entered.
+}
+
+// FindStepByName returns the index and pointer to the step with the given name.
+// If not found, it returns -1 and nil.
+func FindStepByName(model *Model, name string) (int, *Step) {
+	for i := range model.Steps {
+		if model.Steps[i].Name == name {
+			return i, model.Steps[i]
+		}
+	}
+	return -1, nil
+}
+
+// SkipToStep sets the current step to the one with the given name,
+// if it exists. If not found, it does nothing.
+func SkipToStep(model *Model, name string) {
+	idx, step := FindStepByName(model, name)
+	if step == nil || idx < 0 {
+		return
+	}
+	// Use enterStepCmd so focus and OnEnter hooks run properly.
+	cmd := model.enterStepCmd(idx)
+	if model.Program != nil {
+		// Dispatch the command into the running Program.
+		model.Program.Send(cmd())
+	}
+}
+
 // Steps helper / processing
 
-func (m *Model) getCurrentStep() Step { return m.Steps[m.CurrentStepIndex] }
+func (m *Model) getCurrentStep() *Step { return m.Steps[m.CurrentStepIndex] }
 
 func (m *Model) enterStepCmd(i int) tea.Cmd {
 	m.CurrentStepIndex = i
@@ -262,10 +341,14 @@ func (m *Model) enterStepCmd(i int) tea.Cmd {
 		m.FocusedFieldIndex = 0
 		m.Steps[m.CurrentStepIndex].Fields[0].Input.Focus()
 	}
-	return func() tea.Msg { return stepEnteredMsg{idx: i} }
+	return func() tea.Msg {
+		return stepEnteredMsg{idx: i}
+	}
 }
 
 func (m *Model) advanceCmd() tea.Cmd {
+	// TODO : Execute OnExit
+	m.getCurrentStep()
 	if m.CurrentStepIndex >= len(m.Steps)-1 {
 		return tea.Quit
 	}
@@ -351,6 +434,8 @@ func renderLogLine(l logMsg, width int) string {
 	ts := l.At.Format("15:04:05")
 	level := ""
 	switch l.Level {
+	case LevelDebug:
+		level = lipgloss.NewStyle().Foreground(lipgloss.Color("36")).Render("INFO")
 	case LevelInfo:
 		level = lipgloss.NewStyle().Foreground(lipgloss.Color("39")).Render("INFO")
 	case LevelWarn:

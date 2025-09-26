@@ -1,0 +1,144 @@
+{
+    "applicationName": "Stolos",
+    "headerTitle": {
+        "default": "Stolos"
+    },
+    "userPreferences": {
+        "myAccount": "My account",
+        "language": "Language",
+        "languages": { 
+            "en": "English",
+            "fr": "French"
+        },
+        "logout": "Logout"
+    },
+    "login": {
+        "title": "Log into your account",
+        "email": "Email",
+        "password": "Password",
+        "rememberMe": "Remember me",
+        "forgotPassword": "Forgot password ?",
+        "noAccount": "Don't have an account ?",
+        "buttons": {
+            "login": "Login",
+            "signup": "Sign up"
+        }
+    },
+    "register": {
+        "title": "Create your account",
+        "firstname": "First name",
+        "lastname": "Last name",
+        "email": "Email",
+        "password": "Password",
+        "confirmPassword": "Confirm password",
+        "alreadyHaveAccount": "Already have an account ?",
+        "buttons": {
+            "register": "Register",
+            "login": "Login"
+        }
+    },
+    "dashboard": {
+        "title": "Dashboard",
+        "subheading": "Welcome to Stolos",
+        "dialogs": {
+            "downloadISOOnPremise":  {
+                "title": "Download ISO On-Premise",
+                "noticeText": "For using the On-Prem mode, start by downloading the ISO (AMD or ARM) and install it on your physical servers. Once the servers are started with the ISO, they will appear in Provisioning page to be configured."
+            },
+            "downloadISOOnCloud": {
+                "title": "Download ISO Cloud",
+                "noticeText": "For using the Cloud mode, start by downloading the ISO (AMD or ARM) and create a VM on your cloud provider with it. Once the VM is started with the ISO, it will appear in Provisioning page to be configured."
+            }
+        },
+        "buttons": {
+            "downloadISOOnPremise": "Download ISO On-Premise",
+            "downloadISOOnCloud": "Download ISO Cloud",
+            "cancel": "Cancel",
+            "download": "Download"
+        }
+    },
+    "applications": {
+        "title": "Applications"
+    },
+    "deployments": {
+        "title": "Deployments"
+    },
+    "observability": {
+        "title": "Observability"
+    },
+    "scaling": {
+        "title": "Scaling"
+    },
+    "workflows": {
+        "title": "Workflows"
+    },
+    "functionsVms": {
+        "title": "Functions & VMs"
+    },
+    "secrets": {
+        "title": "Secrets"
+    },
+    "provisioning": {
+        "title": "Provisioning",
+        "subheading": "Manage your cloud resources"
+    },
+    "cloudProvider": {
+        "title": "Cloud Provider"
+    },
+    "templates": {
+        "title": "Templates"
+    },
+    "secretsSecurity": {
+        "title": "Secrets & Security"
+    },
+    "policiesCompliance": {
+        "title": "Policies & Compliance"
+    },
+    "gitopsSynchronization": {
+        "title": "GitOps Synchronization"
+    },
+    "rules": {
+        "validation": {
+            "email": {
+                "required": "Email is required",
+                "invalid": "Email must be valid"
+            },
+            "password": {
+                "required": "Password is required",
+                "invalid": "Password must be at least 8 characters",
+                "uppercase": "Password must contain at least one uppercase letter",
+                "lowercase": "Password must contain at least one lowercase letter",
+                "number": "Password must contain at least one number",
+                "special": "Password must contain at least one special character",
+                "mismatch": "Passwords do not match"
+            },
+            "textfield": {
+                "required": "This field is required"
+            }
+        }
+    },
+    "actionButtons": {
+        "add": "Add",
+        "edit": "Edit",
+        "delete": "Delete",
+        "save": "Save",
+        "cancel": "Cancel",
+        "confirm": "Confirm",
+        "back": "Back",
+        "next": "Next",
+        "finish": "Finish",
+        "viewDetails": "View Details",
+        "refresh": "Refresh",
+        "search": "Search"
+    },
+    "errors": {
+        "403": {
+            "title": "403 - Forbidden",
+            "message": "You do not have permission to access this page."
+        },
+        "404": {
+            "title": "404 - Not Found",
+            "message": "The page you are looking for does not exist."
+        }
+    }
+}
