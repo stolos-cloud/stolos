@@ -2,7 +2,6 @@ name: Move issues to next iteration
 
 on:
   workflow_dispatch:
-  pull_request:
 
 permissions:
   issues: write
@@ -15,7 +14,7 @@ jobs:
 
     steps:
     - uses: actions/create-github-app-token@v1
-      id: token
+      id: app-token
       with:
         app-id: ${{ vars.GH_APP_ID }}
         private-key: ${{ secrets.GH_APP_PRIV_KEY }}
@@ -24,7 +23,7 @@ jobs:
       with:
         owner: stolos-cloud
         number: 1
-        token: ${{ steps.token.outputs.token }}
+        token: ${{ steps.app-token.outputs.token }}
         iteration-field: Iteration
         iteration: last
         new-iteration: current
