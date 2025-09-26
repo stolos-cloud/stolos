@@ -1,0 +1,30 @@
+name: Move issues to next iteration
+
+on:
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  repository-projects: write
+
+jobs:
+  move-to-next-iteration:
+    name: Move to next iteration
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/create-github-app-token@v1
+      id: app-token
+      with:
+        app-id: ${{ vars.GH_APP_ID }}
+        private-key: ${{ secrets.GH_APP_PRIV_KEY }}
+  
+    - uses: blombard/move-to-next-iteration@master
+      with:
+        owner: stolos-cloud
+        number: 1
+        token: ${{ steps.app-token.outputs.token }}
+        iteration-field: Iteration
+        iteration: last
+        new-iteration: current
+        excluded-statuses: "Done,Won't Fix"
