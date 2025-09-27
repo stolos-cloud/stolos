@@ -506,6 +506,8 @@ github.com/siderolabs/proto-codec v0.1.2 h1:KYrRiCk5wdA2ilZZoW4bWtICCF4y3r28Fhmu
 github.com/siderolabs/proto-codec v0.1.2/go.mod h1:TCsjpw732TWuOx4Vd4gYhivPOttEhdPvczLfMQ6Y9Dc=
 github.com/siderolabs/protoenc v0.2.2 h1:vVQDrTjV+QSOiroWTca6h2Sn5XWYk7VSUPav5J0Qp54=
 github.com/siderolabs/protoenc v0.2.2/go.mod h1:gtkHkjSCFEceXUHUzKDpnuvXu1mab9D3pVxTnQN+z+o=
+github.com/siderolabs/siderolink v0.3.15 h1:WSsgKQGJY/ObIKjTcYYGEaGfRMyox+r/Ft+9lIgJqOI=
+github.com/siderolabs/siderolink v0.3.15/go.mod h1:iWdlsHji90zotgDg4+a2zJL2ZMNJckQ8/VwqR39ThBM=
 github.com/siderolabs/talos v1.11.0-beta.0 h1:jFYtqg06jDxCKWmpiLKGu1A+C93z/GzawKrURv59cCk=
 github.com/siderolabs/talos v1.11.0-beta.0/go.mod h1:xVh9GvsoMW1C7L7Ia05ND2tTG4HZhwuACcgkt0qm8JY=
 github.com/siderolabs/talos/pkg/machinery v1.11.0-beta.0 h1:3Qo0YQmhwoE3gOq+EkIKWIsA2tQXUyEJ8+KsKcUfd7o=

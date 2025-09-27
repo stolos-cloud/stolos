@@ -15,6 +15,7 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/siderolabs/image-factory v0.8.3
+	github.com/siderolabs/siderolink v0.3.15
 	github.com/siderolabs/talos v1.11.0-beta.0
 	github.com/siderolabs/talos/pkg/machinery v1.11.0-beta.0
 	golang.org/x/oauth2 v0.30.0

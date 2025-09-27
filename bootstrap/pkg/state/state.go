@@ -34,9 +34,10 @@ type TalosInfo struct {
 }
 
 type SaveState struct {
-	ClusterEndpoint string        `json:"ClusterEndpoint"`
-	BootstrapInfo   BootstrapInfo `json:"BootstrapInfo"`
-	MachinesCache   Machines      `json:"MachinesCache"`
+	ClusterEndpoint string            `json:"ClusterEndpoint"`
+	BootstrapInfo   BootstrapInfo     `json:"BootstrapInfo"`
+	MachinesCache   Machines          `json:"MachinesCache"`
+	MachinesDisks   map[string]string `json:"MachinesDisks"`
 }
 
 type Machines struct {

@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -12,7 +13,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/stolos-cloud/stolos-bootstrap/internal/configserver"
+	"github.com/cavaliergopher/grab/v3"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/olekukonko/tablewriter"
+	"github.com/siderolabs/image-factory/pkg/schematic"
+	"github.com/siderolabs/talos/pkg/machinery/api/storage"
 	"github.com/stolos-cloud/stolos-bootstrap/internal/tui"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/gcp"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/github"
@@ -23,11 +28,6 @@ import (
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/state"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/talos"
 	"golang.org/x/oauth2"
-
-	"github.com/cavaliergopher/grab/v3"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/olekukonko/tablewriter"
-	"github.com/siderolabs/image-factory/pkg/schematic"
 )
 
 var bootstrapInfos = &state.BootstrapInfo{}
@@ -56,6 +56,14 @@ func main() {
 		bootstrapInfos = &saveState.BootstrapInfo
 		didReadBootstrapInfos = true
 		doRestoreProgress = true
+	} else {
+		saveState = state.SaveState{
+			MachinesDisks: make(map[string]string),
+			MachinesCache: state.Machines{
+				Workers:       make(map[string][]byte),
+				ControlPlanes: make(map[string][]byte),
+			},
+		}
 	}
 
 	_, err = os.Stat("bootstrap-config.json")
@@ -192,14 +200,14 @@ func main() {
 		},
 	}
 
-	//talosISOStep := tui.Step{
-	//	Name:        "TalosISOStep",
-	//	Title:       "3.1) Download Talos ISO",
-	//	Kind:        tui.StepSpinner,
-	//	IsDone:      false,
-	//	AutoAdvance: true,
-	//	OnEnter:     RunTalosISOStep,
-	//}
+	talosISOStep := tui.Step{
+		Name:        "TalosISOStep",
+		Title:       "3.1) Download Talos ISO",
+		Kind:        tui.StepSpinner,
+		IsDone:      false,
+		AutoAdvance: true,
+		OnEnter:     RunTalosISOStep,
+	}
 
 	waitforServersStep := tui.Step{
 		Name:        "WaitServersStep",
@@ -210,24 +218,6 @@ func main() {
 		Body:        "Press enter when you see all servers below (min 4):\n",
 		OnEnter:     RunWaitForServersStep,
 		OnExit:      ExitWaitForServersStep,
-	}
-
-	waitControlPlaneStep := tui.Step{
-		Name:        "WaitControlPlaneStep",
-		Title:       "3.2) Wait Control Plane",
-		Kind:        tui.StepSpinner,
-		IsDone:      false, // Set by server
-		AutoAdvance: true,
-		OnEnter:     RunStartMachineconfigServerStep,
-	}
-
-	waitWorkerStep := tui.Step{
-		Name:        "WaitWorkerStep",
-		Title:       "3.3) Wait Worker",
-		Kind:        tui.StepSpinner,
-		IsDone:      true,  // Set by server
-		AutoAdvance: false, // TODO bypassed for now via ENTER key
-		OnExit:      ShutdownActiveServer,
 	}
 
 	clusterBootstrapStep := tui.Step{
@@ -278,10 +268,8 @@ func main() {
 		&gcpAuthStep,
 		&gcpSAStep,
 		&talosInfoStep,
-		//&talosISOStep,
+		&talosISOStep,
 		&waitforServersStep,
-		&waitControlPlaneStep,
-		&waitWorkerStep,
 		&clusterBootstrapStep,
 		&deployArgoStep,
 		&deployPortalStep,
@@ -418,53 +406,50 @@ func RunWaitForServersStep(model *tui.Model, step *tui.Step) tea.Cmd {
 	addr := bootstrapInfos.TalosInfo.HTTPHostname + ":" + bootstrapInfos.TalosInfo.HTTPPort
 	model.Logger.Infof("Starting HTTP Receive Server on %s …", addr)
 	go func() {
-		if err := configserver.StartReceiveServers(model, addr, step); err != nil {
-			model.Logger.Errorf("Receive server stopped: %v", err)
-		}
+		talos.EventSink(model, step, saveState)
+		//if err := configserver.StartReceiveServers(model, addr, step); err != nil {
+		//	model.Logger.Errorf("Receive server stopped: %v", err)
+		//}
 	}()
 
 	return nil
 }
 
 func ExitWaitForServersStep(model *tui.Model, step *tui.Step) {
-	ShutdownActiveServer(model, step)
-	for i, server := range configserver.ServerContacts {
+	i := 0
+	for k, _ := range saveState.MachinesDisks {
+		i++
+		var disks []*storage.Disk
 		model.Steps = slices.Insert(model.Steps, model.CurrentStepIndex+i+1, &tui.Step{
-			Name:        fmt.Sprintf("ConfigureServer_%d", i+1),
-			Title:       fmt.Sprintf("4.%d) Configure server %d", i+1, i+1),
+			Name:        fmt.Sprintf("ConfigureServer_%d", i),
+			Title:       fmt.Sprintf("4.%d) Configure server %d", i, i),
 			Kind:        tui.StepForm,
 			IsDone:      true, // Set by server
 			AutoAdvance: false,
-			OnEnter:     RunConfigureServers(server),
+			OnEnter:     RunConfigureServers(k, &disks),
+			OnExit:      ExitConfigureServer(k, &disks),
 			Fields:      tui.CreateFieldsForStruct[state.ServerConfig](),
 		})
 	}
 }
 
-func ShutdownActiveServer(model *tui.Model, step *tui.Step) {
-	_ = configserver.ActiveHttpServer.Shutdown(context.Background())
-}
-
-func RunConfigureServers(server configserver.ServerContact) func(model *tui.Model, step *tui.Step) tea.Cmd {
+func RunConfigureServers(serverIp string, disks *[]*storage.Disk) func(model *tui.Model, step *tui.Step) tea.Cmd {
 
 	return func(model *tui.Model, step *tui.Step) tea.Cmd {
-		disks, err := talos.GetDisks(context.Background(), server.Ip)
+		var err error
+		*disks, err = talos.GetDisks(context.Background(), serverIp)
+
 		if err != nil {
-			fmt.Println("Error:", err)
+			model.Logger.Errorf("Error getting disks: %s", err)
 		}
 
 		stringWriter := &strings.Builder{}
 
-		stringWriter.WriteString(fmt.Sprintf("SERVER CONFIGURATION:\n"))
-		tableInfos := tablewriter.NewWriter(stringWriter)
-		tableInfos.SetHeader([]string{"IP", "UUID"})
-		tableInfos.Append([]string{server.Ip, server.Uuid})
-		tableInfos.Render()
+		stringWriter.WriteString(fmt.Sprintf("SERVER CONFIGURATION - %s:\n", serverIp))
 		stringWriter.WriteString("\n\n")
 
 		stringWriter.WriteString("Please select a role\n")
 		tableRoles := tablewriter.NewWriter(stringWriter)
-		//tableRoles.SetCaption(true, "Available Roles")
 		tableRoles.SetHeader([]string{"Selection", "Role"})
 		tableRoles.AppendBulk([][]string{
 			{"1)", "control-plane"},
@@ -477,31 +462,46 @@ func RunConfigureServers(server configserver.ServerContact) func(model *tui.Mode
 		stringWriter.WriteString("Please select a disk\n")
 		tableDisks := tablewriter.NewWriter(stringWriter)
 		tableDisks.SetHeader([]string{"Selection", "Name", "Model", "UUID", "WWID", "Size"})
-		for i, disk := range disks {
-			tableDisks.Append([]string{fmt.Sprintf("%d)", i+1), disk.Name, disk.Model, disk.Uuid, disk.Wwid, strconv.FormatUint(disk.Size, 10)})
+		for i, disk := range *disks {
+			jsonVal, _ := json.Marshal(disk)
+			model.Logger.Infof("Disk %d: %s", i, string(jsonVal))
+			tableDisks.Append([]string{fmt.Sprintf("%d)", i+1), disk.DeviceName, disk.Model, disk.Uuid, disk.Wwid, strconv.FormatUint(disk.Size/1073741824, 10)})
 		}
 		tableDisks.Render()
 		step.Fields[1].Label = stringWriter.String()
 
-		configserver.ServerContacts = configserver.ServerContacts[1:]
+		//configserver.ServerContacts = configserver.ServerContacts[1:]
 
 		return nil
 	}
 }
 
-func RunStartMachineconfigServerStep(m *tui.Model, s *tui.Step) tea.Cmd {
-	m.Logger.Infof("Cluster: %s", bootstrapInfos.TalosInfo.ClusterName)
-	addr := bootstrapInfos.TalosInfo.HTTPHostname + ":" + bootstrapInfos.TalosInfo.HTTPPort
-	StartMachineconfigServerInBackground(m, addr)
-	s.IsDone = true
-	return nil
+func ExitConfigureServer(serverIp string, disks *[]*storage.Disk) func(model *tui.Model, step *tui.Step) {
+	return func(model *tui.Model, step *tui.Step) {
+		config, err := tui.RetrieveStructFromFields[state.ServerConfig](step.Fields)
+		if err != nil {
+			model.Logger.Errorf("Error retrieving server config: %s", err)
+		}
+
+		defDisks := *disks
+		saveState.MachinesDisks[serverIp] = defDisks[config.InstallDisk-1].BusPath
+
+		switch config.Role {
+		case 1:
+			saveState.MachinesCache.ControlPlanes[serverIp] = make([]byte, 0)
+			break
+		case 2:
+			saveState.MachinesCache.Workers[serverIp] = make([]byte, 0)
+			break
+		default:
+			model.Logger.Errorf("Invalid role: %d", config.Role)
+		}
+	}
 }
 
 func RunTalosISOStep(m *tui.Model, s *tui.Step) tea.Cmd {
 	if doRestoreProgress {
 		m.Logger.Info("State file found, skipping to tui.Steps[5]")
-		addr := bootstrapInfos.TalosInfo.HTTPHostname + ":" + bootstrapInfos.TalosInfo.HTTPPort
-		StartMachineconfigServerInBackground(m, addr)
 		m.CurrentStepIndex = 5
 		return nil
 	}
@@ -510,10 +510,12 @@ func RunTalosISOStep(m *tui.Model, s *tui.Step) tea.Cmd {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
-		talosConfigArg := fmt.Sprintf("talos.config=http://%s:%s/machineconfig?m=${mac}&u=${uuid}", bootstrapInfos.TalosInfo.HTTPHostname, bootstrapInfos.TalosInfo.HTTPPort)
-		kernelArgs := []string{talosConfigArg, bootstrapInfos.TalosInfo.TalosExtraArgs}
+		//talosConfigArg := fmt.Sprintf("talos.config=http://%s:%s/machineconfig?m=${mac}&u=${uuid}", bootstrapInfos.TalosInfo.HTTPHostname, bootstrapInfos.TalosInfo.HTTPPort)
+		//const earlyConfb64 = "KLUv/QSIDQIAAkQOEZB9UHaShW5YnMmBkPJkPqEDAJ1iUhFikJD0u73vIZAe3yr6zvTDvUJ67xQQN291ZIf01jOGza8LAQBo4KCPEQmA"
+		sinkConf := fmt.Sprintf("talos.events.sink=%s:%s", bootstrapInfos.TalosInfo.HTTPHostname, bootstrapInfos.TalosInfo.HTTPPort)
+		kernelArgs := []string{sinkConf, bootstrapInfos.TalosInfo.TalosExtraArgs}
 
-		m.Logger.Infof("Generating image with kernelParam: %s", talosConfigArg)
+		m.Logger.Infof("Generating image with kernelParam: %s", sinkConf)
 
 		factory := talos.CreateFactoryClient()
 		sch := schematic.Schematic{
@@ -555,19 +557,26 @@ func RunTalosISOStep(m *tui.Model, s *tui.Step) tea.Cmd {
 func RunClusterBootstrapStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 	go func() {
 		m.Logger.Debug("RunClusterBootstrapStepInBackground")
+
+		m.Logger.Debug("Applying configs...")
+		err := talos.ApplyConfigsToNodes(saveState, bootstrapInfos)
+		if err != nil {
+			m.Logger.Errorf("Failed to apply configs: %s", err)
+		}
+		m.Logger.Debug("Configs applied")
 		endpoint := state.ConfigBundle.ControlPlaneCfg.Cluster().Endpoint() //get machineconfig cluster endpoint
 		talosApiClient := talos.CreateMachineryClientFromTalosconfig(state.ConfigBundle.TalosConfig())
 		m.Logger.Infof("Executing bootstrap with clustername %s and endpoint %s....", bootstrapInfos.TalosInfo.ClusterName, endpoint)
-		err := talos.ExecuteBootstrap(talosApiClient)
+		err = talos.ExecuteBootstrap(talosApiClient)
 		if err != nil {
 			m.Logger.Errorf("Failed to execute bootstrap: %s", err)
 		}
 		m.Logger.Success("Bootstrap request Succeeded!")
-
 		m.Logger.Info("Waiting for Kubernetes installation to finish and API to be available...")
 
 		//RunDetailedClusterHealthCheck(talosApiClient, m.Logger)
-		talos.RunBasicClusterHealthCheck(err, talosApiClient, m.Logger)
+		time.Sleep(10 * time.Second)
+		talos.RunBasicClusterHealthCheck(talosApiClient, m.Logger)
 		m.Logger.Success("Cluster health check succeeded!")
 
 		kubeconfig, err = talosApiClient.Kubeconfig(context.Background())
@@ -656,15 +665,6 @@ func CreateProviderSecrets(loggerRef *tui.UILogger) {
 			}
 		}
 	}
-}
-
-func StartMachineconfigServerInBackground(model *tui.Model, addr string) {
-	model.Logger.Infof("Starting HTTP Machineconfig Server on %s …", addr)
-	go func() {
-		if err := configserver.StartConfigServer(model, addr, doRestoreProgress, &saveState, bootstrapInfos); err != nil {
-			model.Logger.Errorf("Config server stopped: %v", err)
-		}
-	}()
 }
 
 // Utils

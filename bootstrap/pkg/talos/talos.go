@@ -4,10 +4,19 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"github.com/siderolabs/talos/pkg/machinery/api/storage"
 	"io"
+	"net"
 	"os"
+	"strings"
 	"time"
+
+	eventsapi "github.com/siderolabs/siderolink/api/events"
+	"github.com/siderolabs/siderolink/pkg/events"
+	"github.com/siderolabs/talos/pkg/machinery/api/storage"
+	"github.com/siderolabs/talos/pkg/machinery/config/configpatcher"
+	"github.com/siderolabs/talos/pkg/machinery/config/container"
+	"github.com/siderolabs/talos/pkg/machinery/config/encoder"
+	"github.com/siderolabs/talos/pkg/machinery/proto"
 
 	"github.com/cosi-project/runtime/pkg/safe"
 	factoryClient "github.com/siderolabs/image-factory/pkg/client"
@@ -16,6 +25,7 @@ import (
 	"github.com/siderolabs/talos/pkg/cluster/check"
 	clusterapi "github.com/siderolabs/talos/pkg/machinery/api/cluster"
 	"github.com/siderolabs/talos/pkg/machinery/api/machine"
+	machineapi "github.com/siderolabs/talos/pkg/machinery/api/machine"
 	machineryClient "github.com/siderolabs/talos/pkg/machinery/client"
 	"github.com/siderolabs/talos/pkg/machinery/client/config"
 	"github.com/siderolabs/talos/pkg/machinery/config/bundle"
@@ -31,7 +41,182 @@ import (
 	talosgen "github.com/siderolabs/talos/cmd/talosctl/cmd/mgmt/gen"
 	"github.com/siderolabs/talos/pkg/machinery/config/generate"
 	"github.com/siderolabs/talos/pkg/machinery/config/generate/secrets"
+	machineconf "github.com/siderolabs/talos/pkg/machinery/config/machine"
 )
+
+type LogEvent struct {
+	Node      string
+	Payload   any
+	EventType string
+}
+
+type EventHandler struct {
+	Model     *tui.Model
+	Step      *tui.Step
+	SaveState *state.SaveState
+}
+
+func (h *EventHandler) HandleEvent(ctx context.Context, event events.Event) error {
+	ip := strings.Split(event.Node, ":")[0]
+	_, ok := h.SaveState.MachinesDisks[ip]
+	if !ok {
+		h.SaveState.MachinesDisks[ip] = ""
+		h.Step.Body = h.Step.Body + fmt.Sprintf("\nNode: %s", ip)
+	}
+	//eventJson, err := json.Marshal(LogEvent{
+	//	Node:      ip,
+	//	Payload:   event.Payload,
+	//	EventType: fmt.Sprintf("%T", event.Payload),
+	//})
+	//if err != nil {
+	//	return err
+	//}
+	//h.Model.Logger.Debug(string(eventJson))
+
+	return nil
+}
+
+func ApplyConfigsToNodes(saveState state.SaveState, bootstrapInfos *state.BootstrapInfo) error {
+	var err error
+	createdControlPlane := make(map[string][]byte)
+	i := 1
+	for ip, conf := range saveState.MachinesCache.ControlPlanes {
+		if len(conf) > 0 {
+			createdControlPlane[ip] = conf
+			continue
+		}
+
+		if state.ConfigBundle == nil {
+			state.ConfigBundle, err = CreateMachineConfigBundle(ip, *bootstrapInfos)
+			if err != nil {
+				return err
+			}
+		}
+
+		cfg := &v1alpha1.Config{
+			ConfigVersion: "v1alpha1",
+			MachineConfig: &v1alpha1.MachineConfig{
+				MachineNetwork: &v1alpha1.NetworkConfig{
+					NetworkHostname: fmt.Sprintf("controlplane-%d", i),
+				},
+				MachineInstall: &v1alpha1.InstallConfig{
+					InstallDiskSelector: &v1alpha1.InstallDiskSelector{
+						BusPath: saveState.MachinesDisks[ip],
+					},
+				},
+			},
+		}
+
+		ctr := container.NewV1Alpha1(cfg)
+		patch := configpatcher.NewStrategicMergePatch(ctr)
+		err = state.ConfigBundle.ApplyPatches([]configpatcher.Patch{patch}, true, false)
+
+		machineConfigRendered, err := state.ConfigBundle.Serialize(encoder.CommentsDocs, machineconf.TypeControlPlane)
+		if err != nil {
+			return err
+		}
+
+		c, err := machineryClient.New(context.Background(), machineryClient.WithTLSConfig(&tls.Config{
+			InsecureSkipVerify: true,
+		}), machineryClient.WithEndpoints(ip))
+
+		if err != nil {
+			return err
+		}
+
+		_, err = c.ApplyConfiguration(context.Background(), &machineapi.ApplyConfigurationRequest{
+			Data:           machineConfigRendered,
+			Mode:           1,
+			DryRun:         false,
+			TryModeTimeout: nil,
+		})
+
+		saveState.MachinesCache.ControlPlanes[ip] = machineConfigRendered
+		i++
+
+	}
+
+	i = 0
+	for ip, conf := range saveState.MachinesCache.Workers {
+		if len(conf) > 0 {
+			createdControlPlane[ip] = conf
+			continue
+		}
+
+		cfg := &v1alpha1.Config{
+			ConfigVersion: "v1alpha1",
+			MachineConfig: &v1alpha1.MachineConfig{
+				MachineNetwork: &v1alpha1.NetworkConfig{
+					NetworkHostname: fmt.Sprintf("controlplane-%d", i),
+				},
+				MachineInstall: &v1alpha1.InstallConfig{
+					InstallDiskSelector: &v1alpha1.InstallDiskSelector{
+						BusPath: saveState.MachinesDisks[ip],
+					},
+				},
+			},
+		}
+
+		ctr := container.NewV1Alpha1(cfg)
+		patch := configpatcher.NewStrategicMergePatch(ctr)
+		err = state.ConfigBundle.ApplyPatches([]configpatcher.Patch{patch}, false, true)
+
+		machineConfigRendered, err := state.ConfigBundle.Serialize(encoder.CommentsDocs, machineconf.TypeWorker)
+		if err != nil {
+			return err
+		}
+
+		c, err := machineryClient.New(context.Background(), machineryClient.WithTLSConfig(&tls.Config{
+			InsecureSkipVerify: true,
+		}), machineryClient.WithEndpoints(ip))
+
+		if err != nil {
+			return err
+		}
+
+		_, err = c.ApplyConfiguration(context.Background(), &machineapi.ApplyConfigurationRequest{
+			Data:           machineConfigRendered,
+			Mode:           1,
+			DryRun:         false,
+			TryModeTimeout: nil,
+		})
+
+		saveState.MachinesCache.Workers[ip] = machineConfigRendered
+		i++
+	}
+
+	return nil
+}
+
+func EventSink(model *tui.Model, step *tui.Step, saveState state.SaveState) {
+	server := grpc.NewServer(
+		grpc.SharedWriteBuffer(true),
+	)
+	var handler events.Adapter = &EventHandler{
+		Model:     model,
+		Step:      step,
+		SaveState: &saveState,
+	}
+
+	sink := events.NewSink(handler, []proto.Message{
+		&machineapi.MachineStatusEvent{},
+		&machineapi.SequenceEvent{},
+		&machineapi.RestartEvent{},
+		&machineapi.ConfigLoadErrorEvent{},
+		&machineapi.ConfigValidationErrorEvent{},
+		&machineapi.AddressEvent{},
+		&machineapi.PhaseEvent{},
+	})
+	eventsapi.RegisterEventSinkServiceServer(server, sink)
+	listener, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", "0.0.0.0:3247")
+	if err != nil {
+		panic(err)
+	}
+	err = server.Serve(listener)
+	if err != nil {
+		panic(err)
+	}
+}
 
 func CreateMachineryClientFromTalosconfig(talosConfig *config.Config) machineryClient.Client {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -62,7 +247,6 @@ func CreateMachineConfigBundle(controlPlaneIp string, bootstrapInfos state.Boots
 		generate.WithNetworkOptions(
 			v1alpha1.WithKubeSpan(),
 		),
-		generate.WithInstallDisk(bootstrapInfos.TalosInfo.TalosInstallDisk),
 		generate.WithInstallImage("ghcr.io/siderolabs/installer:latest"),
 		// generate.WithAdditionalSubjectAltNames([]string{_____}),// TODO : Add the right SAN for external IP / DNS
 		generate.WithPersist(true),
@@ -130,15 +314,27 @@ func ExecuteBootstrap(talosApiClient machineryClient.Client) error {
 		RecoverSkipHashCheck: false,
 	}
 
-	return talosApiClient.Bootstrap(context.Background(), &bootrapRequest)
+	for {
+		err := talosApiClient.Bootstrap(context.Background(), &bootrapRequest)
+		if err != nil {
+			if !strings.Contains(err.Error(), "connection refused") {
+				return err
+			}
+			time.Sleep(5 * time.Second)
+		} else {
+			break
+		}
+	}
+
+	return nil
 }
 
-func RunBasicClusterHealthCheck(err error, talosApiClient machineryClient.Client, loggerRef *tui.UILogger) {
+func RunBasicClusterHealthCheck(talosApiClient machineryClient.Client, loggerRef *tui.UILogger) {
 	healthCheckClient, err := talosApiClient.ClusterHealthCheck(context.Background(), 20*time.Minute, &clusterapi.ClusterInfo{})
 	if err != nil {
-		loggerRef.Errorf("Failed to get cluster health: %v", err)
-		panic(err)
+		loggerRef.Errorf("Error getting cluster health: %s", err)
 	}
+
 	if err := healthCheckClient.CloseSend(); err != nil {
 		panic(err)
 	}
