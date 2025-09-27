@@ -29,6 +29,6 @@ export default createVuetify({
           warning: "#fb8c00",
         },
       },
-    },
+    }
   }
 });

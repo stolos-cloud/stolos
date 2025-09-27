@@ -18,12 +18,6 @@
                     <RouterLink to="/403" class="mb-1 text-router-link">
                         {{ $t('login.forgotPassword') }}
                     </RouterLink>
-                    <div class="d-flex align-center justify-center ga-1">
-                        <span>{{ $t('login.noAccount') }}</span>
-                        <RouterLink to="/register" class="text-router-link">
-                            {{ $t('login.buttons.signup') }}
-                        </RouterLink>
-                    </div>
                 </v-card-actions>
             </v-card>
         </v-row>
@@ -51,6 +45,7 @@ const showPassword = ref(false);
 //Computed
 const passwordEyeIcon = computed(() => showPassword.value ? 'mdi-eye' : 'mdi-eye-off');
 const passwordType = computed(() => showPassword.value ? "text" : "password");
+console.log(t('login.email'));
 
 
 // Form state

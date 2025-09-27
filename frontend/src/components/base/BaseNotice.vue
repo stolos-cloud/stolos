@@ -9,7 +9,6 @@
     />
 </template>
 <script setup>
-import { defineProps } from 'vue';
 defineProps({
     type: {
         type: String,
@@ -28,4 +27,4 @@ defineProps({
         default: 'default'
     }
 });
-</script>asaw12ùù   
+</script>
