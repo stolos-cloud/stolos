@@ -13,9 +13,6 @@
                 :items="nodeStates"
                 class="elevation-1 mt-2"
             ></v-data-table>
-            <BaseButton color="primary" class="mt-2" @click="goDashboard">
-                {{ $t('provisioning.dashboardButton') }}
-            </BaseButton>
         </div>
         <BaseDialog v-model="dialogDownloadISOOnPremise" :title="$t('dashboard.dialogs.downloadISOOnPremise.title')" width="600" closable>
           <v-form v-model="isValid">

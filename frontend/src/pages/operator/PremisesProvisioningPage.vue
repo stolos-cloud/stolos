@@ -4,17 +4,19 @@
             :title="$t('provisioning.onPremises.title')"
             :subheading="$t('provisioning.onPremises.subheading')"
         />
-        <div v-if="loading" class="mt-4 text-blue-600">{{ loadingMessage }}</div>
-        <div v-if="error" class="mt-4 text-red-600">{{ errorMessage }}</div>
-
         <div class="mt-4">
             <h3>{{ $t('provisioning.nodesTableTitle') }}</h3>
-            <v-data-table
+            <v-data-table-server
                 :headers="nodeHeaders"
                 :items="nodes"
+                :items-length="nodes.length"
+                :loading=loading
+                loading-text="Chargement des noeuds…"
+                no-data-text="Aucun noeud connecté ou en attente de connexion."
                 :items-per-page="10"
                 class="elevation-8 mt-2"
             >
+                <!-- Slot for roles -->
                 <template #item.role="{ item }">
                     <v-select
                     v-model="item.role"
@@ -27,6 +29,7 @@
                     ></v-select>
                 </template>
 
+                <!-- Slot for labels -->
                 <template #item.labels="{ item }">
                     <div class="d-flex flex-wrap align-center">
                         <v-chip
@@ -39,15 +42,11 @@
                             {{ label }}
                         </v-chip>
                         <template v-if="!item.addingLabel">
-                            <v-chip
-                                class="ma-1"
-                                elevation="2"
-                                @click="item.addingLabel = true"
-                            >
-                                + Add label
+                            <v-chip class="ma-1" elevation="2" @click="item.addingLabel = true">
+                            + Add label
                             </v-chip>
                         </template>
-                            <template v-else>
+                        <template v-else>
                             <v-text-field
                                 v-model="item.newLabel"
                                 density="compact"
@@ -60,10 +59,11 @@
                                 @keyup.enter="addLabel(item)"
                                 @blur="addLabel(item); item.addingLabel = false"
                             />
-                            </template>
+                        </template>
                     </div>
                 </template>
-            </v-data-table>
+            </v-data-table-server>
+
             <div class="d-flex justify-end">
                 <BaseButton color="primary" class="mt-2" @click="validateNodes">
                     {{ $t('provisioning.validateNodesButton') }}
@@ -85,9 +85,6 @@ import { ref } from 'vue';
 
 
 const loading = ref(false);
-const loadingMessage = ref('');
-const error = ref(false);
-const errorMessage = ref('');
 const nodes = ref([]);
 const overlay = ref(false);
 
@@ -100,7 +97,6 @@ const nodeHeaders = [
 ];
 
 nodes.value = [
-    //rajoute 25 lignes
   { IP: '192.168.0.1', WID: 'W01', MAC: 'AA:BB:CC:DD:EE:01', role: null,  labels: ["Test"] },
   { IP: '192.168.0.2', WID: 'W02', MAC: 'AA:BB:CC:DD:EE:02', role: 'Worker', labels: []},
 
