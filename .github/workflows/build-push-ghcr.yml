@@ -75,7 +75,7 @@ jobs:
         uses: aquasecurity/trivy-action@0.24.0
         with:
           image-ref: ${{ env.REGISTRY }}/${{ inputs.container-name }}@${{ steps.build.outputs.digest }}
-          format: sarifs
+          format: sarif
           output: trivy.sarif
           severity: CRITICAL,HIGH
           ignore-unfixed: true
