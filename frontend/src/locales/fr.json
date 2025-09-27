@@ -44,10 +44,15 @@
             "downloadISOOnPremise":  {
                 "title": "Télécharger l'ISO On-Premise",
                 "noticeText": "Pour utiliser le mode On-Prem, commencez par télécharger l'ISO (AMD ou ARM) et installez-le sur vos serveurs physiques. Une fois que les serveurs sont démarrés avec l'ISO, ils apparaîtront dans la page de Provisionnement pour être configurés."
+            },
+            "downloadISOOnCloud": {
+                "title": "Télécharger l'ISO Cloud",
+                "noticeText": "Pour utiliser le mode Cloud, commencez par télécharger l'ISO (AMD ou ARM) et créez une VM sur votre fournisseur de cloud avec. Une fois la VM démarrée avec l'ISO, elle apparaîtra dans la page de Provisionnement pour être configurée."
             }
         },
         "buttons": {
             "downloadISOOnPremise": "Télécharger l'ISO On-Premise",
+            "downloadISOOnCloud": "Télécharger l'ISO Cloud",
             "cancel": "Annuler",
             "download": "Télécharger"
         }
