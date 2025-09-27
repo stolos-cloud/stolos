@@ -1,4 +1,4 @@
-# Stolos Platform Backend
+# Stolos Portal Backend
 
 ## Setup
 
