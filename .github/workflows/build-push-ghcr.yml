@@ -68,8 +68,8 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ inputs.container-name }}:buildcache
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ inputs.container-name }}:buildcache,mode=max,oci-mediatypes=true,compression=zstd,compression-level=5
+          cache-from: type=gha
+          cache-to:   type=gha,mode=max
           provenance: true
           sbom: true
 
