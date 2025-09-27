@@ -6,6 +6,10 @@
 
       <v-spacer></v-spacer>
 
+      <v-btn icon @click="toggleTheme" :title="isDark ? 'Light Mode' : 'Dark Mode'">
+        <v-icon>{{ isDark ? 'mdi-white-balance-sunny' : 'mdi-moon-waning-crescent' }}</v-icon>
+      </v-btn>
+
       <v-menu offset-y>
         <template #activator="{ props }">
           <v-btn icon="mdi-account" v-bind="props" aria-label="User menu">
@@ -44,6 +48,8 @@
 
 <script setup>
 import { useI18n } from 'vue-i18n';
+import { useTheme } from 'vuetify';
+import { computed } from 'vue';
 import router from '@/router';
 
 // Props
@@ -65,9 +71,15 @@ const props = defineProps({
 // Emits
 const emit = defineEmits(['update:drawer', 'go-to-profile', 'change-language', 'logout']);
 
-const { locale } = useI18n();
+const i18n = useI18n();
+const theme = useTheme();
+const isDark = computed(() => theme.global.current.value.dark);
 
 // Methods
+function toggleTheme() {
+  theme.global.name.value = isDark.value ? 'light' : 'dark';
+}
+
 function toggleSidebar() {
   emit('update:drawer', !props.drawer);
 }
@@ -77,10 +89,10 @@ function goToProfile() {
 }
 
 function changeLanguage(lang) {
-  locale.value = lang;
+  i18n.locale.value = lang;
 }
 
 function logout() {
-  emit('logout');
+  router.push('/login');
 }
 </script>
