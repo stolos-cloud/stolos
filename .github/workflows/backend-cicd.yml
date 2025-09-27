@@ -56,5 +56,6 @@ jobs:
     with:
       container-name: stolos-backend
       branch: ${{ github.event.inputs.branch }}
-      context: backend
+      context: .
+      file: backend/Dockerfile
     secrets: inherit
