@@ -24,6 +24,7 @@ env:
 permissions:
   contents: read
   packages: write
+  security-events: write
 
 jobs:
   build-and-push:
@@ -73,14 +74,16 @@ jobs:
           sbom: true
 
       - name: Scan with Trivy
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@0.28.0
         with:
+          scan-type: image
           image-ref: ${{ env.REGISTRY }}/${{ inputs.container-name }}@${{ steps.build.outputs.digest }}
           format: sarif
           output: trivy.sarif
-          severity: CRITICAL,HIGH
+          severity: HIGH,CRITICAL
           ignore-unfixed: true
           vuln-type: os,library
+          github-pat: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload SARIF
         uses: github/codeql-action/upload-sarif@v3
