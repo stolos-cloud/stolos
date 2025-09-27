@@ -9,6 +9,7 @@
     "lint:fix": "eslint . --ext .vue,.js,.jsx,.ts,.tsx --fix"
   },
   "dependencies": {
+    "@intlify/unplugin-vue-i18n": "^11.0.1",
     "@mdi/font": "^7.0.96",
     "core-js": "^3.34.0",
     "roboto-fontface": "*",
