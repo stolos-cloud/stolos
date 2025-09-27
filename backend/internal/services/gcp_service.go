@@ -146,7 +146,7 @@ func (s *GCPService) CreateTerraformBucket(ctx context.Context, projectID, regio
 	var err error
 
 	if s.IsConfiguredFromDatabase() {
-		config, err := s.GetCurrentConfig()
+		config, err := s.GetCurrentConfigWithCredentials()
 		if err != nil {
 			return "", fmt.Errorf("failed to get database config: %w", err)
 		}
@@ -179,7 +179,7 @@ func (s *GCPService) CreateTerraformBucket(ctx context.Context, projectID, regio
 
 	// Only update database config if it exists
 	if s.IsConfiguredFromDatabase() {
-		config, err := s.GetCurrentConfig()
+		config, err := s.GetCurrentConfigWithCredentials()
 		if err == nil {
 			config.BucketName = bucketName
 			if err := s.db.Save(config).Error; err != nil {
