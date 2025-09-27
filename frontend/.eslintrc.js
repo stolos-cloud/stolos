@@ -10,6 +10,7 @@ module.exports = {
   rules: {
     'vue/no-multiple-template-root': 'off',
     'vue/require-name': 'off',
-    'vue/multi-word-component-names': 'off'
+    'vue/multi-word-component-names': 'off',
+    'vue/valid-v-slot': 'off'
   }
 }

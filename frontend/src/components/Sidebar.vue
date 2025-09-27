@@ -16,31 +16,39 @@
       <v-divider></v-divider>
 
       <v-list density="compact" nav>
-        <v-list-item
-          v-for="item in menuItems"
-          :key="item.title"
-          :to="item.route || '/'"
-          link
-          rounded="0"
-          active-class="active-nav"
-        >
-          <template #prepend>
-            <v-icon>{{ item.icon }}</v-icon>
-          </template>
+        <template v-for="item in menuItems" :key="item.title">
+          <v-list-group v-if="item.children" :prepend-icon="item.icon">
+            <template #activator="{ props }">
+              <v-list-item v-bind="props">
+                <v-list-item-title>{{ $t(item.title) }}</v-list-item-title>
+              </v-list-item>
+            </template>
 
-          <v-list-item-title v-if="drawer">
-            {{ item.title }}
-          </v-list-item-title>
-        </v-list-item>
+            <v-list-item
+              v-for="child in item.children"
+              :key="child.title"
+              :to="child.route"
+              link
+              active-class="active-nav"
+            >
+              <v-list-item-title>{{ $t(child.title) }}</v-list-item-title>
+            </v-list-item>
+          </v-list-group>
+
+          <v-list-item v-else :to="item.route || '/'" link rounded="0" active-class="active-nav">
+            <template #prepend>
+              <v-icon>{{ item.icon }}</v-icon>
+            </template>
+            <v-list-item-title v-if="drawer">{{ $t(item.title) }}</v-list-item-title>
+          </v-list-item>
+        </template>
       </v-list>
     </v-navigation-drawer>
 </template>
 
 <script setup>
 import { computed } from 'vue';
-import { useI18n } from 'vue-i18n'
 
-const { t } = useI18n();
 const role = 'operator'; // This should be dynamically set based on the logged-in user's role
 
 // Props
@@ -61,37 +69,36 @@ const props = defineProps({
 
 // Data
 const developerMenu = [
-    { title: t('dashboard.title'), icon: 'mdi-view-dashboard', route: '/dashboard' },
-    { title: t('applications.title'), icon: 'mdi-apps', route: '/applications' },
-    { title: t('deployments.title'), icon: 'mdi-rocket-launch', route: '/deployments' },
-    { title: t('observability.title'),  icon: 'mdi-chart-line', route: '/observability' },
-    { title: t('scaling.title'), icon: 'mdi-trending-up', route: '/scaling' },
-    { title: t('workflows.title'), icon: 'mdi-file-tree', route: '/workflows' },
-    { title: t('functionsVms.title'),  icon: 'mdi-desktop-classic', route: '/functions-vms' },
-    { title: t('secrets.title'),  icon: 'mdi-key', route: '/secrets' }
+    { title: 'dashboard.title', icon: 'mdi-view-dashboard', route: '/dashboard' },
+    { title: 'applications.title', icon: 'mdi-apps', route: '/applications' },
+    { title: 'deployments.title', icon: 'mdi-rocket-launch', route: '/deployments' },
+    { title: 'observability.title',  icon: 'mdi-chart-line', route: '/observability' },
+    { title: 'scaling.title', icon: 'mdi-trending-up', route: '/scaling' },
+    { title: 'workflows.title', icon: 'mdi-file-tree', route: '/workflows' },
+    { title: 'functionsVms.title',  icon: 'mdi-desktop-classic', route: '/functions-vms' },
+    { title: 'secrets.title',  icon: 'mdi-key', route: '/secrets' }
 ];
 
 const operatorMenu = [
-    { title: t('dashboard.title'), icon: 'mdi-view-dashboard', route: '/dashboard' },
-    { title: t('provisioning.title'), icon: 'mdi-server', route: '/provisioning' },
-    { title: t('cloudProvider.title'), icon: 'mdi-cloud', route: '/cloud-provider' },
-    { title: t('templates.title'), icon: 'mdi-layers-triple', route: '/templates' },
-    { title: t('secretsSecurity.title'),  icon: 'mdi-shield', route: '/secrets-security' },
-    // { title: t('observability.title'), icon: 'mdi-chart-line', route: '/observability' },
-    // { title: t('policiesCompliance.title'), icon: 'mdi-file-document-check', route: '/policies-compliance' },
-    // { title: t('gitopsSynchronization.title'),  icon: 'mdi-git', route: '/gitops-synchronization' }
-
+  { title: 'dashboard.title', icon: 'mdi-view-dashboard', route: '/dashboard' },
+  { title: 'provisioning.title', icon: 'mdi-server', children: [
+      { title: 'On-Premises', route: '/provisioning/on-premises' },
+      { title: 'Cloud', route: '/provisioning/cloud' },
+    ]
+  },
+  { title: 'cloudProvider.title', icon: 'mdi-cloud', route: '/cloud-provider' },
+  { title: 'templates.title', icon: 'mdi-layers-triple', route: '/templates' },
+  { title: 'secretsSecurity.title',  icon: 'mdi-shield', route: '/secrets-security' },
 ];
 
 // Computed
-const sidebarWidth = computed(() => (props.drawer ? 200 : 60));
+const sidebarWidth = computed(() => (props.drawer ? 230 : 60));
 const menuItems = computed(() => role === 'developer' ? developerMenu : operatorMenu);
 </script>
 
-<style scoped>
+<style scoped> 
 .active-nav {
   border-left: 4px solid #f97316;
-  color: #ffffff;
   font-weight: 600;
   text-shadow: 0 0 2px rgba(255, 255, 255, 0.7);
 }

@@ -80,7 +80,14 @@
     },
     "provisioning": {
         "title": "Provisioning",
-        "subheading": "Manage your cloud resources"
+        "onPremises": {
+            "title": "On-Premises provisioning",
+            "subheading": "Manage your on-premises resources"
+        },
+        "cloud": {
+            "title": "Cloud provisioning",
+            "subheading": "Manage your cloud resources"
+        }
     },
     "cloudProvider": {
         "title": "Cloud Provider",
