@@ -26,18 +26,18 @@ import BaseDialog from '@/components/base/BaseDialog.vue';
 import BaseNotice from '@/components/base/BaseNotice.vue';
 import BaseRadioButtons from '@/components/base/BaseRadioButtons.vue';
 import { RadioGroup } from '@/models/RadioGroup.js';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { reactive } from 'vue';
 
 const { t } = useI18n();
-const actions = [
+const actions = computed(() => [
   {
     text: t('dashboard.buttons.downloadISOOnPremise'),
     color: 'primary',
     onClick: () => dialogDownloadISOOnPremise.value = true
   }
-];
+]);
 
 const isoRadioButtons = reactive(new RadioGroup({
   label: "ISO choice",

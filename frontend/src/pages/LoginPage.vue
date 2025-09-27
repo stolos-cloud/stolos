@@ -45,6 +45,7 @@ const showPassword = ref(false);
 //Computed
 const passwordEyeIcon = computed(() => showPassword.value ? 'mdi-eye' : 'mdi-eye-off');
 const passwordType = computed(() => showPassword.value ? "text" : "password");
+console.log(t('login.email'));
 
 
 // Form state

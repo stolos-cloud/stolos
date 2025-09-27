@@ -5,23 +5,23 @@ import { defineConfig } from 'vite'
 import { fileURLToPath, URL } from 'node:url'
 
 export default defineConfig({
-  plugins: [
-    Vue({
-      template: { transformAssetUrls }
-    }),
-    Components(),
-  ],
-  define: { 'process.env': {} },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))
     },
     extensions: ['.js', '.json', '.jsx', '.mjs', '.ts', '.tsx', '.vue'],
   },
+  plugins: [
+    Vue({
+      template: { transformAssetUrls }
+    }),
+    Components()
+  ],
+  define: { 'process.env': {} },
   server: {
     proxy: {
       '/api': {
-        target: process.env.APP_API_BACKEND_URL || 'http://localhost:8000',
+        target: process.env.VITE_API_BASE_URL || 'http://localhost:8000',
         changeOrigin: true,
         pathRewrite: {
           '^/api': ''
