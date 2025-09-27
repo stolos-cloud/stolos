@@ -5,10 +5,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net"
+	"net/http"
 	"os"
 	"time"
 
+	"github.com/goccy/go-json"
 	"github.com/stolos-cloud/stolos-bootstrap/internal/configserver"
 	"github.com/stolos-cloud/stolos-bootstrap/internal/tui"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/gcp"
@@ -114,8 +117,13 @@ func main() {
 		Name:        "GitHubApp",
 		Title:       "1.3) Create GitHub App",
 		Kind:        tui.StepSpinner,
-		IsDone:      true,
+		IsDone:      false,
 		AutoAdvance: true,
+		OnEnter: func(m *tui.Model, s *tui.Step) tea.Cmd {
+			params := CreateGitHubManifestParameters()
+			GitHubAppManifestFlow(context.Background(), model, step)
+			return nil
+		},
 	}
 
 	gcpInfoStep := tui.Step{
@@ -153,8 +161,7 @@ func main() {
 				gcpToken, err = oauthServer.Authenticate(context.Background(), "GCP")
 				if err != nil {
 					m.Logger.Errorf("Failed to authenticate with GCP: %v", err)
-					s.IsDone = true
-					// TODO handle fail
+					s.IsDone = true // TODO handle fail
 				}
 				s.IsDone = true
 			}()

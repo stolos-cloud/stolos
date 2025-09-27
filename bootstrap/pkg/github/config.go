@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/stolos-cloud/stolos-bootstrap/pkg/logger"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/oauth"
 
 	"github.com/goccy/go-yaml"
@@ -136,7 +137,7 @@ func (c *Client) GetToken() *oauth2.Token {
 }
 
 // AuthenticateAndSetup performs OAuth authentication and repository initialization
-func AuthenticateAndSetup(oauthServer *oauth.Server, clientID, clientSecret string, info *GitHubInfo, logger oauth.Logger) (*Client, error) {
+func AuthenticateAndSetup(oauthServer *oauth.Server, clientID, clientSecret string, info *GitHubInfo, logger logger.Logger) (*Client, error) {
 	ctx := context.Background()
 
 	provider := oauth.NewGitHubProvider(clientID, clientSecret)
