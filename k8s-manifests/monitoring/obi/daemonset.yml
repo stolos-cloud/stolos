@@ -20,6 +20,8 @@ spec:
     spec:
       serviceAccountName: obi
       hostPID: true
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
       containers:
       - name: obi
         image: otel/ebpf-instrument:latest
