@@ -1,16 +1,16 @@
-name: Stolos Backend CICD
+name: Stolos Frontend CICD
 
 on:
   push:
     branches:
       - main
     paths:
-      - backend/**
+      - frontend/**
   pull_request:
     branches:
       - main
     paths:
-      - backend/**
+      - frontend/**
   workflow_dispatch:
     inputs:
       branch:
@@ -33,30 +33,36 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: backend
+        working-directory: frontend
     steps:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
         with:
-          go-version-file: backend/go.mod
-          cache: true
+          node-version: 20.x
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
 
-      - name: Go vet
-        run: go vet ./...
+      - name: Install deps
+        run: npm ci --no-audit --no-fund
 
-      - name: Run tests
-        run: go test -race -count=1 ./tests/
+      - name: Lint
+        run: npm run lint --if-present
 
+      - name: Test
+        run: npm test --if-present -- --ci
+
+      - name: Build
+        run: npm run build --if-present
 
   build-push-ghcr:
     needs: ci
     uses: stolos-cloud/stolos/.github/workflows/build-push-ghcr.yml@feature/backend-deployment
     with:
-      container-name: stolos-backend
+      container-name: stolos-frontend
       branch: ${{ github.event.inputs.branch }}
-      context: backend
-      file: backend/Dockerfile
+      context: frontend
+      file: frontend/Dockerfile
     secrets: inherit
