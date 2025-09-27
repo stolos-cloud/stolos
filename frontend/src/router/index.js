@@ -1,8 +1,9 @@
 import LoginPage from '@/pages/LoginPage.vue'
 import RegisterPage from '@/pages/RegisterPage.vue'
 import DashboardPage from '@/pages/DashboardPage.vue'
+import PremisesProvisioningPage from '@/pages/operator/PremisesProvisioningPage.vue'
+import CloudProvisioningPage from '@/pages/operator/CloudProvisioningPage.vue'
 import CloudProviderPage from '@/pages/operator/CloudProviderPage.vue'
-import ProvisioningPage from '@/pages/operator/ProvisioningPage.vue'
 import SecretsSecurityPage from '@/pages/operator/SecretsSecurityPage.vue'
 import TemplatesPage from '@/pages/operator/TemplatesPage.vue'
 import i18n from '@/plugins/i18n'
@@ -71,8 +72,21 @@ const routes = [
   {
     path: '/provisioning',
     name: 'provisioning',
-    component: ProvisioningPage,
-    meta: { title: 'provisioning.title' }
+    meta: { title: 'provisioning.title' },
+    children: [
+      {
+        path: 'on-premises',
+        name: 'provisioning-on-premises',
+        component: PremisesProvisioningPage,
+        meta: { title: 'provisioning.onPremises.title' }
+      },
+      {
+        path: 'cloud',
+        name: 'provisioning-cloud',
+        component: CloudProvisioningPage,
+        meta: { title: 'provisioning.cloud.title' }
+      }
+    ]
   },
   {
     path: '/cloud-provider',

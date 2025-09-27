@@ -1,19 +1,18 @@
 <template>
     <PortalLayout>
         <BaseLabelBar 
-            :title="$t('provisioning.title')"
-            :subheading="$t('provisioning.subheading')"
-            :actions="actions"
+            :title="$t('provisioning.onPremises.title')"
+            :subheading="$t('provisioning.onPremises.subheading')"
         />
         <div v-if="loading" class="mt-4 text-blue-600">{{ loadingMessage }}</div>
         <div v-if="error" class="mt-4 text-red-600">{{ errorMessage }}</div>
 
-        <!-- Tableau des noeuds récupérés -->
         <div class="mt-4">
             <h3>{{ $t('provisioning.nodesTableTitle') }}</h3>
             <v-data-table
                 :headers="nodeHeaders"
                 :items="nodes"
+                :items-per-page="10"
                 class="elevation-8 mt-2"
             >
                 <template #item.role="{ item }">
@@ -34,7 +33,6 @@
                             v-for="(label, index) in item.labels"
                             :key="index"
                             class="ma-1"
-                            elevation="2"
                             closable
                             @click:close="item.labels.splice(index, 1)"
                         >
@@ -72,19 +70,11 @@
                 </BaseButton>
             </div>
         </div>
-
-        <!-- Tableau d'état final des noeuds -->
-        <div class="mt-4">
-            <h3>{{ $t('provisioning.nodeStatesTitle') }}</h3>
-            <v-data-table
-                :headers="stateHeaders"
-                :items="nodeStates"
-                class="elevation-1 mt-2"
-            ></v-data-table>
-            <BaseButton color="primary" class="mt-2" @click="goDashboard">
-                {{ $t('provisioning.dashboardButton') }}
-            </BaseButton>
-        </div>
+        <v-overlay class="d-flex align-center justify-center" v-model="overlay" persistent>
+            <v-progress-circular
+                indeterminate
+            ></v-progress-circular>
+        </v-overlay>
     </PortalLayout>
 </template>
 
@@ -99,19 +89,7 @@ const loadingMessage = ref('');
 const error = ref(false);
 const errorMessage = ref('');
 const nodes = ref([]);
-const nodeStates = ref([]);
-
-const actions = [
-    {
-        text: "Manage On-Premises",
-        onClick: handleManageOnPremises
-    },
-    {
-        text: "Manage cloud",
-        disabled: true,
-        onClick: () => alert('Export clicked!')
-    }
-];
+const overlay = ref(false);
 
 const nodeHeaders = [
   { title: 'IP', value: 'IP'},
@@ -128,41 +106,30 @@ nodes.value = [
 
 ];
 
-const stateHeaders = [
-  { title: 'Nodename', value: 'Nodename' },
-  { title: 'Rôle', value: 'role' },
-  { title: 'State', value: 'state' },
-];
-
-nodeStates.value = [
-  { Nodename: 'node-1', role: 'Control-plane', state: 'Ready' },
-  { Nodename: 'node-2', role: 'Worker', state: 'NotReady' },
-];
-
 // Methods
-function handleManageOnPremises() {
-    loading.value = true;
-    loadingMessage.value = 'Vérification de la connexion des noeuds On-Prem...';
-    error.value = false;
-    nodes.value = [];
-    nodeStates.value = [];
+// function handleManageOnPremises() {
+//     loading.value = true;
+//     loadingMessage.value = 'Vérification de la connexion des noeuds On-Prem...';
+//     error.value = false;
+//     nodes.value = [];
+//     nodeStates.value = [];
 
-    axios.get('/api/nodes/onprem')
-        .then(res => {
-        loading.value = false;
-        if (!res.data.length) {
-            error.value = true;
-            errorMessage.value = 'En attente de connexion des noeuds On-Prem…';
-        } else {
-            nodes.value = res.data;
-        }
-        })
-        .catch(() => {
-        loading.value = false;
-        error.value = true;
-        errorMessage.value = 'Erreur lors de la récupération des noeuds On-Prem';
-        });
-}
+//     axios.get('/api/nodes/onprem')
+//         .then(res => {
+//         loading.value = false;
+//         if (!res.data.length) {
+//             error.value = true;
+//             errorMessage.value = 'En attente de connexion des noeuds On-Prem…';
+//         } else {
+//             nodes.value = res.data;
+//         }
+//         })
+//         .catch(() => {
+//         loading.value = false;
+//         error.value = true;
+//         errorMessage.value = 'Erreur lors de la récupération des noeuds On-Prem';
+//         });
+// }
 
 function addLabel(item) {
     if (item.newLabel && !item.labels.includes(item.newLabel)) {
