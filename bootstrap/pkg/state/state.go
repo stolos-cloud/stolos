@@ -43,3 +43,8 @@ type Machines struct {
 	ControlPlanes map[string][]byte `json:"ControlPlanes"` // map IP : Hostname
 	Workers       map[string][]byte `json:"Workers"`       // map IP : Hostname
 }
+
+type ServerConfig struct {
+	Role        int `json:"Role" field_label:"Kubernetes role"`
+	InstallDisk int `json:"InstallDisk" field_required:"true" field_label:"Install disk" `
+}

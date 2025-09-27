@@ -18,7 +18,43 @@ import (
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/talos"
 )
 
+var ActiveHttpServer *http.Server
+
+type ServerContact struct {
+	Ip   string
+	Uuid string
+	Role machine.Type
+}
+
+var ServerContacts []ServerContact
+
 // Machines stores the Machines we have already seen in IP-Hostname pairs
+
+func StartReceiveServers(model *tui.Model, addr string, step *tui.Step) error {
+	var availableServers = make(map[string]string) // uuid -> ip
+	mux := http.NewServeMux()
+	mux.HandleFunc("/machineconfig", func(w http.ResponseWriter, r *http.Request) {
+		uuid := r.URL.Query().Get("u")
+		_, ok := availableServers[uuid]
+		if !ok {
+			availableServers[uuid] = r.RemoteAddr
+			step.Body = step.Body + fmt.Sprintf("%s => %s\n", uuid, r.RemoteAddr)
+		}
+
+		ServerContacts = []ServerContact{}
+		for _, server := range availableServers {
+			ServerContacts = append(ServerContacts, ServerContact{server, uuid, machine.TypeUnknown})
+		}
+	})
+
+	ActiveHttpServer = &http.Server{
+		Addr:              addr,
+		Handler:           mux,
+		ReadHeaderTimeout: 5 * time.Second,
+	}
+	model.Logger.Successf("Config server listening on %s", addr)
+	return ActiveHttpServer.ListenAndServe()
+}
 
 // StartConfigServer starts a minimal HTTP server with /machineconfig.
 func StartConfigServer(model *tui.Model, addr string, doRestoreProgress bool, saveState *state.SaveState, bootstrapInfos *state.BootstrapInfo) error {
@@ -36,13 +72,13 @@ func StartConfigServer(model *tui.Model, addr string, doRestoreProgress bool, sa
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/machineconfig", machineConfigHandler(model, saveState, bootstrapInfos))
-	srv := &http.Server{
+	ActiveHttpServer = &http.Server{
 		Addr:              addr,
 		Handler:           mux,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	model.Logger.Successf("Config server listening on %s", addr)
-	return srv.ListenAndServe()
+	return ActiveHttpServer.ListenAndServe()
 }
 
 // machineConfigHandler handles GET /machineconfig?h=${hostname}&m=${mac}&s=${serial}&u=${uuid}

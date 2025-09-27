@@ -7,6 +7,9 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"slices"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/stolos-cloud/stolos-bootstrap/internal/configserver"
@@ -23,6 +26,7 @@ import (
 
 	"github.com/cavaliergopher/grab/v3"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/olekukonko/tablewriter"
 	"github.com/siderolabs/image-factory/pkg/schematic"
 )
 
@@ -188,13 +192,24 @@ func main() {
 		},
 	}
 
-	talosISOStep := tui.Step{
-		Name:        "TalosISOStep",
-		Title:       "3.1) Download Talos ISO",
+	//talosISOStep := tui.Step{
+	//	Name:        "TalosISOStep",
+	//	Title:       "3.1) Download Talos ISO",
+	//	Kind:        tui.StepSpinner,
+	//	IsDone:      false,
+	//	AutoAdvance: true,
+	//	OnEnter:     RunTalosISOStep,
+	//}
+
+	waitforServersStep := tui.Step{
+		Name:        "WaitServersStep",
+		Title:       "3.2) Wait for servers",
 		Kind:        tui.StepSpinner,
-		IsDone:      false,
-		AutoAdvance: true,
-		OnEnter:     RunTalosISOStep,
+		IsDone:      true, // Set by server
+		AutoAdvance: false,
+		Body:        "Press enter when you see all servers below (min 4):\n",
+		OnEnter:     RunWaitForServersStep,
+		OnExit:      ExitWaitForServersStep,
 	}
 
 	waitControlPlaneStep := tui.Step{
@@ -212,6 +227,7 @@ func main() {
 		Kind:        tui.StepSpinner,
 		IsDone:      true,  // Set by server
 		AutoAdvance: false, // TODO bypassed for now via ENTER key
+		OnExit:      ShutdownActiveServer,
 	}
 
 	clusterBootstrapStep := tui.Step{
@@ -262,7 +278,8 @@ func main() {
 		&gcpAuthStep,
 		&gcpSAStep,
 		&talosInfoStep,
-		&talosISOStep,
+		//&talosISOStep,
+		&waitforServersStep,
 		&waitControlPlaneStep,
 		&waitWorkerStep,
 		&clusterBootstrapStep,
@@ -394,6 +411,82 @@ func RunGitHubAuthStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 		s.IsDone = true
 	}()
 	return nil
+}
+
+func RunWaitForServersStep(model *tui.Model, step *tui.Step) tea.Cmd {
+	model.Logger.Infof("Cluster: %s", bootstrapInfos.TalosInfo.ClusterName)
+	addr := bootstrapInfos.TalosInfo.HTTPHostname + ":" + bootstrapInfos.TalosInfo.HTTPPort
+	model.Logger.Infof("Starting HTTP Receive Server on %s …", addr)
+	go func() {
+		if err := configserver.StartReceiveServers(model, addr, step); err != nil {
+			model.Logger.Errorf("Receive server stopped: %v", err)
+		}
+	}()
+
+	return nil
+}
+
+func ExitWaitForServersStep(model *tui.Model, step *tui.Step) {
+	ShutdownActiveServer(model, step)
+	for i, server := range configserver.ServerContacts {
+		model.Steps = slices.Insert(model.Steps, model.CurrentStepIndex+i+1, &tui.Step{
+			Name:        fmt.Sprintf("ConfigureServer_%d", i+1),
+			Title:       fmt.Sprintf("4.%d) Configure server %d", i+1, i+1),
+			Kind:        tui.StepForm,
+			IsDone:      true, // Set by server
+			AutoAdvance: false,
+			OnEnter:     RunConfigureServers(server),
+			Fields:      tui.CreateFieldsForStruct[state.ServerConfig](),
+		})
+	}
+}
+
+func ShutdownActiveServer(model *tui.Model, step *tui.Step) {
+	_ = configserver.ActiveHttpServer.Shutdown(context.Background())
+}
+
+func RunConfigureServers(server configserver.ServerContact) func(model *tui.Model, step *tui.Step) tea.Cmd {
+
+	return func(model *tui.Model, step *tui.Step) tea.Cmd {
+		disks, err := talos.GetDisks(context.Background(), server.Ip)
+		if err != nil {
+			fmt.Println("Error:", err)
+		}
+
+		stringWriter := &strings.Builder{}
+
+		stringWriter.WriteString(fmt.Sprintf("SERVER CONFIGURATION:\n"))
+		tableInfos := tablewriter.NewWriter(stringWriter)
+		tableInfos.SetHeader([]string{"IP", "UUID"})
+		tableInfos.Append([]string{server.Ip, server.Uuid})
+		tableInfos.Render()
+		stringWriter.WriteString("\n\n")
+
+		stringWriter.WriteString("Please select a role\n")
+		tableRoles := tablewriter.NewWriter(stringWriter)
+		//tableRoles.SetCaption(true, "Available Roles")
+		tableRoles.SetHeader([]string{"Selection", "Role"})
+		tableRoles.AppendBulk([][]string{
+			{"1)", "control-plane"},
+			{"2)", "worker"},
+		})
+		tableRoles.Render()
+		step.Fields[0].Label = stringWriter.String()
+
+		stringWriter.Reset()
+		stringWriter.WriteString("Please select a disk\n")
+		tableDisks := tablewriter.NewWriter(stringWriter)
+		tableDisks.SetHeader([]string{"Selection", "Name", "Model", "UUID", "WWID", "Size"})
+		for i, disk := range disks {
+			tableDisks.Append([]string{fmt.Sprintf("%d)", i+1), disk.Name, disk.Model, disk.Uuid, disk.Wwid, strconv.FormatUint(disk.Size, 10)})
+		}
+		tableDisks.Render()
+		step.Fields[1].Label = stringWriter.String()
+
+		configserver.ServerContacts = configserver.ServerContacts[1:]
+
+		return nil
+	}
 }
 
 func RunStartMachineconfigServerStep(m *tui.Model, s *tui.Step) tea.Cmd {

@@ -232,6 +232,8 @@ func (s *Server) Authenticate(ctx context.Context, providerName string) (*oauth2
 	delete(s.errorChannels, providerName)
 	s.mu.Unlock()
 
+	_ = s.server.Shutdown(context.Background())
+
 	return token, nil
 
 	/*--- Fin du code emprunté --- */
