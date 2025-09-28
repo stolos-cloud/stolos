@@ -58,21 +58,22 @@ func (h *EventHandler) HandleEvent(ctx context.Context, event events.Event) erro
 	return h.HandleEventFunc(ctx, event)
 }
 
-func ApplyConfigsToNodes(saveState state.SaveState, bootstrapInfos *state.BootstrapInfo) error {
+func ApplyConfigsToNodes(saveState *state.SaveState, bootstrapInfos *state.BootstrapInfo) error {
 	var err error
 
 	// CONTROLPLANES
 	i := 1
 	for ip, conf := range saveState.MachinesCache.ControlPlanes {
-		if len(conf) > 0 {
-			continue
-		}
 
 		if state.ConfigBundle == nil {
 			state.ConfigBundle, err = CreateMachineConfigBundle(ip, *bootstrapInfos)
 			if err != nil {
 				return err
 			}
+		}
+
+		if len(conf) > 0 {
+			continue
 		}
 
 		cfg := &v1alpha1.Config{

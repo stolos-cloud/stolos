@@ -580,7 +580,7 @@ func RunClusterBootstrapStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 		m.Logger.Debug("RunClusterBootstrapStepInBackground")
 
 		m.Logger.Debug("Applying configs...")
-		err := talos.ApplyConfigsToNodes(saveState, bootstrapInfos)
+		err := talos.ApplyConfigsToNodes(&saveState, bootstrapInfos)
 		if err != nil {
 			m.Logger.Errorf("Failed to apply configs: %s", err)
 		}
