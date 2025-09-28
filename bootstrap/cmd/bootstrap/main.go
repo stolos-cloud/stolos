@@ -45,6 +45,8 @@ var gcpToken *oauth2.Token
 var gcpEnabled = gcp.GCPClientId != "" && gcp.GCPClientSecret != ""
 var gitHubEnabled = github.GithubClientId != "" && github.GithubClientSecret != ""
 
+const _gigabyte = 1073741824
+
 func main() {
 
 	tui.RegisterDefaultFunc("GetOutboundIP", GetOutboundIP)
@@ -406,16 +408,27 @@ func RunWaitForServersStep(model *tui.Model, step *tui.Step) tea.Cmd {
 	addr := bootstrapInfos.TalosInfo.HTTPHostname + ":" + bootstrapInfos.TalosInfo.HTTPPort
 	model.Logger.Infof("Starting HTTP Receive Server on %s …", addr)
 	go func() {
-		talos.EventSink(func(ctx context.Context, event events.Event) error {
-			ip := strings.Split(event.Node, ":")[0]
-			_, ok := saveState.MachinesDisks[ip]
-			if !ok {
-				saveState.MachinesDisks[ip] = ""
-				step.Body = step.Body + fmt.Sprintf("\nNode: %s", ip)
+		for i := 0; i < 5; i++ {
+			err := talos.EventSink(func(ctx context.Context, event events.Event) error {
+				ip := strings.Split(event.Node, ":")[0]
+				_, ok := saveState.MachinesDisks[ip]
+				if !ok {
+					saveState.MachinesDisks[ip] = ""
+					step.Body = step.Body + fmt.Sprintf("\nNode: %s", ip)
+				}
+
+				return nil
+			})
+
+			if err != nil {
+				model.Logger.Errorf("Error with HTTP Receive Server, trying again...: %s", err)
+			} else {
+				model.Logger.Info("HTTP Receive Server stoped, restarting...")
 			}
 
-			return nil
-		})
+			time.Sleep(5 * time.Second)
+		}
+		model.Logger.Error("HTTP Server failed too many times")
 	}()
 
 	return nil
@@ -471,7 +484,7 @@ func RunConfigureServers(serverIp string, disks *[]*storage.Disk) func(model *tu
 		for i, disk := range *disks {
 			//jsonVal, _ := json.Marshal(disk)
 			//model.Logger.Infof("Disk %d: %s", i, string(jsonVal))
-			tableDisks.Append([]string{fmt.Sprintf("%d)", i+1), disk.DeviceName, disk.Model, disk.Uuid, disk.Wwid, strconv.FormatUint(disk.Size/1073741824, 10)})
+			tableDisks.Append([]string{fmt.Sprintf("%d)", i+1), disk.DeviceName, disk.Model, disk.Uuid, disk.Wwid, strconv.FormatUint(disk.Size/_gigabyte, 10)})
 		}
 		tableDisks.Render()
 		step.Fields[1].Label = stringWriter.String()
@@ -485,6 +498,11 @@ func ExitConfigureServer(serverIp string, disks *[]*storage.Disk) func(model *tu
 		config, err := tui.RetrieveStructFromFields[state.ServerConfig](step.Fields)
 		if err != nil {
 			model.Logger.Errorf("Error retrieving server config: %s", err)
+		}
+
+		if config.InstallDisk < 1 || config.InstallDisk > len(*disks) {
+			model.Logger.Errorf("Invalid disk selection, skiping: %d", config.InstallDisk)
+			return
 		}
 
 		defDisks := *disks

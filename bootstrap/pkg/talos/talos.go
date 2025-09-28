@@ -170,7 +170,7 @@ func ApplyConfigsToNodes(saveState state.SaveState, bootstrapInfos *state.Bootst
 	return nil
 }
 
-func EventSink(eventHandler func(ctx context.Context, event events.Event) error) {
+func EventSink(eventHandler func(ctx context.Context, event events.Event) error) error {
 	server := grpc.NewServer(
 		grpc.SharedWriteBuffer(true),
 	)
@@ -190,12 +190,13 @@ func EventSink(eventHandler func(ctx context.Context, event events.Event) error)
 	eventsapi.RegisterEventSinkServiceServer(server, sink)
 	listener, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", "0.0.0.0:3247")
 	if err != nil {
-		panic(err)
+		return err
 	}
 	err = server.Serve(listener)
 	if err != nil {
-		panic(err)
+		return err
 	}
+	return nil
 }
 
 func CreateMachineryClientFromTalosconfig(talosConfig *config.Config) machineryClient.Client {
@@ -312,7 +313,7 @@ func ExecuteBootstrap(talosApiClient machineryClient.Client) error {
 func RunBasicClusterHealthCheck(talosApiClient machineryClient.Client, loggerRef *tui.UILogger) {
 	healthCheckClient, err := talosApiClient.ClusterHealthCheck(context.Background(), 20*time.Minute, &clusterapi.ClusterInfo{})
 	if err != nil {
-		loggerRef.Errorf("Error getting cluster health: %s", err)
+		panic(err)
 	}
 
 	if err := healthCheckClient.CloseSend(); err != nil {
