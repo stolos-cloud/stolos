@@ -82,7 +82,23 @@
         "title": "Provisioning",
         "onPremises": {
             "title": "On-Premises provisioning",
-            "subheading": "Manage your on-premises resources"
+            "subheading": "Manage your on-premises resources",
+            "table": {
+                "loadingText": "Loading connected nodes...",
+                "noDataText": "No connected nodes found.",
+                "headers": {
+                    "ip": "IP",
+                    "wid": "WID",
+                    "status": "Status",
+                    "mac": "MAC",
+                    "role": "Role",
+                    "labels": "Labels"
+                }
+            },
+            "buttons": {
+                "addLabel": "Add label",
+                "provisionConnectedNodes": "Provision nodes"
+            }
         },
         "cloud": {
             "title": "Cloud provisioning",
