@@ -60,11 +60,11 @@ func (h *EventHandler) HandleEvent(ctx context.Context, event events.Event) erro
 
 func ApplyConfigsToNodes(saveState state.SaveState, bootstrapInfos *state.BootstrapInfo) error {
 	var err error
-	createdControlPlane := make(map[string][]byte)
+
+	// CONTROLPLANES
 	i := 1
 	for ip, conf := range saveState.MachinesCache.ControlPlanes {
 		if len(conf) > 0 {
-			createdControlPlane[ip] = conf
 			continue
 		}
 
@@ -118,10 +118,10 @@ func ApplyConfigsToNodes(saveState state.SaveState, bootstrapInfos *state.Bootst
 
 	}
 
+	//WORKERS
 	i = 0
 	for ip, conf := range saveState.MachinesCache.Workers {
 		if len(conf) > 0 {
-			createdControlPlane[ip] = conf
 			continue
 		}
 
