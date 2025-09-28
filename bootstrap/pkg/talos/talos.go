@@ -129,7 +129,7 @@ func ApplyConfigsToNodes(saveState state.SaveState, bootstrapInfos *state.Bootst
 			ConfigVersion: "v1alpha1",
 			MachineConfig: &v1alpha1.MachineConfig{
 				MachineNetwork: &v1alpha1.NetworkConfig{
-					NetworkHostname: fmt.Sprintf("controlplane-%d", i),
+					NetworkHostname: fmt.Sprintf("worker-%d", i),
 				},
 				MachineInstall: &v1alpha1.InstallConfig{
 					InstallDiskSelector: &v1alpha1.InstallDiskSelector{

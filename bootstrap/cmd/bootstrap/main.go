@@ -423,7 +423,7 @@ func RunWaitForServersStep(model *tui.Model, step *tui.Step) tea.Cmd {
 
 func ExitWaitForServersStep(model *tui.Model, step *tui.Step) {
 	i := 0
-	for k, _ := range saveState.MachinesDisks {
+	for k := range saveState.MachinesDisks {
 		i++
 		var disks []*storage.Disk
 		model.Steps = slices.Insert(model.Steps, model.CurrentStepIndex+i+1, &tui.Step{
@@ -475,8 +475,6 @@ func RunConfigureServers(serverIp string, disks *[]*storage.Disk) func(model *tu
 		}
 		tableDisks.Render()
 		step.Fields[1].Label = stringWriter.String()
-
-		//configserver.ServerContacts = configserver.ServerContacts[1:]
 
 		return nil
 	}
