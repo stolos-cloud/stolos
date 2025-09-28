@@ -172,24 +172,18 @@ func (s *TerraformService) initializeTerraform(workDir string) (*tfexec.Terrafor
 		return nil, fmt.Errorf("failed to get GCP config: %w", err)
 	}
 
-	// TODO: to this in a better way
-	keyFile, err := os.CreateTemp("", "gcp-key-*.json")
-	if err != nil {
-		return nil, fmt.Errorf("failed to create temp key file: %w", err)
+
+	envVars := map[string]string{
+		"GOOGLE_CREDENTIALS": gcpConfig.ServiceAccountKeyJSON,
+		"GOOGLE_PROJECT":     gcpConfig.ProjectID,
 	}
 
-	// TODO: to this in a better way
-	if _, err := keyFile.WriteString(gcpConfig.ServiceAccountKeyJSON); err != nil {
-		keyFile.Close()
-		return nil, fmt.Errorf("failed to write credentials: %w", err)
+	// Preserve PATH
+	if path := os.Getenv("PATH"); path != "" {
+		envVars["PATH"] = path
 	}
-	keyFile.Close()
 
-	// TODO: to this in a better way
-	tf.SetEnv(map[string]string{
-		"GOOGLE_APPLICATION_CREDENTIALS": keyFile.Name(),
-		"GOOGLE_PROJECT":                 gcpConfig.ProjectID,
-	})
+	tf.SetEnv(envVars)
 
 	// Initialize terraform
 	if err := tf.Init(context.Background()); err != nil {
