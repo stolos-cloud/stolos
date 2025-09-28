@@ -5,9 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"net"
-	"net/http"
 	"os"
 	"time"
 
@@ -113,15 +111,26 @@ func main() {
 	}
 
 	githubAppStep := tui.Step{
-		// TODO: Implement GitHub App Manifest Flow
 		Name:        "GitHubApp",
 		Title:       "1.3) Create GitHub App",
 		Kind:        tui.StepSpinner,
 		IsDone:      false,
 		AutoAdvance: true,
 		OnEnter: func(m *tui.Model, s *tui.Step) tea.Cmd {
-			params := CreateGitHubManifestParameters()
-			GitHubAppManifestFlow(context.Background(), model, step)
+			m.Logger.Infof("Starting GitHub App Manifest Flow...")
+			go func() {
+				user, err := github.GetGitHubUser(context.Background(), bootstrapInfos.GitHubInfo.RepoOwner, *githubToken)
+				params := github.CreateGitHubManifestParameters()
+				app, err := github.GitHubAppManifestFlow(context.Background(), m.Logger, params, *user)
+				if err != nil {
+					m.Logger.Errorf("GitHub App Manifest Flow Error: %s", err.Error())
+				}
+
+				appJson, _ := json.Marshal(app)
+				m.Logger.Infof(string(appJson))
+
+				s.IsDone = true
+			}()
 			return nil
 		},
 	}

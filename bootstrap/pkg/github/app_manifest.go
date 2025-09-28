@@ -56,14 +56,7 @@ type AppManifest struct {
 	Events             []string          `json:"events"`
 	DefaultPermissions map[string]string `json:"default_permissions"`
 	InstallationsCount int               `json:"installations_count"`
-	// plus maybe Owner user/org data
-	Owner struct {
-		Login     string `json:"login"`
-		ID        int64  `json:"id"`
-		NodeID    string `json:"node_id"`
-		AvatarURL string `json:"avatar_url"`
-		// etc
-	} `json:"owner"`
+	Owner              User              `json:"owner"`
 }
 
 // AppInstallation represents a GitHub App installation object (simplified)
@@ -100,7 +93,11 @@ func CreateGitHubManifestParameters() *AppManifestParams {
 			"workflow_dispatch",
 		},
 		DefaultPermissions: map[string]string{
-			"issues": "write",
+			"contents":  "write", // commits, file edits, wiki
+			"issues":    "write", // create/update issues
+			"projects":  "write", // project boards
+			"workflows": "write", // trigger workflows
+			"actions":   "read",  // check workflow run status
 		},
 		RequestOAuthOnInstall: true, // "Set to true to request the user to authorize the GitHub App, after the GitHub App is installed."
 		SetupOnUpdate:         true, // If the app is updated, redirect to the portal
@@ -110,7 +107,7 @@ func CreateGitHubManifestParameters() *AppManifestParams {
 
 // GitHubAppManifestFlow starts a HTTP server and does the manifest flow.
 // It returns the created AppManifest or error.
-func GitHubAppManifestFlow(ctx context.Context, logger logger.Logger, ghManifestParams *AppManifestParams) (*AppManifest, error) {
+func GitHubAppManifestFlow(ctx context.Context, logger logger.Logger, ghManifestParams *AppManifestParams, user User) (*AppManifest, error) {
 	manifestResultCh := make(chan *AppManifest, 1)
 	//installResultCh := make(chan *AppInstallation)
 	errCh := make(chan error, 1)
@@ -121,13 +118,34 @@ func GitHubAppManifestFlow(ctx context.Context, logger logger.Logger, ghManifest
 	}
 	defer listener.Close()
 
+	htmlPath := "/post_form"
 	redirectPath := "/_github_app_manifest_callback"
 	installCallbackPath := "/_github_app_install_callback"
+
+	// build the GitHub manifest redirect URL
+	_, formHTML, err := buildGitHubManifestRedirect(listener.Addr().String(), redirectPath, ghManifestParams, user)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build redirect: %w", err)
+	}
+
+	//logger.Infof("Please open this URL in browser to register your GitHub App: %s", ghURL)
 
 	mux := http.NewServeMux()
 	server := &http.Server{
 		Handler: mux,
 	}
+
+	// Handler for HTML POST redirect page
+	// This is the first step
+	mux.HandleFunc(htmlPath, func(w http.ResponseWriter, r *http.Request) {
+		logger.Infof("Served redirect page...")
+		w.Header().Set("Content-Type", "text/html")
+		_, err := fmt.Fprintf(w, formHTML)
+		if err != nil {
+			logger.Errorf("failed serving html: %w", err)
+			return
+		}
+	})
 
 	// Handler for MANIFEST CODE
 	mux.HandleFunc(redirectPath, func(w http.ResponseWriter, r *http.Request) {
@@ -160,7 +178,6 @@ func GitHubAppManifestFlow(ctx context.Context, logger logger.Logger, ghManifest
 	// Handler for POST-INSTALL
 	mux.HandleFunc(installCallbackPath, func(w http.ResponseWriter, r *http.Request) {
 		// GitHub redirects here once the App is installed/authorized
-		// You can parse query params (installation_id, setup_action, etc.) if needed
 		logger.Infof("GitHub App installed/authorized callback received. Query: %v", r.URL.Query())
 
 		w.Header().Set("Content-Type", "text/html")
@@ -173,19 +190,6 @@ func GitHubAppManifestFlow(ctx context.Context, logger logger.Logger, ghManifest
 			logger.Errorf("HTTP server error: %v", err)
 		}
 	}()
-
-	// build the GitHub manifest redirect URL
-	// e.g. POST form to "https://github.com/settings/apps/new?state=STATE" with manifest JSON
-	// Or as a client redirect with an auto-submit form.
-	ghURL, formHTML, err := buildGitHubManifestRedirect(listener.Addr().String(), redirectPath, ghManifestParams)
-	if err != nil {
-		server.Close()
-		return nil, fmt.Errorf("failed to build redirect: %w", err)
-	}
-
-	// Option A: open browser automatically, or instruct the user to visit the URL
-	logger.Infof("Please open this URL in browser to register your GitHub App: %s", ghURL)
-	logger.Infof("Or load the following HTML to auto-submit:\n%s", formHTML)
 
 	// Wait for either result or error or context done
 	select {
@@ -201,7 +205,8 @@ func GitHubAppManifestFlow(ctx context.Context, logger logger.Logger, ghManifest
 	}
 }
 
-func buildGitHubManifestRedirect(addr, path string, params *AppManifestParams) (string, string, error) {
+// buildGitHubManifestRedirect returns the manifest creation URL, an html form that POSTs the manifest or error.
+func buildGitHubManifestRedirect(addr, path string, params *AppManifestParams, user User) (string, string, error) {
 	manifestJSON, err := json.Marshal(params)
 	if err != nil {
 		return "", "", err
@@ -216,12 +221,15 @@ func buildGitHubManifestRedirect(addr, path string, params *AppManifestParams) (
 		return "", "", err
 	}
 
-	// The GitHub endpoint to POST the manifest to:
-	// If you are creating under a user account:
-	baseURL := "https://github.com/settings/apps/new"
-	// If for an organization, you’d use "https://github.com/organizations/ORG/settings/apps/new"
-	// Append ?state=STATE for CSRF
-	ghURL := fmt.Sprintf("%s?state=%s", baseURL, params.State)
+	var baseURL string
+	if user.Type == "user" {
+		baseURL = "https://github.com/settings/apps/new"
+	} else {
+		baseURL = fmt.Sprintf("https://github.com/organizations/%s/settings/apps/new", user.Login)
+	}
+
+	// TODO : Implement CSRF
+	//ghURL := fmt.Sprintf("%s?state=%s", baseURL, params.State)
 
 	// Create an HTML form that auto-submits:
 	htmlForm := fmt.Sprintf(`
@@ -234,9 +242,9 @@ func buildGitHubManifestRedirect(addr, path string, params *AppManifestParams) (
     <p>Redirecting to GitHub...</p>
   </body>
 </html>
-`, ghURL, string(manifestJSON), params.State)
+`, baseURL, string(manifestJSON), params.State)
 
-	return ghURL, htmlForm, nil
+	return baseURL, htmlForm, nil
 }
 
 // exchangeManifestCode calls GitHub API to exchange code -> manifest result
@@ -247,7 +255,6 @@ func exchangeManifestCode(ctx context.Context, code string) (*AppManifest, error
 		return nil, err
 	}
 	req.Header.Set("Accept", "application/vnd.github+json")
-	// Note: you do NOT need Authorization header here (the docs imply no auth for this endpoint) :contentReference[oaicite:0]{index=0}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -302,7 +309,7 @@ func ListAppInstallations(ctx context.Context, appID int64, privateKeyPEM string
 	return installs, nil
 }
 
-// generateAppJWT creates a signed JWT for authenticating as a GitHub App
+// GenerateAppJWT creates a signed JWT for authenticating as a GitHub App
 func GenerateAppJWT(appID int64, privateKeyPEM string) (string, error) {
 	block, _ := pem.Decode([]byte(privateKeyPEM))
 	if block == nil {
