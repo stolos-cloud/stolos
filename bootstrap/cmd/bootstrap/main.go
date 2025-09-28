@@ -501,7 +501,7 @@ func ExitConfigureServer(serverIp string, disks *[]*storage.Disk) func(model *tu
 		}
 
 		if config.InstallDisk < 1 || config.InstallDisk > len(*disks) {
-			model.Logger.Errorf("Invalid disk selection, skiping: %d", config.InstallDisk)
+			model.Logger.Errorf("Invalid disk selection, skipping: %d", config.InstallDisk)
 			return
 		}
 
