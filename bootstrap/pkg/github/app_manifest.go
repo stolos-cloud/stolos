@@ -74,19 +74,21 @@ type AppInstallation struct {
 	UpdatedAt           time.Time `json:"updated_at"`
 }
 
-func CreateGitHubManifestParameters() *AppManifestParams {
+func CreateGitHubManifestParameters(webhookEndpoint string, listenAddr string) *AppManifestParams {
 	return &AppManifestParams{
 		Name: "Stolos Platform",
 		URL:  "https://stolos.cloud",
 		HookAttributes: HookAttributes{
-			Url:    "", // WebHook events endpoint
+			Url:    webhookEndpoint, // WebHook events endpoint
 			Active: true,
 		},
-		RedirectURL:  "",  // hit After manifest register, set in next phase
-		CallbackURLs: nil, // hit After app installation
-		SetupURL:     "",  // hit After app install if more setup needed (?)
-		Description:  "The Stolos Platform app allows Stolos to make commits to the templates repository created in the previous step.",
-		Public:       false,
+		RedirectURL: listenAddr + "/_github_app_manifest_callback", // hit After manifest register, set in next phase
+		CallbackURLs: []string{
+			"http://" + listenAddr + "/_github_app_install_callback",
+		}, // hit After app installation
+		SetupURL:    "", // hit After app install if more setup needed (?)
+		Description: "The Stolos Platform app allows Stolos to make commits to the templates repository created in the previous step.",
+		Public:      false,
 		DefaultEvents: []string{
 			// TODO : Check full even list and see what we want to subscribe to.
 			"workflow_run",
@@ -107,12 +109,12 @@ func CreateGitHubManifestParameters() *AppManifestParams {
 
 // GitHubAppManifestFlow starts a HTTP server and does the manifest flow.
 // It returns the created AppManifest or error.
-func GitHubAppManifestFlow(ctx context.Context, logger logger.Logger, ghManifestParams *AppManifestParams, user User) (*AppManifest, error) {
+func GitHubAppManifestFlow(ctx context.Context, listenAddr string, logger logger.Logger, ghManifestParams *AppManifestParams, user User) (*AppManifest, error) {
 	manifestResultCh := make(chan *AppManifest, 1)
 	//installResultCh := make(chan *AppInstallation)
 	errCh := make(chan error, 1)
 
-	listener, err := net.Listen("tcp", "127.0.0.1:19999")
+	listener, err := net.Listen("tcp", listenAddr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to listen on port: %w", err)
 	}
@@ -232,9 +234,12 @@ func buildGitHubManifestRedirect(addr, path string, params *AppManifestParams, u
 	//ghURL := fmt.Sprintf("%s?state=%s", baseURL, params.State)
 
 	// Create an HTML form that auto-submits:
+
+	// document.forms[0].submit()
+
 	htmlForm := fmt.Sprintf(`
 <html>
-  <body onload="document.forms[0].submit()">
+  <body onload="">
     <form action="%s" method="post">
       <input type="hidden" name="manifest" value='%s'/>
       <input type="hidden" name="state" value="%s"/>

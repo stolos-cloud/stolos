@@ -119,9 +119,12 @@ func main() {
 		OnEnter: func(m *tui.Model, s *tui.Step) tea.Cmd {
 			m.Logger.Infof("Starting GitHub App Manifest Flow...")
 			go func() {
+				listenAddr := "127.0.0.1:19999"
+				webhookEndpoint := "https://" + bootstrapInfos.GitHubInfo.BaseDomain + "/stolos/api/v1/github_webhook"
+
 				user, err := github.GetGitHubUser(context.Background(), bootstrapInfos.GitHubInfo.RepoOwner, *githubToken)
-				params := github.CreateGitHubManifestParameters()
-				app, err := github.GitHubAppManifestFlow(context.Background(), m.Logger, params, *user)
+				params := github.CreateGitHubManifestParameters(webhookEndpoint, listenAddr)
+				app, err := github.GitHubAppManifestFlow(context.Background(), listenAddr, m.Logger, params, *user)
 				if err != nil {
 					m.Logger.Errorf("GitHub App Manifest Flow Error: %s", err.Error())
 				}
