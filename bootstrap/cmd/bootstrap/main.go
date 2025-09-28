@@ -9,7 +9,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/goccy/go-json"
 	"github.com/stolos-cloud/stolos-bootstrap/internal/configserver"
 	"github.com/stolos-cloud/stolos-bootstrap/internal/tui"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/gcp"
@@ -53,6 +52,8 @@ func main() {
 		bootstrapInfos = &saveState.BootstrapInfo
 		didReadBootstrapInfos = true
 		doRestoreProgress = true
+	} else {
+		saveState = state.SaveState{}
 	}
 
 	_, err = os.Stat("bootstrap-config.json")
@@ -129,9 +130,9 @@ func main() {
 					m.Logger.Errorf("GitHub App Manifest Flow Error: %s", err.Error())
 				}
 
-				appJson, _ := json.Marshal(app)
-				m.Logger.Infof(string(appJson))
+				saveState.GitHubApp = *app
 
+				m.Logger.Successf("GitHub App was created successfuly! App name: %s, App ID: %s", app.Name, app.ID)
 				s.IsDone = true
 			}()
 			return nil
