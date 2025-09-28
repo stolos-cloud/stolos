@@ -76,57 +76,6 @@ func (h *AuthHandlers) Login(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-func (h *AuthHandlers) Register(c *gin.Context) {
-	var req RegisterRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	// Check if already exists
-	var existingUser models.User
-	if err := h.db.First(&existingUser, "email = ?", strings.ToLower(req.Email)).Error; err == nil {
-		c.JSON(http.StatusConflict, gin.H{"error": "User already exists"})
-		return
-	}
-
-	// Default role
-	if req.Role == "" {
-		req.Role = models.RoleViewer
-	}
-
-	user := models.User{
-		Email: strings.ToLower(req.Email),
-		Role:  req.Role,
-	}
-
-	if err := user.SetPassword(req.Password); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
-		return
-	}
-
-	if err := h.db.Create(&user).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
-		return
-	}
-
-	// Reload user with teams
-	h.db.Preload("Teams").First(&user, user.ID)
-
-	token, err := h.jwtService.GenerateToken(&user)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
-		return
-	}
-
-	response := AuthResponse{
-		Token: token,
-		User:  api.ToUserResponse(&user),
-	}
-
-	c.JSON(http.StatusCreated, response)
-}
-
 func (h *AuthHandlers) RefreshToken(c *gin.Context) {
 	user, err := middleware.GetUserFromContext(c)
 	if err != nil {
@@ -160,8 +109,6 @@ func (h *AuthHandlers) GetProfile(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"user": api.ToUserResponse(user)})
 }
-
-// convert User model to UserResponse
 
 // Admin-only endpoint to create users with specific roles
 func (h *AuthHandlers) CreateUser(c *gin.Context) {

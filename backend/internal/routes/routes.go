@@ -69,7 +69,6 @@ func setupAuthRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
 		admin.Use(middleware.RequireRole(models.RoleAdmin))
 		{
 			admin.POST("/users", h.AuthHandlers().CreateUser)
-			admin.POST("/register", h.AuthHandlers().Register)
 		}
 	}
 }

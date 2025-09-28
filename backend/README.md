@@ -92,7 +92,7 @@ curl -X POST http://localhost:8080/api/v1/gcp/destroy-infra
 curl http://localhost:8080/api/v1/nodes
 
 # List pending nodes:
-curl http://localhost:8080/api/v1/nodes?status=pending
+curl http://localhost:8080/api/v1/nodes\?status\=pending
 
 # Create nodes:
 curl -X POST http://localhost:8080/api/v1/nodes
@@ -111,12 +111,6 @@ curl -X POST http://localhost:8080/api/v1/isos/generate
 curl -X POST http://localhost:8080/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"admin@example.com","password":"admin123"}'
-
-# Register new user:
-curl -X POST http://localhost:8080/api/v1/auth/admin/register \
-  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"email":"user@example.com","password":"userpass123"}'
 
 # Get user profile:
 curl -X GET http://localhost:8080/api/v1/auth/profile \

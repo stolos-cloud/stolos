@@ -94,7 +94,8 @@ func (s *NodeService) CreateSamplePendingNodes() error {
 	}
 
 	if err := s.db.Create(&cluster).Error; err != nil {
-		return err
+		// return err
+		fmt.Println("Cluster already exists, skipping creation")
 	}
 
 	sampleNodes := []models.Node{
@@ -118,7 +119,8 @@ func (s *NodeService) CreateSamplePendingNodes() error {
 
 	for _, node := range sampleNodes {
 		if err := s.db.Create(&node).Error; err != nil {
-			return err
+			fmt.Println("Node already exists, skipping creation")
+			// return err
 		}
 	}
 
