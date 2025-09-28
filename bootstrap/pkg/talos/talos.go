@@ -171,7 +171,7 @@ func ApplyConfigsToNodes(saveState *state.SaveState, bootstrapInfos *state.Boots
 	return nil
 }
 
-func EventSink(eventHandler func(ctx context.Context, event events.Event) error) error {
+func EventSink(bootstrapInfos *state.BootstrapInfo, eventHandler func(ctx context.Context, event events.Event) error) error {
 	server := grpc.NewServer(
 		grpc.SharedWriteBuffer(true),
 	)
@@ -189,7 +189,7 @@ func EventSink(eventHandler func(ctx context.Context, event events.Event) error)
 		&machineapi.PhaseEvent{},
 	})
 	eventsapi.RegisterEventSinkServiceServer(server, sink)
-	listener, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", "0.0.0.0:3247")
+	listener, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", fmt.Sprintf("%s:%s", bootstrapInfos.TalosInfo.HTTPHostname, bootstrapInfos.TalosInfo.HTTPPort))
 	if err != nil {
 		return err
 	}

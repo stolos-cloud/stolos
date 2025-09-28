@@ -409,7 +409,7 @@ func RunWaitForServersStep(model *tui.Model, step *tui.Step) tea.Cmd {
 	model.Logger.Infof("Starting HTTP Receive Server on %s …", addr)
 	go func() {
 		for i := 0; i < 5; i++ {
-			err := talos.EventSink(func(ctx context.Context, event events.Event) error {
+			err := talos.EventSink(bootstrapInfos, func(ctx context.Context, event events.Event) error {
 				ip := strings.Split(event.Node, ":")[0]
 				_, ok := saveState.MachinesDisks[ip]
 				if !ok {
