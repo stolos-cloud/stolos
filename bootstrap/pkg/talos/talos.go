@@ -51,29 +51,11 @@ type LogEvent struct {
 }
 
 type EventHandler struct {
-	Model     *tui.Model
-	Step      *tui.Step
-	SaveState *state.SaveState
+	HandleEventFunc func(ctx context.Context, event events.Event) error
 }
 
 func (h *EventHandler) HandleEvent(ctx context.Context, event events.Event) error {
-	ip := strings.Split(event.Node, ":")[0]
-	_, ok := h.SaveState.MachinesDisks[ip]
-	if !ok {
-		h.SaveState.MachinesDisks[ip] = ""
-		h.Step.Body = h.Step.Body + fmt.Sprintf("\nNode: %s", ip)
-	}
-	//eventJson, err := json.Marshal(LogEvent{
-	//	Node:      ip,
-	//	Payload:   event.Payload,
-	//	EventType: fmt.Sprintf("%T", event.Payload),
-	//})
-	//if err != nil {
-	//	return err
-	//}
-	//h.Model.Logger.Debug(string(eventJson))
-
-	return nil
+	return h.HandleEventFunc(ctx, event)
 }
 
 func ApplyConfigsToNodes(saveState state.SaveState, bootstrapInfos *state.BootstrapInfo) error {
@@ -188,14 +170,12 @@ func ApplyConfigsToNodes(saveState state.SaveState, bootstrapInfos *state.Bootst
 	return nil
 }
 
-func EventSink(model *tui.Model, step *tui.Step, saveState state.SaveState) {
+func EventSink(eventHandler func(ctx context.Context, event events.Event) error) {
 	server := grpc.NewServer(
 		grpc.SharedWriteBuffer(true),
 	)
 	var handler events.Adapter = &EventHandler{
-		Model:     model,
-		Step:      step,
-		SaveState: &saveState,
+		HandleEventFunc: eventHandler,
 	}
 
 	sink := events.NewSink(handler, []proto.Message{

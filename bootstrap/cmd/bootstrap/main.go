@@ -3,7 +3,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -17,6 +16,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/olekukonko/tablewriter"
 	"github.com/siderolabs/image-factory/pkg/schematic"
+	"github.com/siderolabs/siderolink/pkg/events"
 	"github.com/siderolabs/talos/pkg/machinery/api/storage"
 	"github.com/stolos-cloud/stolos-bootstrap/internal/tui"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/gcp"
@@ -406,10 +406,16 @@ func RunWaitForServersStep(model *tui.Model, step *tui.Step) tea.Cmd {
 	addr := bootstrapInfos.TalosInfo.HTTPHostname + ":" + bootstrapInfos.TalosInfo.HTTPPort
 	model.Logger.Infof("Starting HTTP Receive Server on %s …", addr)
 	go func() {
-		talos.EventSink(model, step, saveState)
-		//if err := configserver.StartReceiveServers(model, addr, step); err != nil {
-		//	model.Logger.Errorf("Receive server stopped: %v", err)
-		//}
+		talos.EventSink(func(ctx context.Context, event events.Event) error {
+			ip := strings.Split(event.Node, ":")[0]
+			_, ok := saveState.MachinesDisks[ip]
+			if !ok {
+				saveState.MachinesDisks[ip] = ""
+				step.Body = step.Body + fmt.Sprintf("\nNode: %s", ip)
+			}
+
+			return nil
+		})
 	}()
 
 	return nil
@@ -463,8 +469,8 @@ func RunConfigureServers(serverIp string, disks *[]*storage.Disk) func(model *tu
 		tableDisks := tablewriter.NewWriter(stringWriter)
 		tableDisks.SetHeader([]string{"Selection", "Name", "Model", "UUID", "WWID", "Size"})
 		for i, disk := range *disks {
-			jsonVal, _ := json.Marshal(disk)
-			model.Logger.Infof("Disk %d: %s", i, string(jsonVal))
+			//jsonVal, _ := json.Marshal(disk)
+			//model.Logger.Infof("Disk %d: %s", i, string(jsonVal))
 			tableDisks.Append([]string{fmt.Sprintf("%d)", i+1), disk.DeviceName, disk.Model, disk.Uuid, disk.Wwid, strconv.FormatUint(disk.Size/1073741824, 10)})
 		}
 		tableDisks.Render()
@@ -511,7 +517,6 @@ func RunTalosISOStep(m *tui.Model, s *tui.Step) tea.Cmd {
 		defer cancel()
 
 		//talosConfigArg := fmt.Sprintf("talos.config=http://%s:%s/machineconfig?m=${mac}&u=${uuid}", bootstrapInfos.TalosInfo.HTTPHostname, bootstrapInfos.TalosInfo.HTTPPort)
-		//const earlyConfb64 = "KLUv/QSIDQIAAkQOEZB9UHaShW5YnMmBkPJkPqEDAJ1iUhFikJD0u73vIZAe3yr6zvTDvUJ67xQQN291ZIf01jOGza8LAQBo4KCPEQmA"
 		sinkConf := fmt.Sprintf("talos.events.sink=%s:%s", bootstrapInfos.TalosInfo.HTTPHostname, bootstrapInfos.TalosInfo.HTTPPort)
 		kernelArgs := []string{sinkConf, bootstrapInfos.TalosInfo.TalosExtraArgs}
 
