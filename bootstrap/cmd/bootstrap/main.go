@@ -437,8 +437,8 @@ func RunWaitForServersStep(model *tui.Model, step *tui.Step) tea.Cmd {
 func ExitWaitForServersStep(model *tui.Model, step *tui.Step) {
 	i := 0
 	for k := range saveState.MachinesDisks {
-		i++
 		var disks []*storage.Disk
+		// Insert start at the next step (after WaitForServer)
 		model.Steps = slices.Insert(model.Steps, model.CurrentStepIndex+i+1, &tui.Step{
 			Name:        fmt.Sprintf("ConfigureServer_%d", i),
 			Title:       fmt.Sprintf("4.%d) Configure server %d", i, i),
@@ -449,6 +449,7 @@ func ExitWaitForServersStep(model *tui.Model, step *tui.Step) {
 			OnExit:      ExitConfigureServer(k, &disks),
 			Fields:      tui.CreateFieldsForStruct[state.ServerConfig](),
 		})
+		i++
 	}
 }
 

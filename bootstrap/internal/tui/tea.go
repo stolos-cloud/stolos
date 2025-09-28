@@ -330,7 +330,13 @@ func SkipToStep(model *Model, name string) {
 
 // Steps helper / processing
 
-func (m *Model) getCurrentStep() *Step { return m.Steps[m.CurrentStepIndex] }
+func (m *Model) getCurrentStep() *Step {
+	if m.CurrentStepIndex >= len(m.Steps) {
+		m.Logger.Errorf("Current step index out of range!!")
+		return m.Steps[len(m.Steps)-1]
+	}
+	return m.Steps[m.CurrentStepIndex]
+}
 
 func (m *Model) enterStepCmd(i int) tea.Cmd {
 	m.CurrentStepIndex = i

@@ -66,7 +66,7 @@ func ApplyConfigsToNodes(saveState *state.SaveState, bootstrapInfos *state.Boots
 	for ip, conf := range saveState.MachinesCache.ControlPlanes {
 
 		if state.ConfigBundle == nil {
-			state.ConfigBundle, err = CreateMachineConfigBundle(ip, *bootstrapInfos)
+			state.ConfigBundle, err = CreateMachineConfigBundle(ip, bootstrapInfos)
 			if err != nil {
 				return err
 			}
@@ -220,7 +220,7 @@ func CreateMachineryClientFromTalosconfig(talosConfig *config.Config) machineryC
 	return *machinery
 }
 
-func CreateMachineConfigBundle(controlPlaneIp string, bootstrapInfos state.BootstrapInfo) (*bundle.Bundle, error) {
+func CreateMachineConfigBundle(controlPlaneIp string, bootstrapInfos *state.BootstrapInfo) (*bundle.Bundle, error) {
 
 	var secretsBundle *secrets.Bundle
 
