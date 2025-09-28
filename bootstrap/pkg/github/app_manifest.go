@@ -12,6 +12,7 @@ import (
 
 	"github.com/goccy/go-json"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/pkg/browser"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/logger"
 )
 
@@ -95,11 +96,16 @@ func CreateGitHubManifestParameters(webhookEndpoint string, listenAddr string) *
 			"workflow_dispatch",
 		},
 		DefaultPermissions: map[string]string{
-			"contents":  "write", // commits, file edits, wiki
-			"issues":    "write", // create/update issues
-			"projects":  "write", // project boards
-			"workflows": "write", // trigger workflows
-			"actions":   "read",  // check workflow run status
+			"contents":              "write", // commits, file edits, wiki
+			"issues":                "write", // create/update issues
+			"organization_projects": "write", // project boards
+			"workflows":             "write", // trigger workflows
+			"actions":               "write", // check workflow run status
+			"discussions":           "write",
+			"pages":                 "write",
+			"pull_requests":         "write",
+			"secrets":               "write",
+			"repository_hooks":      "write",
 		},
 		RequestOAuthOnInstall: true, // "Set to true to request the user to authorize the GitHub App, after the GitHub App is installed."
 		SetupOnUpdate:         true, // If the app is updated, redirect to the portal
@@ -193,6 +199,12 @@ func GitHubAppManifestFlow(ctx context.Context, listenAddr string, logger logger
 		}
 	}()
 
+	// Open browser to the redirect HTML Form
+	if err := browser.OpenURL("http://" + listenAddr + htmlPath); err != nil {
+		logger.Errorf("failed to open browser for GitHub manifest redirect %s", err.Error())
+		logger.Warnf("Copy-paste link in your browser to continue: %s", "http://"+listenAddr+htmlPath)
+	}
+
 	// Wait for either result or error or context done
 	select {
 	case <-ctx.Done():
@@ -239,7 +251,7 @@ func buildGitHubManifestRedirect(addr, path string, params *AppManifestParams, u
 
 	htmlForm := fmt.Sprintf(`
 <html>
-  <body onload="">
+  <body onload="document.forms[0].submit()">
     <form action="%s" method="post">
       <input type="hidden" name="manifest" value='%s'/>
       <input type="hidden" name="state" value="%s"/>
