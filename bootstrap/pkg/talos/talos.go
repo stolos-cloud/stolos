@@ -17,6 +17,7 @@ import (
 	"github.com/siderolabs/talos/pkg/machinery/config/container"
 	"github.com/siderolabs/talos/pkg/machinery/config/encoder"
 	"github.com/siderolabs/talos/pkg/machinery/proto"
+	"github.com/stolos-cloud/stolos-bootstrap/pkg/marshal"
 
 	"github.com/cosi-project/runtime/pkg/safe"
 	factoryClient "github.com/siderolabs/image-factory/pkg/client"
@@ -115,8 +116,8 @@ func ApplyConfigsToNodes(saveState *state.SaveState, bootstrapInfos *state.Boots
 		})
 
 		saveState.MachinesCache.ControlPlanes[ip] = machineConfigRendered
+		_ = marshal.SaveStateToJSON(*saveState)
 		i++
-
 	}
 
 	//WORKERS
@@ -165,6 +166,7 @@ func ApplyConfigsToNodes(saveState *state.SaveState, bootstrapInfos *state.Boots
 		})
 
 		saveState.MachinesCache.Workers[ip] = machineConfigRendered
+		_ = marshal.SaveStateToJSON(*saveState)
 		i++
 	}
 

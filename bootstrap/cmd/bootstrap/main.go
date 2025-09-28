@@ -415,6 +415,10 @@ func RunWaitForServersStep(model *tui.Model, step *tui.Step) tea.Cmd {
 				if !ok {
 					saveState.MachinesDisks[ip] = ""
 					step.Body = step.Body + fmt.Sprintf("\nNode: %s", ip)
+					err := marshal.SaveStateToJSON(saveState)
+					if err != nil {
+						model.Logger.Errorf("Error saving state: %s", err)
+					}
 				}
 
 				return nil
@@ -496,6 +500,7 @@ func RunConfigureServers(serverIp string, disks *[]*storage.Disk) func(model *tu
 
 func ExitConfigureServer(serverIp string, disks *[]*storage.Disk) func(model *tui.Model, step *tui.Step) {
 	return func(model *tui.Model, step *tui.Step) {
+
 		config, err := tui.RetrieveStructFromFields[state.ServerConfig](step.Fields)
 		if err != nil {
 			model.Logger.Errorf("Error retrieving server config: %s", err)
@@ -518,6 +523,11 @@ func ExitConfigureServer(serverIp string, disks *[]*storage.Disk) func(model *tu
 			break
 		default:
 			model.Logger.Errorf("Invalid role: %d", config.Role)
+		}
+
+		err = marshal.SaveStateToJSON(saveState)
+		if err != nil {
+			model.Logger.Errorf("Error saving state: %s", err)
 		}
 	}
 }
