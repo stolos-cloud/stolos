@@ -9,6 +9,7 @@ import (
 	"github.com/etsmtl-pfe-cloudnative/backend/internal/database"
 	"github.com/etsmtl-pfe-cloudnative/backend/internal/handlers"
 	"github.com/etsmtl-pfe-cloudnative/backend/internal/routes"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
@@ -26,6 +27,13 @@ func main() {
 	}
 
 	r := gin.Default()
+
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		AllowCredentials: true,
+	}))
 
 	h, err := handlers.NewHandlers(db, cfg)
 	if err != nil {

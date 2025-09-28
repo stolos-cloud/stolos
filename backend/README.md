@@ -107,9 +107,6 @@ curl -X POST http://localhost:8080/api/v1/nodes/sync-gcp
 curl -X POST http://localhost:8080/api/v1/isos/generate
 
 
-# Create admin user (run script while server is running):
-go run scripts/create_admin.go -email admin@example.com -password admin123
-
 # Login:
 curl -X POST http://localhost:8080/api/v1/auth/login \
   -H "Content-Type: application/json" \
