@@ -11,8 +11,11 @@
                         <BaseTextfield :Textfield="textfields.email" />
                         <BaseTextfield :Textfield="textfields.password" :iconAction="passwordEyeIcon" @clickIcon="showPassword = !showPassword" />
                     </v-form>
+                    <v-alert v-if="errorMessage" type="error" class="mb-3" variant="outlined">
+                        {{ errorMessage }}
+                    </v-alert>
                     <BaseCheckbox :Checkbox="checkboxes.rememberMe" />
-                    <BaseButton :text="$t('login.buttons.login')" class="w-100 mt-4" :disabled="!isValid" @click="login" />
+                    <BaseButton :text="$t('login.buttons.login')" class="w-100 mt-4" :disabled="!isValid || isLoading" :loading="isLoading" @click="login" />
                 </v-card-text>
                 <v-card-actions class="d-flex flex-column align-center mt-4">
                     <RouterLink to="/403" class="mb-1 text-router-link">
@@ -36,6 +39,7 @@ import { FormValidationRules } from "@/composables/FormValidationRules.js";
 import { ref, computed, reactive } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
+import authService from "@/services/auth.service.js";
 
 const { t } = useI18n();
 const { emailRules, passwordRules } = FormValidationRules();
@@ -71,10 +75,24 @@ const checkboxes = reactive({
 
 // Validation state
 const isValid = ref(false);
+const isLoading = ref(false);
+const errorMessage = ref('');
 
 // Methods
-function login() {
-  router.push('/dashboard');
+async function login() {
+  if (!isValid.value) return;
+
+  isLoading.value = true;
+  errorMessage.value = '';
+
+  try {
+    await authService.login(textfields.email.value, textfields.password.value);
+    router.push('/dashboard');
+  } catch (error) {
+    errorMessage.value = error.message;
+  } finally {
+    isLoading.value = false;
+  }
 }
 </script>
 

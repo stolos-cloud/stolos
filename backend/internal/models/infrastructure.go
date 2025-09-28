@@ -66,4 +66,3 @@ func (g *GCPConfig) BeforeCreate(tx *gorm.DB) error {
 	}
 	return nil
 }
-

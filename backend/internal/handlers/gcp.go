@@ -3,10 +3,29 @@ package handlers
 import (
 	"net/http"
 
+	"github.com/etsmtl-pfe-cloudnative/backend/internal/config"
+	"github.com/etsmtl-pfe-cloudnative/backend/internal/services"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
-func (h *Handlers) initializeGCP(c *gin.Context) {
+type GCPHandlers struct {
+	db               *gorm.DB
+	gcpService       *services.GCPService
+	nodeService      *services.NodeService
+	terraformService *services.TerraformService
+}
+
+func NewGCPHandlers(db *gorm.DB, cfg *config.Config) *GCPHandlers {
+	return &GCPHandlers{
+		db:               db,
+		gcpService:       services.NewGCPService(db, cfg),
+		nodeService:      services.NewNodeService(db, cfg),
+		terraformService: services.NewTerraformService(db, cfg),
+	}
+}
+
+func (h *GCPHandlers) InitializeGCP(c *gin.Context) {
 	gcpConfig, err := h.gcpService.InitializeGCP(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -16,7 +35,7 @@ func (h *Handlers) initializeGCP(c *gin.Context) {
 	c.JSON(http.StatusOK, gcpConfig)
 }
 
-func (h *Handlers) getGCPStatus(c *gin.Context) {
+func (h *GCPHandlers) GetGCPStatus(c *gin.Context) {
 	config, err := h.gcpService.GetCurrentConfig()
 	if err != nil {
 		if err.Error() == "record not found" {
@@ -36,7 +55,7 @@ func (h *Handlers) getGCPStatus(c *gin.Context) {
 	})
 }
 
-func (h *Handlers) updateGCPServiceAccount(c *gin.Context) {
+func (h *GCPHandlers) UpdateGCPServiceAccount(c *gin.Context) {
 	var req struct {
 		ProjectID          string `json:"project_id" binding:"required"`
 		Region             string `json:"region" binding:"required"`
@@ -57,7 +76,7 @@ func (h *Handlers) updateGCPServiceAccount(c *gin.Context) {
 	c.JSON(http.StatusOK, config)
 }
 
-func (h *Handlers) createTerraformBucket(c *gin.Context) {
+func (h *GCPHandlers) CreateTerraformBucket(c *gin.Context) {
 	var req struct {
 		ProjectID string `json:"project_id" binding:"required"`
 		Region    string `json:"region" binding:"required"`
@@ -80,7 +99,8 @@ func (h *Handlers) createTerraformBucket(c *gin.Context) {
 	})
 }
 
-func (h *Handlers) syncGCPNodes(c *gin.Context) {
+// Allows to query directly GCP instances
+func (h *GCPHandlers) QueryGCPInstances(c *gin.Context) {
 	err := h.nodeService.QueryGCPInstances(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -90,7 +110,7 @@ func (h *Handlers) syncGCPNodes(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Sample : successfully queried GCP instances"})
 }
 
-func (h *Handlers) initInfra(c *gin.Context) {
+func (h *GCPHandlers) InitInfra(c *gin.Context) {
 	err := h.terraformService.InitializeInfrastructure(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -100,7 +120,7 @@ func (h *Handlers) initInfra(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Terraform infrastructure initialized successfully"})
 }
 
-func (h *Handlers) deleteInfra(c *gin.Context) {
+func (h *GCPHandlers) DeleteInfra(c *gin.Context) {
 	err := h.terraformService.DestroyInfrastructure(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
