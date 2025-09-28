@@ -80,7 +80,30 @@
     },
     "provisioning": {
         "title": "Provisionnement",
-        "subheading": "Gérez vos ressources cloud"
+        "onPremises": {
+            "title": "Provisionnement On-Premises",
+            "subheading": "Gérez vos ressources sur site",
+            "table": {
+                "loadingText": "Chargement des nœuds connectés...",
+                "noDataText": "Aucun nœud connecté trouvé.",
+                "headers": {
+                    "ip": "IP",
+                    "wid": "WID",
+                    "status": "Statut",
+                    "mac": "MAC",
+                    "role": "Rôle",
+                    "labels": "Étiquettes"
+                }
+            },
+            "buttons": {
+                "addLabel": "Ajouter une étiquette",
+                "provisionConnectedNodes": "Provisionner les nœuds"
+            }
+        },
+        "cloud": {
+            "title": "Provisionnement Cloud",
+            "subheading": "Gérez vos ressources cloud"
+        }
     },
     "cloudProvider": {
         "title": "Fournisseur de Cloud"

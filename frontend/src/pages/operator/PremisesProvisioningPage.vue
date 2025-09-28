@@ -4,17 +4,20 @@
             :title="$t('provisioning.onPremises.title')"
             :subheading="$t('provisioning.onPremises.subheading')"
         />
-        <div v-if="loading" class="mt-4 text-blue-600">{{ loadingMessage }}</div>
-        <div v-if="error" class="mt-4 text-red-600">{{ errorMessage }}</div>
-
         <div class="mt-4">
             <h3>{{ $t('provisioning.nodesTableTitle') }}</h3>
-            <v-data-table
+            <v-data-table-server
                 :headers="nodeHeaders"
                 :items="nodes"
+                :items-length="nodes.length"
+                :loading=loading
+                :loading-text="$t('provisioning.onPremises.table.loadingText')"
+                :no-data-text="$t('provisioning.onPremises.table.noDataText')"
                 :items-per-page="10"
                 class="elevation-8 mt-2"
             >
+                
+                <!-- Slot for roles -->
                 <template #item.role="{ item }">
                     <v-select
                     v-model="item.role"
@@ -27,6 +30,7 @@
                     ></v-select>
                 </template>
 
+                <!-- Slot for labels -->
                 <template #item.labels="{ item }">
                     <div class="d-flex flex-wrap align-center">
                         <v-chip
@@ -39,15 +43,11 @@
                             {{ label }}
                         </v-chip>
                         <template v-if="!item.addingLabel">
-                            <v-chip
-                                class="ma-1"
-                                elevation="2"
-                                @click="item.addingLabel = true"
-                            >
-                                + Add label
+                            <v-chip class="ma-1" elevation="2" @click="item.addingLabel = true">
+                                {{ $t('provisioning.onPremises.buttons.addLabel') }}
                             </v-chip>
                         </template>
-                            <template v-else>
+                        <template v-else>
                             <v-text-field
                                 v-model="item.newLabel"
                                 density="compact"
@@ -60,12 +60,13 @@
                                 @keyup.enter="addLabel(item)"
                                 @blur="addLabel(item); item.addingLabel = false"
                             />
-                            </template>
+                        </template>
                     </div>
                 </template>
-            </v-data-table>
+            </v-data-table-server>
+
             <div class="d-flex justify-end">
-                <BaseButton color="primary" class="mt-2" @click="validateNodes">
+                <BaseButton color="primary" class="mt-2" @click="provisionConnectedNodes">
                     {{ $t('provisioning.validateNodesButton') }}
                 </BaseButton>
             </div>
@@ -81,55 +82,52 @@
 <script setup>
 import PortalLayout from '@/components/layouts/PortalLayout.vue';
 import BaseLabelBar from '@/components/base/BaseLabelBar.vue';
-import { ref } from 'vue';
+import { getConnectedNodes } from '@/services/provisioning.service';
+import { onMounted, ref } from 'vue';
 
-
+const roles = ['Control plane', 'Worker'];
 const loading = ref(false);
-const loadingMessage = ref('');
-const error = ref(false);
-const errorMessage = ref('');
-const nodes = ref([]);
 const overlay = ref(false);
+const nodes = ref([]);
 
 const nodeHeaders = [
-  { title: 'IP', value: 'IP'},
-  { title: 'WID', value: 'WID'},
-  { title: 'MAC', value: 'MAC', width: "20%" },
-  { title: 'Rôle', value: 'role', width: "15%" },
-  { title: 'Labels', value: 'labels', width: "30%" },
+  { title: 'provisioning.onPremises.table.ip', value: 'ip'},
+  { title: 'provisioning.onPremises.table.wid', value: 'wid'},
+  { title: 'provisioning.onPremises.table.mac', value: 'mac', width: "20%" },
+  { title: 'provisioning.onPremises.table.status', value: 'status', width: "15%" },
+  { title: 'provisioning.onPremises.table.role', value: 'role', width: "15%" },
+  { title: 'provisioning.onPremises.table.labels', value: 'labels', width: "30%" },
 ];
 
 nodes.value = [
-    //rajoute 25 lignes
-  { IP: '192.168.0.1', WID: 'W01', MAC: 'AA:BB:CC:DD:EE:01', role: null,  labels: ["Test"] },
+  { ip: '192.168.0.1', wid: 'W01', mac: 'AA:BB:CC:DD:EE:01', role: null,  labels: ["Test"] },
   { IP: '192.168.0.2', WID: 'W02', MAC: 'AA:BB:CC:DD:EE:02', role: 'Worker', labels: []},
-
 ];
 
-// Methods
-// function handleManageOnPremises() {
-//     loading.value = true;
-//     loadingMessage.value = 'Vérification de la connexion des noeuds On-Prem...';
-//     error.value = false;
-//     nodes.value = [];
-//     nodeStates.value = [];
+//mounted
+onMounted(() => {
+    fetchConnectedNodes();
+});
 
-//     axios.get('/api/nodes/onprem')
-//         .then(res => {
-//         loading.value = false;
-//         if (!res.data.length) {
-//             error.value = true;
-//             errorMessage.value = 'En attente de connexion des noeuds On-Prem…';
-//         } else {
-//             nodes.value = res.data;
-//         }
-//         })
-//         .catch(() => {
-//         loading.value = false;
-//         error.value = true;
-//         errorMessage.value = 'Erreur lors de la récupération des noeuds On-Prem';
-//         });
-// }
+
+// Methods
+function fetchConnectedNodes() {
+    loading.value = true;
+    getConnectedNodes({status: "pending"})
+    .then(response => {
+        nodes.value = response.data.map(node => ({
+            ...node,
+        }));
+        console.log(nodes.value);
+        
+    })
+    .catch(error => {
+        console.error('Error fetching connected nodes:', error);
+    })
+    .finally(() => {
+        loading.value = false;
+    });
+}
 
 function addLabel(item) {
     if (item.newLabel && !item.labels.includes(item.newLabel)) {
@@ -137,7 +135,6 @@ function addLabel(item) {
     }
     item.newLabel = '';
 }
-
 </script>
 
 <style scoped>
