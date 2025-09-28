@@ -105,6 +105,63 @@ curl -X POST http://localhost:8080/api/v1/nodes/sync-gcp
 
 # Generate ISO:
 curl -X POST http://localhost:8080/api/v1/isos/generate
+
+
+# Create admin user (run script while server is running):
+go run scripts/create_admin.go -email admin@example.com -password admin123
+
+# Login:
+curl -X POST http://localhost:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@example.com","password":"admin123"}'
+
+# Register new user:
+curl -X POST http://localhost:8080/api/v1/auth/admin/register \
+  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com","password":"userpass123"}'
+
+# Get user profile:
+curl -X GET http://localhost:8080/api/v1/auth/profile \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Refresh token:
+curl -X POST http://localhost:8080/api/v1/auth/refresh \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Create team:
+curl -X POST http://localhost:8080/api/v1/teams \
+  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"developers"}'
+
+# List teams:
+curl -X GET http://localhost:8080/api/v1/teams \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Get team details:
+curl -X GET http://localhost:8080/api/v1/teams/TEAM_UUID \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Add user to team:
+curl -X POST http://localhost:8080/api/v1/teams/TEAM_UUID/users \
+  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"user_id":"USER_UUID"}'
+
+# Remove user from team:
+curl -X DELETE http://localhost:8080/api/v1/teams/TEAM_UUID/users/USER_UUID \
+  -H "Authorization: Bearer YOUR_ADMIN_TOKEN"
+
+# Create user as admin:
+curl -X POST http://localhost:8080/api/v1/auth/admin/users \
+  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"newuser@example.com","password":"password123","role":"developer"}'
+
+# List all users:
+curl -X GET http://localhost:8080/api/v1/users \
+  -H "Authorization: Bearer YOUR_ADMIN_TOKEN"
 ```
 
 ## Tests

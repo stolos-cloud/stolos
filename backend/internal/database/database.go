@@ -63,6 +63,10 @@ func runMigrations(db *gorm.DB) error {
 		&models.Cluster{},
 		&models.Node{},
 		&models.GCPConfig{},
+		&models.Team{},
+		&models.User{},
+		&models.UserTeam{},
+		&models.Deployment{},
 	)
 }
 

@@ -8,6 +8,7 @@ import (
 	"github.com/etsmtl-pfe-cloudnative/backend/internal/config"
 	"github.com/etsmtl-pfe-cloudnative/backend/internal/database"
 	"github.com/etsmtl-pfe-cloudnative/backend/internal/handlers"
+	"github.com/etsmtl-pfe-cloudnative/backend/internal/routes"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
@@ -26,9 +27,12 @@ func main() {
 
 	r := gin.Default()
 
-	h := handlers.NewHandlers(db, cfg)
+	h, err := handlers.NewHandlers(db, cfg)
+	if err != nil {
+		log.Fatal("Failed to initialize handlers:", err)
+	}
 
-	handlers.SetupRoutes(r, h)
+	routes.SetupRoutes(r, h)
 
 	port := os.Getenv("PORT")
 	if port == "" {
