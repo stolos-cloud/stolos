@@ -4,8 +4,8 @@ import (
 	"os"
 
 	"github.com/goccy/go-json"
+	"github.com/siderolabs/talos/pkg/machinery/config/bundle"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/state"
-	"github.com/stolos-cloud/stolos-bootstrap/pkg/talos"
 )
 
 func ReadBootstrapInfos(filename string, bootstrapInfos *state.BootstrapInfo) {
@@ -19,6 +19,36 @@ func ReadBootstrapInfos(filename string, bootstrapInfos *state.BootstrapInfo) {
 	}
 }
 
+// SaveSplitConfigBundleFiles take a config bundle and saves each composite part to individual files for later loading
+func SaveSplitConfigBundleFiles(configBundle bundle.Bundle) error {
+	initBytes, err := configBundle.InitCfg.Bytes()
+	err = os.WriteFile("init.yaml", initBytes, 0644)
+	workerBytes, err := configBundle.WorkerCfg.Bytes()
+	err = os.WriteFile("worker.yaml", workerBytes, 0644)
+	controlPlaneBytes, err := configBundle.ControlPlaneCfg.Bytes()
+	err = os.WriteFile("controlplane.yaml", controlPlaneBytes, 0644)
+	talosBytes, err := configBundle.TalosCfg.Bytes()
+	err = os.WriteFile("talosconfig", talosBytes, 0644)
+	return err
+}
+
+// ReadSplitConfigBundleFiles reconstructs multiple yaml configs into a ConfigBundle
+func ReadSplitConfigBundleFiles() (*bundle.Bundle, error) {
+	//dec := yaml.NewDecoder(bytes.NewReader(bundleBytes))
+
+	configBundleOpts := []bundle.Option{
+		//bundle.WithInputOptions(
+		//	&bundle.InputOptions{
+		//		ClusterName: bootstrapInfos.ClusterName,
+		//	},
+		//),
+		bundle.WithExistingConfigs("./"),
+	}
+
+	return bundle.NewBundle(configBundleOpts...)
+
+}
+
 func SaveStateToJSON(saveState state.SaveState) error {
 	jsonData, err := json.Marshal(saveState)
 	if err != nil {
@@ -28,7 +58,7 @@ func SaveStateToJSON(saveState state.SaveState) error {
 	if err != nil {
 		return err
 	}
-	err = talos.SaveSplitConfigBundleFiles(*state.ConfigBundle)
+	err = SaveSplitConfigBundleFiles(*state.ConfigBundle)
 	if err != nil {
 		return err
 	}
@@ -45,6 +75,6 @@ func ReadStateFromJSON() state.SaveState {
 	if err != nil {
 		panic(err)
 	}
-	state.ConfigBundle, err = talos.ReadSplitConfigBundleFiles()
+	state.ConfigBundle, err = ReadSplitConfigBundleFiles()
 	return saveState
 }
