@@ -192,6 +192,14 @@ func main() {
 		Fields:      tui.CreateFieldsForStruct[state.TalosInfo](),
 		IsDone:      true,
 		AutoAdvance: false,
+		OnEnter: func(m *tui.Model, s *tui.Step) tea.Cmd {
+			if doRestoreProgress {
+				m.Logger.Info("State file found, skipping talos info form")
+				s.IsDone = true
+				s.AutoAdvance = true
+			}
+			return nil
+		},
 		OnExit: func(m *tui.Model, s *tui.Step) {
 			if !didReadBootstrapInfos {
 				talosInfo, err := tui.RetrieveStructFromFields[state.TalosInfo](s.Fields)
@@ -245,7 +253,7 @@ func main() {
 		Title:       "4.2) Deploy Portal",
 		Kind:        tui.StepSpinner,
 		IsDone:      false,
-		AutoAdvance: true,
+		AutoAdvance: false,
 		OnEnter:     RunPortalStepInBackground,
 	}
 
@@ -404,6 +412,15 @@ func RunGitHubAuthStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 }
 
 func RunWaitForServersStep(model *tui.Model, step *tui.Step) tea.Cmd {
+
+	if doRestoreProgress {
+		model.Logger.Info("State file found, skip looking for machines") // TODO ... FOR NOW!!
+		step.IsDone = true
+		step.AutoAdvance = true
+		step.OnExit = nil
+		return nil
+	}
+
 	model.Logger.Infof("Cluster: %s", bootstrapInfos.TalosInfo.ClusterName)
 	addr := bootstrapInfos.TalosInfo.HTTPHostname + ":" + bootstrapInfos.TalosInfo.HTTPPort
 	model.Logger.Infof("Starting HTTP Receive Server on %s …", addr)
@@ -534,8 +551,8 @@ func ExitConfigureServer(serverIp string, disks *[]*storage.Disk) func(model *tu
 
 func RunTalosISOStep(m *tui.Model, s *tui.Step) tea.Cmd {
 	if doRestoreProgress {
-		m.Logger.Info("State file found, skipping to tui.Steps[5]")
-		m.CurrentStepIndex = 5
+		m.Logger.Info("State file found, skipping ISO download")
+		s.IsDone = true
 		return nil
 	}
 

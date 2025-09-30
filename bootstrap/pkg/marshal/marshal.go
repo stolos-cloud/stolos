@@ -20,7 +20,7 @@ func ReadBootstrapInfos(filename string, bootstrapInfos *state.BootstrapInfo) {
 }
 
 // SaveSplitConfigBundleFiles take a config bundle and saves each composite part to individual files for later loading
-func SaveSplitConfigBundleFiles(configBundle bundle.Bundle) error {
+func SaveSplitConfigBundleFiles(configBundle *bundle.Bundle) error {
 	initBytes, err := configBundle.InitCfg.Bytes()
 	err = os.WriteFile("init.yaml", initBytes, 0644)
 	workerBytes, err := configBundle.WorkerCfg.Bytes()
@@ -34,19 +34,11 @@ func SaveSplitConfigBundleFiles(configBundle bundle.Bundle) error {
 
 // ReadSplitConfigBundleFiles reconstructs multiple yaml configs into a ConfigBundle
 func ReadSplitConfigBundleFiles() (*bundle.Bundle, error) {
-	//dec := yaml.NewDecoder(bytes.NewReader(bundleBytes))
-
 	configBundleOpts := []bundle.Option{
-		//bundle.WithInputOptions(
-		//	&bundle.InputOptions{
-		//		ClusterName: bootstrapInfos.ClusterName,
-		//	},
-		//),
 		bundle.WithExistingConfigs("./"),
 	}
 
 	return bundle.NewBundle(configBundleOpts...)
-
 }
 
 func SaveStateToJSON(saveState state.SaveState) error {
@@ -58,9 +50,11 @@ func SaveStateToJSON(saveState state.SaveState) error {
 	if err != nil {
 		return err
 	}
-	err = SaveSplitConfigBundleFiles(*state.ConfigBundle)
-	if err != nil {
-		return err
+	if state.ConfigBundle != nil {
+		err = SaveSplitConfigBundleFiles(state.ConfigBundle)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
