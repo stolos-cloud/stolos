@@ -253,7 +253,7 @@ func main() {
 		Title:       "4.2) Deploy Portal",
 		Kind:        tui.StepSpinner,
 		IsDone:      false,
-		AutoAdvance: false,
+		AutoAdvance: true,
 		OnEnter:     RunPortalStepInBackground,
 	}
 
