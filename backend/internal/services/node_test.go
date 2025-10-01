@@ -1,12 +1,12 @@
-package tests
+package services_test
 
 import (
 	"testing"
 
-	"github.com/etsmtl-pfe-cloudnative/backend/internal/config"
-	"github.com/etsmtl-pfe-cloudnative/backend/internal/models"
-	"github.com/etsmtl-pfe-cloudnative/backend/internal/services"
 	"github.com/google/uuid"
+	"github.com/stolos-cloud/stolos/backend/internal/config"
+	"github.com/stolos-cloud/stolos/backend/internal/models"
+	"github.com/stolos-cloud/stolos/backend/internal/services"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )

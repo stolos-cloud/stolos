@@ -3,10 +3,10 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/etsmtl-pfe-cloudnative/backend/internal/api"
-	"github.com/etsmtl-pfe-cloudnative/backend/internal/models"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/stolos-cloud/stolos/backend/internal/api"
+	"github.com/stolos-cloud/stolos/backend/internal/models"
 	"gorm.io/gorm"
 )
 

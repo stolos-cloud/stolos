@@ -3,7 +3,7 @@ package services
 import (
 	"fmt"
 
-	"github.com/etsmtl-pfe-cloudnative/backend/internal/config"
+	"github.com/stolos-cloud/stolos/backend/internal/config"
 	"gorm.io/gorm"
 )
 

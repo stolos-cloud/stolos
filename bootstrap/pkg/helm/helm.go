@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/mittwald/go-helm-client"
+	helmclient "github.com/mittwald/go-helm-client"
 	"github.com/mittwald/go-helm-client/values"
 	"github.com/stolos-cloud/stolos-bootstrap/internal/logging"
 	"github.com/stolos-cloud/stolos-bootstrap/internal/tui"

@@ -1,8 +1,8 @@
 package handlers
 
 import (
-	"github.com/etsmtl-pfe-cloudnative/backend/internal/config"
-	"github.com/etsmtl-pfe-cloudnative/backend/internal/middleware"
+	"github.com/stolos-cloud/stolos/backend/internal/config"
+	"github.com/stolos-cloud/stolos/backend/internal/middleware"
 	"gorm.io/gorm"
 )
 

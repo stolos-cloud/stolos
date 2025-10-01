@@ -3,10 +3,10 @@ package routes
 import (
 	"net/http"
 
-	"github.com/etsmtl-pfe-cloudnative/backend/internal/handlers"
-	"github.com/etsmtl-pfe-cloudnative/backend/internal/middleware"
-	"github.com/etsmtl-pfe-cloudnative/backend/internal/models"
 	"github.com/gin-gonic/gin"
+	"github.com/stolos-cloud/stolos/backend/internal/handlers"
+	"github.com/stolos-cloud/stolos/backend/internal/middleware"
+	"github.com/stolos-cloud/stolos/backend/internal/models"
 )
 
 func SetupRoutes(r *gin.Engine, h *handlers.Handlers) {
@@ -21,12 +21,13 @@ func SetupRoutes(r *gin.Engine, h *handlers.Handlers) {
 	{
 		setupAuthRoutes(api, h)
 
+		// temporary: don't require authentication for nodes routes
+		setupNodeRoutes(api, h)
 		// require authentication
 		protected := api.Group("")
 		protected.Use(middleware.JWTAuthMiddleware(h.JWTService(), h.DB()))
 		{
 			setupISORoutes(protected, h)
-			setupNodeRoutes(protected, h)
 			setupGCPRoutes(protected, h)
 			setupTeamRoutes(protected, h)
 			setupUserRoutes(protected, h)
@@ -47,6 +48,9 @@ func setupNodeRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
 		nodes.GET("", h.NodeHandlers().ListNodes)
 		nodes.POST("", h.NodeHandlers().CreateNodes)
 		nodes.GET("/:id", h.NodeHandlers().GetNode)
+		nodes.PUT("/:id/config", h.NodeHandlers().UpdateNodeConfig)
+		nodes.PUT("/config", h.NodeHandlers().UpdateNodesConfig)
+		nodes.POST("/create-samples", h.NodeHandlers().CreateSampleNodes) // TODO: remove in production
 	}
 }
 
@@ -100,9 +104,9 @@ func setupUserRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
 func setupGCPRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
 	gcp := api.Group("/gcp")
 	{
-		gcp.POST("/initialize", h.GCPHandlers().InitializeGCP)
 		gcp.GET("/status", h.GCPHandlers().GetGCPStatus)
-		gcp.PUT("/service-account", h.GCPHandlers().UpdateGCPServiceAccount)
+		gcp.PUT("/configure", h.GCPHandlers().ConfigureGCP)
+		gcp.POST("/configure/upload", h.GCPHandlers().ConfigureGCPUpload)
 		gcp.POST("/bucket", h.GCPHandlers().CreateTerraformBucket)
 		gcp.POST("/init-infra", h.GCPHandlers().InitInfra)
 		gcp.POST("/delete-infra", h.GCPHandlers().DeleteInfra)
