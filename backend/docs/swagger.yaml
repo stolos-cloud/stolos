@@ -699,11 +699,11 @@ paths:
       summary: Update multiple nodes configuration
       tags:
       - nodes
-  /nodes/sample:
+  /nodes/samples:
     post:
       consumes:
       - application/json
-      description: Create sample pending nodes for testing purposes
+      description: Create samples pending nodes for testing purposes
       produces:
       - application/json
       responses:
@@ -719,7 +719,7 @@ paths:
             additionalProperties:
               type: string
             type: object
-      summary: Create sample pending nodes
+      summary: Create samples pending nodes
       tags:
       - nodes
   /teams:
