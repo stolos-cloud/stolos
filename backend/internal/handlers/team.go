@@ -28,7 +28,19 @@ type AddUserToTeamRequest struct {
 	UserID string `json:"user_id" binding:"required"`
 }
 
-
+// CreateTeam godoc
+// @Summary Create a new team
+// @Description Create a new team with the provided name
+// @Tags teams
+// @Accept json
+// @Produce json
+// @Param team body CreateTeamRequest true "Team creation request"
+// @Success 201 {object} map[string]interface{}
+// @Failure 400 {object} map[string]string
+// @Failure 409 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /teams [post]
+// @Security BearerAuth
 func (h *TeamHandlers) CreateTeam(c *gin.Context) {
 	var req CreateTeamRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -54,6 +66,17 @@ func (h *TeamHandlers) CreateTeam(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"team": api.ToTeamResponse(&team, false)})
 }
 
+// GetTeams godoc
+// @Summary Get list of teams
+// @Description Retrieve a list of all teams. Admins see all teams, users see only their teams.
+// @Tags teams
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string][]api.TeamResponse
+// @Failure 401 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /teams [get]
+// @Security BearerAuth
 func (h *TeamHandlers) GetTeams(c *gin.Context) {
 	claims, err := middleware.GetClaimsFromContext(c)
 	if err != nil {
@@ -85,6 +108,21 @@ func (h *TeamHandlers) GetTeams(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"teams": response})
 }
 
+// GetTeam godoc
+// @Summary Get team details
+// @Description Retrieve details of a specific team by ID, including its users
+// @Tags teams
+// @Accept json
+// @Produce json
+// @Param id path string true "Team ID (UUID)"
+// @Success 200 {object} map[string]api.TeamResponse
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 403 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /teams/{id} [get]
+// @Security BearerAuth
 func (h *TeamHandlers) GetTeam(c *gin.Context) {
 	teamIDStr := c.Param("id")
 	teamID, err := uuid.Parse(teamIDStr)
@@ -121,6 +159,23 @@ func (h *TeamHandlers) GetTeam(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"team": api.ToTeamResponse(&team, true)})
 }
 
+// AddUserToTeam godoc
+// @Summary Add a user to a team
+// @Description Add a user to a specific team by user ID
+// @Tags teams
+// @Accept json
+// @Produce json
+// @Param id path string true "Team ID (UUID)"
+// @Param user body AddUserToTeamRequest true "User addition request"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 403 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 409 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /teams/{id}/users [post]
+// @Security BearerAuth
 func (h *TeamHandlers) AddUserToTeam(c *gin.Context) {
 	teamIDStr := c.Param("id")
 	teamID, err := uuid.Parse(teamIDStr)
@@ -180,6 +235,22 @@ func (h *TeamHandlers) AddUserToTeam(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "User added to team successfully"})
 }
 
+// RemoveUserFromTeam godoc
+// @Summary Remove a user from a team
+// @Description Remove a user from a specific team by user ID
+// @Tags teams
+// @Accept json
+// @Produce json
+// @Param id path string true "Team ID (UUID)"
+// @Param user_id path string true "User ID (UUID)"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 403 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /teams/{id}/users/{user_id} [delete]
+// @Security BearerAuth
 func (h *TeamHandlers) RemoveUserFromTeam(c *gin.Context) {
 	teamIDStr := c.Param("id")
 	teamID, err := uuid.Parse(teamIDStr)
@@ -226,6 +297,22 @@ func (h *TeamHandlers) RemoveUserFromTeam(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "User removed from team successfully"})
 }
 
+// DeleteTeam godoc
+// @Summary Delete a team
+// @Description Delete a specific team by ID. Team must have no associated deployments.
+// @Tags teams
+// @Accept json
+// @Produce json
+// @Param id path string true "Team ID (UUID)"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 403 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 409 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /teams/{id} [delete]
+// @Security BearerAuth
 func (h *TeamHandlers) DeleteTeam(c *gin.Context) {
 	teamIDStr := c.Param("id")
 	teamID, err := uuid.Parse(teamIDStr)

@@ -39,7 +39,18 @@ type AuthResponse struct {
 	User  api.UserResponse `json:"user"`
 }
 
-
+// Login godoc
+// @Summary User login
+// @Description Authenticate user and return JWT token
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param login body LoginRequest true "Login credentials"
+// @Success 200 {object} AuthResponse
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /auth/login [post]
 func (h *AuthHandlers) Login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -76,6 +87,17 @@ func (h *AuthHandlers) Login(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+// RefreshToken godoc
+// @Summary Refresh JWT token
+// @Description Refresh the JWT token for the authenticated user
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Success 200 {object} AuthResponse
+// @Failure 401 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /auth/refresh [post]
+// @Security BearerAuth
 func (h *AuthHandlers) RefreshToken(c *gin.Context) {
 	user, err := middleware.GetUserFromContext(c)
 	if err != nil {
@@ -100,6 +122,16 @@ func (h *AuthHandlers) RefreshToken(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+// GetProfile godoc
+// @Summary Get user profile
+// @Description Retrieve the profile of the authenticated user
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]api.UserResponse
+// @Failure 401 {object} map[string]string
+// @Router /auth/profile [get]
+// @Security BearerAuth
 func (h *AuthHandlers) GetProfile(c *gin.Context) {
 	user, err := middleware.GetUserFromContext(c)
 	if err != nil {
@@ -110,7 +142,20 @@ func (h *AuthHandlers) GetProfile(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"user": api.ToUserResponse(user)})
 }
 
-// Admin-only endpoint to create users with specific roles
+// CreateUser godoc
+// @Summary Create a new user
+// @Description Register a new user (Admin only)
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param user body RegisterRequest true "User registration data"
+// @Success 201 {object} map[string]api.UserResponse
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 409 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /auth/register [post]
+// @Security BearerAuth
 func (h *AuthHandlers) CreateUser(c *gin.Context) {
 	var req RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
