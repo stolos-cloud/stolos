@@ -106,6 +106,7 @@ func setupGCPRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
 	{
 		gcp.GET("/status", h.GCPHandlers().GetGCPStatus)
 		gcp.PUT("/configure", h.GCPHandlers().ConfigureGCP)
+		gcp.POST("/configure/upload", h.GCPHandlers().ConfigureGCPUpload)
 		gcp.POST("/bucket", h.GCPHandlers().CreateTerraformBucket)
 		gcp.POST("/init-infra", h.GCPHandlers().InitInfra)
 		gcp.POST("/delete-infra", h.GCPHandlers().DeleteInfra)

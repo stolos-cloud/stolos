@@ -23,6 +23,17 @@ func NewNodeHandlers(db *gorm.DB, cfg *config.Config) *NodeHandlers {
 	}
 }
 
+// ListNodes godoc
+// @Summary List nodes
+// @Description Get list of nodes with optional status filter
+// @Tags nodes
+// @Accept json
+// @Produce json
+// @Param status query string false "Node status filter (pending, active, failed)"
+// @Success 200 {array} models.Node
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /nodes [get]
 func (h *NodeHandlers) ListNodes(c *gin.Context) {
 	status := c.Query("status")
 
@@ -47,6 +58,18 @@ func (h *NodeHandlers) GetNode(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Get node - TODO"})
 }
 
+// UpdateNodeConfig godoc
+// @Summary Update node configuration
+// @Description Update a single node's role and labels
+// @Tags nodes
+// @Accept json
+// @Produce json
+// @Param id path string true "Node ID (UUID)"
+// @Param request body object{role=string,labels=[]string} true "Node configuration"
+// @Success 200 {object} models.Node
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /nodes/{id}/config [put]
 func (h *NodeHandlers) UpdateNodeConfig(c *gin.Context) {
 	var req struct {
 		Role   string   `json:"role" binding:"required"`
@@ -74,6 +97,17 @@ func (h *NodeHandlers) UpdateNodeConfig(c *gin.Context) {
 	c.JSON(http.StatusOK, node)
 }
 
+// UpdateNodesConfig godoc
+// @Summary Update multiple nodes configuration
+// @Description Update multiple nodes' role and labels in a single request
+// @Tags nodes
+// @Accept json
+// @Produce json
+// @Param request body object{nodes=[]services.NodeConfigUpdate} true "Array of node configurations"
+// @Success 200 {object} map[string]interface{} "Returns updated count and nodes array"
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /nodes/config [put]
 func (h *NodeHandlers) UpdateNodesConfig(c *gin.Context) {
 	var req struct {
 		Nodes []services.NodeConfigUpdate `json:"nodes" binding:"required"`
@@ -96,6 +130,15 @@ func (h *NodeHandlers) UpdateNodesConfig(c *gin.Context) {
 	})
 }
 
+// CreateSampleNodes godoc
+// @Summary Create sample pending nodes
+// @Description Create sample pending nodes for testing purposes
+// @Tags nodes
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]string "Message indicating success"
+// @Failure 500 {object} map[string]string
+// @Router /nodes/sample [post]
 func (h *NodeHandlers) CreateSampleNodes(c *gin.Context) {
 	err := h.nodeService.CreateSamplePendingNodes()
 	if err != nil {
