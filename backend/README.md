@@ -42,9 +42,9 @@ go build -o out/server ./cmd/server
 ## Docker
 
 ```bash
-# Needs to run from root of the repository
+# Needs to build from root of the repository
 cd ../
-docker build -t stolos-platform-backend backend/.
+docker build -t stolos-platform-backend ../ -f Dockerfile
 docker run -p 8080:8080 stolos-platform-backend
 ```
 
