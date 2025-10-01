@@ -50,7 +50,7 @@ func setupNodeRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
 		nodes.GET("/:id", h.NodeHandlers().GetNode)
 		nodes.PUT("/:id/config", h.NodeHandlers().UpdateNodeConfig)
 		nodes.PUT("/config", h.NodeHandlers().UpdateNodesConfig)
-		nodes.POST("/create-samples", h.NodeHandlers().CreateSampleNodes) // TODO: remove in production
+		nodes.POST("/samples", h.NodeHandlers().CreateSampleNodes) // TODO: remove in production
 	}
 }
 
