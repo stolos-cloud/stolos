@@ -1,12 +1,14 @@
 FROM --platform=$BUILDPLATFORM golang:1.25-alpine AS builder
 WORKDIR /app
 RUN apk add --no-cache git build-base
-COPY go.mod go.sum ./
-RUN go mod download
-COPY . .
+COPY backend/go.mod backend/go.sum ./backend/
+COPY bootstrap/go.mod bootstrap/go.sum ./bootstrap/
+RUN cd backend && go mod download
+COPY backend/ ./backend/
+COPY bootstrap/ ./bootstrap/
 ARG TARGETOS TARGETARCH
 
-RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
+RUN cd backend && CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
     go build -trimpath -ldflags="-s -w" -o main ./cmd/server
 
 FROM --platform=$BUILDPLATFORM alpine:3.20 AS tf
@@ -28,9 +30,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
 
 WORKDIR /app
 
-COPY --from=builder /app/main .
+COPY --from=builder /app/backend/main .
 COPY --from=tf /out/terraform /usr/local/bin/terraform
-COPY terraform-templates ./terraform-templates
+COPY backend/terraform-templates ./terraform-templates
 EXPOSE 8080
 
 CMD ["./main"]

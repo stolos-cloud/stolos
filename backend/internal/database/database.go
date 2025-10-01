@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/etsmtl-pfe-cloudnative/backend/internal/config"
-	"github.com/etsmtl-pfe-cloudnative/backend/internal/models"
+	"github.com/stolos-cloud/stolos/backend/internal/config"
+	"github.com/stolos-cloud/stolos/backend/internal/models"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"

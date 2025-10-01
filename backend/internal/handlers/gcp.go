@@ -3,9 +3,9 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/etsmtl-pfe-cloudnative/backend/internal/config"
-	"github.com/etsmtl-pfe-cloudnative/backend/internal/services"
 	"github.com/gin-gonic/gin"
+	"github.com/stolos-cloud/stolos/backend/internal/config"
+	"github.com/stolos-cloud/stolos/backend/internal/services"
 	"gorm.io/gorm"
 )
 

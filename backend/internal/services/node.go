@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/etsmtl-pfe-cloudnative/backend/internal/config"
-	"github.com/etsmtl-pfe-cloudnative/backend/internal/models"
-	"github.com/etsmtl-pfe-cloudnative/backend/pkg/gcp"
 	"github.com/google/uuid"
+	"github.com/stolos-cloud/stolos/backend/internal/config"
+	"github.com/stolos-cloud/stolos/backend/internal/models"
+	"github.com/stolos-cloud/stolos/backend/pkg/gcp"
 	"gorm.io/gorm"
 )
 
