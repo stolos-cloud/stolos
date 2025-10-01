@@ -55,7 +55,7 @@ func (h *GCPHandlers) GetGCPStatus(c *gin.Context) {
 	})
 }
 
-func (h *GCPHandlers) UpdateGCPServiceAccount(c *gin.Context) {
+func (h *GCPHandlers) ConfigureGCP(c *gin.Context) {
 	var req struct {
 		ProjectID          string `json:"project_id" binding:"required"`
 		Region             string `json:"region" binding:"required"`
@@ -67,13 +67,13 @@ func (h *GCPHandlers) UpdateGCPServiceAccount(c *gin.Context) {
 		return
 	}
 
-	config, err := h.gcpService.UpdateServiceAccount(c.Request.Context(), req.ProjectID, req.Region, req.ServiceAccountJSON)
+	gcpConfig, err := h.gcpService.ConfigureGCP(c.Request.Context(), req.ProjectID, req.Region, req.ServiceAccountJSON)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, config)
+	c.JSON(http.StatusOK, gcpConfig)
 }
 
 func (h *GCPHandlers) CreateTerraformBucket(c *gin.Context) {

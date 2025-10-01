@@ -56,15 +56,12 @@ docker-compose -f docker-compose.yml up
 # Health Check
 curl http://localhost:8080/health
 
-# Initialize GCP (creates storage bucket and saves config):
-curl -X POST http://localhost:8080/api/v1/gcp/initialize
-
 # Check GCP status:
 curl http://localhost:8080/api/v1/gcp/status
 
-# Configure gcp service-account
-source .env
-curl -X PUT http://localhost:8080/api/v1/gcp/service-account \
+# Configure gcp (saves service-account and bucket creation):
+source .env # make sure you have GCP_PROJECT_ID, GCP_REGION and GCP_SERVICE_ACCOUNT_JSON set in your .env
+curl -X PUT http://localhost:8080/api/v1/gcp/configure \
     -H "Content-Type: application/json" \
     -d "$(jq -n \
       --arg project_id "$GCP_PROJECT_ID" \
@@ -94,11 +91,50 @@ curl http://localhost:8080/api/v1/nodes
 # List pending nodes:
 curl http://localhost:8080/api/v1/nodes\?status\=pending
 
-# Create nodes:
-curl -X POST http://localhost:8080/api/v1/nodes
-
 # Get specific node:
 curl http://localhost:8080/api/v1/nodes/uuid-here
+
+# Create sample nodes (for testing, remove in production):
+curl -X POST http://localhost:8080/api/v1/nodes/create-samples
+
+# Update single node configuration (role and labels):
+curl -X PUT http://localhost:8080/api/v1/nodes/uuid-here/config \
+  -H "Content-Type: application/json" \
+  -d '{
+    "role": "worker",
+    "labels": ["gpu", "high-memory", "zone-a"]
+  }'
+
+# Update single node as control-plane:
+curl -X PUT http://localhost:8080/api/v1/nodes/uuid-here/config \
+  -H "Content-Type: application/json" \
+  -d '{
+    "role": "control-plane",
+    "labels": ["primary", "zone-a"]
+  }'
+
+# Update multiple nodes configuration in one request:
+curl -X PUT http://localhost:8080/api/v1/nodes/config \
+  -H "Content-Type: application/json" \
+  -d '{
+    "nodes": [
+      {
+        "id": "uuid-1",
+        "role": "control-plane",
+        "labels": ["primary", "zone-a"]
+      },
+      {
+        "id": "uuid-2",
+        "role": "worker",
+        "labels": ["gpu", "high-memory"]
+      },
+      {
+        "id": "uuid-3",
+        "role": "worker",
+        "labels": ["zone-b"]
+      }
+    ]
+  }'
 
 # Sync GCP nodes:
 curl -X POST http://localhost:8080/api/v1/nodes/sync-gcp

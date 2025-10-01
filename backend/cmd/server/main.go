@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"github.com/stolos-cloud/stolos/backend/internal/database"
 	"github.com/stolos-cloud/stolos/backend/internal/handlers"
 	"github.com/stolos-cloud/stolos/backend/internal/routes"
+	"github.com/stolos-cloud/stolos/backend/internal/services"
 )
 
 func main() {
@@ -24,6 +26,19 @@ func main() {
 	db, err := database.Initialize(cfg.Database)
 	if err != nil {
 		log.Fatal("Failed to initialize database:", err)
+	}
+
+	// Initialize GCP if environment variables are set
+	gcpService := services.NewGCPService(db, cfg)
+	ctx := context.Background()
+	gcpConfig, err := gcpService.InitializeGCP(ctx)
+	if err != nil {
+		log.Fatal("Failed to initialize GCP:", err)
+	}
+	if gcpConfig != nil {
+		log.Printf("GCP initialized successfully with project: %s", gcpConfig.ProjectID)
+	} else {
+		log.Println("GCP not configured. Skipping initialization")
 	}
 
 	r := gin.Default()

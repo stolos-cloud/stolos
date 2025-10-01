@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -48,7 +49,7 @@ func (s *NodeService) CreateNode(name, architecture, provider string, clusterID 
 	node := &models.Node{
 		ID:           uuid.New(),
 		Name:         name,
-		Status:       "pending",
+		Status:       models.StatusPending,
 		Architecture: architecture,
 		Provider:     provider,
 		ClusterID:    clusterID,
@@ -69,48 +70,113 @@ func (s *NodeService) GetNode(id uuid.UUID) (*models.Node, error) {
 	return &node, nil
 }
 
-func (s *NodeService) ListNodes(offset, limit int) ([]models.Node, error) {
+func (s *NodeService) UpdateNodeConfig(id uuid.UUID, role string, labels []string) (*models.Node, error) {
+	var node models.Node
+	if err := s.db.First(&node, "id = ?", id).Error; err != nil {
+		return nil, err
+	}
+
+	node.Role = role
+	if len(labels) > 0 {
+		labelsJSON, err := json.Marshal(labels)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal labels: %w", err)
+		}
+		node.Labels = string(labelsJSON)
+	}
+
+	node.Status = models.StatusActive // todo this is just for sample testing
+
+	if err := s.db.Save(&node).Error; err != nil {
+		return nil, err
+	}
+
+	return &node, nil
+}
+
+type NodeConfigUpdate struct {
+	ID     uuid.UUID `json:"id"`
+	Role   string    `json:"role"`
+	Labels []string  `json:"labels"`
+}
+
+func (s *NodeService) UpdateNodesConfig(updates []NodeConfigUpdate) ([]models.Node, error) {
+	var updatedNodes []models.Node
+
+	for _, update := range updates {
+		node, err := s.UpdateNodeConfig(update.ID, update.Role, update.Labels)
+		if err != nil {
+			return nil, fmt.Errorf("failed to update node %s: %w", update.ID, err)
+		}
+		updatedNodes = append(updatedNodes, *node)
+	}
+
+	return updatedNodes, nil
+}
+
+// ListNodes lists nodes with optional status filter, offset, and limit.
+// Pass empty string for status to list all nodes.
+// Pass 0 for offset and limit to get all results without pagination.
+func (s *NodeService) ListNodes(status string, offset, limit int) ([]models.Node, error) {
 	var nodes []models.Node
-	if err := s.db.Offset(offset).Limit(limit).Order("created_at DESC").Find(&nodes).Error; err != nil {
+	query := s.db.Order("created_at DESC")
+
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+
+	if limit > 0 {
+		query = query.Offset(offset).Limit(limit)
+	}
+
+	if err := query.Find(&nodes).Error; err != nil {
 		return nil, err
 	}
 	return nodes, nil
 }
 
-func (s *NodeService) ListPendingNodes() ([]models.Node, error) {
-	var nodes []models.Node
-	if err := s.db.Where("status = ?", "pending").Order("created_at DESC").Find(&nodes).Error; err != nil {
-		return nil, err
-	}
-	return nodes, nil
-}
-
-// Create sample of pending nodes in db to return in http handler
+// CreateSamplePendingNodes creates sample pending nodes if none exist in the database
 func (s *NodeService) CreateSamplePendingNodes() error {
-
-	cluster := models.Cluster{
-		ID:     uuid.New(),
-		Name:   "sample-cluster",
+	// Check if there are any pending nodes
+	var count int64
+	if err := s.db.Model(&models.Node{}).Where("status = ?", models.StatusPending).Count(&count).Error; err != nil {
+		return fmt.Errorf("failed to count pending nodes: %w", err)
 	}
 
-	if err := s.db.Create(&cluster).Error; err != nil {
-		// return err
-		fmt.Println("Cluster already exists, skipping creation")
+	// If pending nodes already exist, skip creation
+	if count > 0 {
+		return nil
 	}
 
+	// Get or create default cluster
+	var cluster models.Cluster
+	err := s.db.Where("name = ?", "sample-cluster").First(&cluster).Error
+	if err == gorm.ErrRecordNotFound {
+		cluster = models.Cluster{
+			ID:   uuid.New(),
+			Name: "sample-cluster",
+		}
+		if err := s.db.Create(&cluster).Error; err != nil {
+			return fmt.Errorf("failed to create cluster: %w", err)
+		}
+	} else if err != nil {
+		return fmt.Errorf("failed to query cluster: %w", err)
+	}
+
+	// Create sample nodes with auto-generated names
 	sampleNodes := []models.Node{
 		{
 			ID:           uuid.New(),
-			Name:         "node-1",
-			Status:       "pending",
+			Name:         fmt.Sprintf("node-%s", uuid.New().String()[:8]),
+			Status:       models.StatusPending,
 			Architecture: "amd64",
 			Provider:     "onprem",
 			ClusterID:    cluster.ID,
 		},
 		{
 			ID:           uuid.New(),
-			Name:         "node-2",
-			Status:       "pending",
+			Name:         fmt.Sprintf("node-%s", uuid.New().String()[:8]),
+			Status:       models.StatusPending,
 			Architecture: "arm64",
 			Provider:     "onprem",
 			ClusterID:    cluster.ID,
@@ -119,8 +185,7 @@ func (s *NodeService) CreateSamplePendingNodes() error {
 
 	for _, node := range sampleNodes {
 		if err := s.db.Create(&node).Error; err != nil {
-			fmt.Println("Node already exists, skipping creation")
-			// return err
+			return fmt.Errorf("failed to create node %s: %w", node.Name, err)
 		}
 	}
 
