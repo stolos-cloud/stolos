@@ -1,0 +1,36 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: obi-config
+  namespace: monitoring
+data:
+  obi-config.yml: |
+    trace_printer: disabled
+    log_level: WARN
+    otel_metrics_export:
+      endpoint: http://alloy:4317
+      protocol: grpc
+    otel_traces_export:
+      endpoint: http://alloy:4317
+      protocol: grpc
+      sampler:
+        name: parentbased_traceidratio
+        arg: "0.1"
+    routes:
+      patterns:
+        - /api/v1/*
+        - /health
+    discovery:
+      instrument:
+        - k8s_namespace: stolos
+          k8s_deployment_name: stolos-backend
+          open_ports: 8080
+      exclude_instrument:
+        - exe_path: ".*alloy.*|.*otelcol.*|.*obi.*|.*tempo.*|.*loki.*|.*prometheus.*|.*mimir.*|.*grafana.*|.*jaeger.*"
+    attributes:
+      kubernetes:
+        enable: true
+    ebpf:
+      wakeup_len: 128
+      high_request_volume: true

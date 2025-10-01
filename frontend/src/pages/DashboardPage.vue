@@ -5,14 +5,23 @@
             :subheading="$t('dashboard.subheading')"
             :actions="actions"
         />
+        <!-- Tableau d'état final des noeuds -->
+        <div class="mt-4">
+            <h3>{{ $t('provisioning.nodeStatesTitle') }}</h3>
+            <v-data-table
+                :headers="stateHeaders"
+                :items="nodeStates"
+                class="elevation-1 mt-2"
+            ></v-data-table>
+        </div>
         <BaseDialog v-model="dialogDownloadISOOnPremise" :title="$t('dashboard.dialogs.downloadISOOnPremise.title')" width="600" closable>
           <v-form v-model="isValid">
             <BaseNotice type="info" :text="$t('dashboard.dialogs.downloadISOOnPremise.noticeText')" />
             <BaseRadioButtons :RadioGroup="isoRadioButtons" />
           </v-form>
           <template #actions>
-            <BaseButton size="small" :text="$t('dashboard.buttons.cancel')" @click="handleCancel" />
-            <BaseButton size="small" color="primary" :text="$t('dashboard.buttons.download')" @click="handleConfirm" :disabled="!isValid"/>
+            <BaseButton size="small" :text="$t('dashboard.buttons.cancel')" @click="cancelDownloadISO" />
+            <BaseButton size="small" color="primary" :text="$t('dashboard.buttons.download')" @click="confirmDownloadISO" :disabled="!isValid"/>
           </template>
         </BaseDialog>
     </PortalLayout>
@@ -26,18 +35,21 @@ import BaseDialog from '@/components/base/BaseDialog.vue';
 import BaseNotice from '@/components/base/BaseNotice.vue';
 import BaseRadioButtons from '@/components/base/BaseRadioButtons.vue';
 import { RadioGroup } from '@/models/RadioGroup.js';
-import { ref } from 'vue';
+import { downloadISO } from '@/services/provisioning.service';
+import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { reactive } from 'vue';
 
 const { t } = useI18n();
-const actions = [
+const nodeStates = ref([]);
+
+const actions = computed(() => [
   {
     text: t('dashboard.buttons.downloadISOOnPremise'),
     color: 'primary',
     onClick: () => dialogDownloadISOOnPremise.value = true
   }
-];
+]);
 
 const isoRadioButtons = reactive(new RadioGroup({
   label: "ISO choice",
@@ -60,15 +72,45 @@ const isoRadioButtons = reactive(new RadioGroup({
 const dialogDownloadISOOnPremise = ref(false);
 const isValid = ref(false);
 
+nodeStates.value = [
+  { Nodename: 'node-1', role: 'Control-plane', state: 'Ready' },
+  { Nodename: 'node-2', role: 'Worker', state: 'NotReady' },
+];
+
 // Methods
-function handleCancel() {
+function cancelDownloadISO() {
     isoRadioButtons.value = undefined;
     dialogDownloadISOOnPremise.value = false;
-    
-}
-function handleConfirm() {
-    dialogDownloadISOOnPremise.value = false;
 }
 
+function confirmDownloadISO() {
+    if (!isValid.value) return;
 
+    downloadISO({ iso: isoRadioButtons.value })
+    .then(({ data, headers }) => {
+      let filename = "fallback.iso";
+      const blob = new Blob([data], { type: headers['content-type'] });
+      const url = URL.createObjectURL(blob);
+      const contentDisposition = headers["content-disposition"];
+
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="?(.+)"?/);
+        if (match && match[1]) filename = match[1];
+      }
+
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    })
+    .catch(error => {
+        console.error("Error downloading ISO:", error);
+    })
+    .finally(() => {
+        isoRadioButtons.value = undefined;
+        dialogDownloadISOOnPremise.value = false;
+    });
+}
 </script>

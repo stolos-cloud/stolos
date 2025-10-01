@@ -5,8 +5,6 @@ import * as components from "vuetify/components";
 import * as directives from "vuetify/directives";
 
 export default createVuetify({
-  components,
-  directives,
   theme: {
     // #ffffff
     // #ffd7b5
@@ -29,6 +27,25 @@ export default createVuetify({
           warning: "#fb8c00",
         },
       },
+      light: {
+        colors: {
+          background: "#ffffff",
+          surface: "#f5f5f5",
+          primary: "#ff7500",
+          "primary-darken-1": "#ff9248",
+          secondary: "#ffb38a",
+          "secondary-darken-1": "#ffd7b5",
+          error: "#b00020",
+          info: "#2196f3",
+          success: "#4caf50",
+          warning: "#fb8c00",
+        },
+      },
     },
-  }
+    options: {
+      customProperties: true,
+    },
+  },
+  components,
+  directives,
 });
