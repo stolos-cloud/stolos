@@ -33,21 +33,41 @@ func (s *GCPService) IsConfiguredFromEnv() bool {
 	return s.cfg.GCP.ProjectID != "" && s.cfg.GCP.ServiceAccountJSON != ""
 }
 
+// InitializeGCP initializes GCP configuration on server startup.
+// if already configured in DB, it returns existing config.
+// If env vars are set but no DB config exists, it creates bucket and saves config.
 func (s *GCPService) InitializeGCP(ctx context.Context) (*models.GCPConfig, error) {
+	// Return existing config if already set up
 	if s.IsConfiguredFromDatabase() {
 		return s.GetCurrentConfig()
 	}
 
+	// If no DB config and no env config, skip initialization
 	if !s.IsConfiguredFromEnv() {
-		return nil, fmt.Errorf("GCP not configured. Please set ProjectID and ServiceAccountJSON in config or database")
+		return nil, nil
 	}
 
-	bucketName, err := s.CreateTerraformBucket(ctx, s.cfg.GCP.ProjectID, s.cfg.GCP.Region)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create terraform bucket: %w", err)
+	// Initialize from env config
+	return s.ConfigureGCP(ctx, s.cfg.GCP.ProjectID, s.cfg.GCP.Region, s.cfg.GCP.ServiceAccountJSON)
+}
+
+func (s *GCPService) ConfigureGCP(ctx context.Context, projectID, region, serviceAccountJSON string) (*models.GCPConfig, error) {
+	// Get existing config to check if bucket already exists
+	config, err := s.GetCurrentConfig()
+
+	var bucketName string
+	// Only create bucket if it doesn't exist in DB
+	if err != nil || config.BucketName == "" {
+		bucketName, err = s.CreateTerraformBucket(ctx, projectID, region)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create terraform bucket: %w", err)
+		}
+	} else {
+		bucketName = config.BucketName
 	}
 
-	gcpConfig, err := s.UpdateServiceAccount(ctx, s.cfg.GCP.ProjectID, s.cfg.GCP.Region, s.cfg.GCP.ServiceAccountJSON, bucketName)
+	// Always update service account
+	gcpConfig, err := s.UpdateServiceAccount(ctx, projectID, region, serviceAccountJSON, bucketName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to save GCP config: %w", err)
 	}
@@ -140,51 +160,40 @@ func (s *GCPService) UpdateServiceAccount(ctx context.Context, projectID, region
 	return &dbConfig, nil
 }
 
-func (s *GCPService) CreateTerraformBucket(ctx context.Context, projectID, region string) (string, error) {
-	// Try to get from database first, if not available use env config
-	var gcpClient *gcp.Client
-	var err error
-
+// getGCPClient creates a GCP client from database config or falls back to env config
+func (s *GCPService) getGCPClient(projectID, region string) (*gcp.Client, error) {
 	if s.IsConfiguredFromDatabase() {
 		config, err := s.GetCurrentConfigWithCredentials()
 		if err != nil {
-			return "", fmt.Errorf("failed to get database config: %w", err)
+			return nil, fmt.Errorf("failed to get database config: %w", err)
 		}
 		gcpCfg, err := gcpconfig.NewConfig(config.ProjectID, config.Region, config.ServiceAccountKeyJSON, config.ServiceAccountEmail)
 		if err != nil {
-			return "", fmt.Errorf("failed to create GCP config from database: %w", err)
+			return nil, fmt.Errorf("failed to create GCP config from database: %w", err)
 		}
-		gcpClient, err = gcp.NewClientFromConfig(gcpCfg)
-		if err != nil {
-			return "", fmt.Errorf("failed to create GCP client from database config: %w", err)
-		}
-	} else if s.IsConfiguredFromEnv() {
+		return gcp.NewClientFromConfig(gcpCfg)
+	}
+
+	if s.IsConfiguredFromEnv() {
 		gcpCfg, err := gcpconfig.NewConfig(projectID, region, s.cfg.GCP.ServiceAccountJSON, "")
 		if err != nil {
-			return "", fmt.Errorf("failed to create GCP config from env: %w", err)
+			return nil, fmt.Errorf("failed to create GCP config from env: %w", err)
 		}
-		gcpClient, err = gcp.NewClientFromConfig(gcpCfg)
-		if err != nil {
-			return "", fmt.Errorf("failed to create GCP client from env config: %w", err)
-		}
-	} else {
-		return "", fmt.Errorf("GCP not configured in database or environment")
+		return gcp.NewClientFromConfig(gcpCfg)
+	}
+
+	return nil, fmt.Errorf("GCP not configured in database or environment")
+}
+
+func (s *GCPService) CreateTerraformBucket(ctx context.Context, projectID, region string) (string, error) {
+	gcpClient, err := s.getGCPClient(projectID, region)
+	if err != nil {
+		return "", err
 	}
 
 	bucketName, err := gcpClient.CreateTerraformBucket(ctx)
 	if err != nil {
 		return "", fmt.Errorf("failed to create terraform bucket: %w", err)
-	}
-
-	// Only update database config if it exists
-	if s.IsConfiguredFromDatabase() {
-		config, err := s.GetCurrentConfigWithCredentials()
-		if err == nil {
-			config.BucketName = bucketName
-			if err := s.db.Save(config).Error; err != nil {
-				return "", fmt.Errorf("failed to update bucket name in config: %w", err)
-			}
-		}
 	}
 
 	return bucketName, nil

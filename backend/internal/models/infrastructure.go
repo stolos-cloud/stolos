@@ -7,10 +7,24 @@ import (
 	"gorm.io/gorm"
 )
 
+type NodeStatus string
+
+const (
+	StatusPending NodeStatus = "pending"
+	StatusActive  NodeStatus = "active"
+	StatusFailed  NodeStatus = "failed"
+)
+
+var ValidNodeStatuses = map[NodeStatus]bool{
+	StatusPending: true,
+	StatusActive:  true,
+	StatusFailed:  true,
+}
+
 type Node struct {
 	ID           uuid.UUID      `json:"id" gorm:"type:uuid;primary_key"`
 	Name         string         `json:"name" gorm:"not null;uniqueIndex"`
-	Status       string         `json:"status" gorm:"not null;default:'pending'"`
+	Status       NodeStatus     `json:"status" gorm:"type:varchar(50);not null;default:'pending'"`
 	Role         string         `json:"role" gorm:"not null;default:'worker'"` // worker, control-plane
 	Labels       string         `json:"labels"`                          // JSON string for labels
 	Architecture string         `json:"architecture" gorm:"not null"` // amd64, arm64
