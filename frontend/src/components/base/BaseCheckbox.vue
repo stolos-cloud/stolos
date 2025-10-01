@@ -28,8 +28,6 @@ const model = computed({
     return props.Checkbox.value;
   },
   set(value) {
-    console.log("value changed:", value);
-    
     props.Checkbox.change(value);
     emit('changed', value);
   }

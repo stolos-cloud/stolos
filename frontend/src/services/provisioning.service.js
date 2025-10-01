@@ -1,11 +1,11 @@
-import axios from 'axios';
+import api from './api'
 
 /*-------------------------------------
     On-Premises Service Functions
 -------------------------------------*/
 export async function downloadISO(payload) {
     try {
-        const response = await axios.post('/api/isos/generate', payload, {
+        const response = await api.post('/api/isos/generate', payload, {
             responseType: 'blob',
         });
         return {
@@ -20,10 +20,20 @@ export async function downloadISO(payload) {
 
 export async function getConnectedNodes({status}) {
     try {
-        const response = await axios.get('/api/nodes', { params: { status: status } });
+        const response = await api.get('/api/nodes', { params: { status: status } });
         return response.data;
     } catch (error) {
         console.error('Error fetching connected nodes:', error);
+        throw error;
+    }
+}
+
+export async function createNodesWithRoleAndLabels({ nodes }) {
+    try {
+        const response = await api.post('/api/nodes', { params: { nodes } });
+        return response.data;
+    } catch (error) {
+        console.error('Error creating connected nodes:', error);
         throw error;
     }
 }
@@ -34,7 +44,7 @@ export async function getConnectedNodes({status}) {
 -------------------------------------*/
 export async function getGCPStatus() {
     try {
-        const response = await axios.get('/api/gcp/status');
+        const response = await api.get('/api/gcp/status');
         return response.data;
     } catch (error) {
         console.error('Error fetching GCP status:', error);
@@ -44,7 +54,7 @@ export async function getGCPStatus() {
 
 export async function configureGCPServiceAccount(payload) {
     try {
-        const response = await axios.put('/api/gcp/service-account', payload);
+        const response = await api.put('/api/gcp/service-account', payload);
         return response.data;
     } catch (error) {
         console.error('Error configuring GCP service account:', error);

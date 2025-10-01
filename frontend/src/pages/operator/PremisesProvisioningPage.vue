@@ -5,7 +5,7 @@
             :subheading="$t('provisioning.onPremises.subheading')"
         />
         <div class="mt-4">
-            <h3>{{ $t('provisioning.nodesTableTitle') }}</h3>
+            <h3>{{ $t('provisioning.onPremises.table.title') }}</h3>
             <v-data-table-server
                 :headers="nodeHeaders"
                 :items="nodes"
@@ -14,14 +14,23 @@
                 :loading-text="$t('provisioning.onPremises.table.loadingText')"
                 :no-data-text="$t('provisioning.onPremises.table.noDataText')"
                 :items-per-page="10"
+                :items-per-page-text="$t('provisioning.onPremises.table.itemsPerPageText')"
                 class="elevation-8 mt-2"
             >
+                <!-- Slot for status -->
+                <template #item.status="{ item }">
+                    <v-chip color="primary">
+                        {{ item.status }}
+                    </v-chip>
+                </template>
                 
                 <!-- Slot for roles -->
                 <template #item.role="{ item }">
                     <v-select
                     v-model="item.role"
                     :items="roles"
+                    item-value="key"
+                    item-title="title"
                     dense
                     density="compact"
                     placeholder="Select role"
@@ -66,9 +75,7 @@
             </v-data-table-server>
 
             <div class="d-flex justify-end">
-                <BaseButton color="primary" class="mt-2" @click="provisionConnectedNodes">
-                    {{ $t('provisioning.validateNodesButton') }}
-                </BaseButton>
+                <BaseButton :text="$t('provisioning.onPremises.buttons.provisionConnectedNodes')" color="primary" class="mt-2" :disabled="!canProvision" @click="provisionConnectedNodes" />
             </div>
         </div>
         <v-overlay class="d-flex align-center justify-center" v-model="overlay" persistent>
@@ -82,26 +89,20 @@
 <script setup>
 import PortalLayout from '@/components/layouts/PortalLayout.vue';
 import BaseLabelBar from '@/components/base/BaseLabelBar.vue';
-import { getConnectedNodes } from '@/services/provisioning.service';
-import { onMounted, ref } from 'vue';
+import { getConnectedNodes, createNodesWithRoleAndLabels } from '@/services/provisioning.service';
+import { onMounted, ref, computed } from 'vue';
+import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
 
-const roles = ['Control plane', 'Worker'];
+const { t } = useI18n();
+const route = useRouter();
+
 const loading = ref(false);
 const overlay = ref(false);
 const nodes = ref([]);
-
-const nodeHeaders = [
-  { title: 'provisioning.onPremises.table.ip', value: 'ip'},
-  { title: 'provisioning.onPremises.table.wid', value: 'wid'},
-  { title: 'provisioning.onPremises.table.mac', value: 'mac', width: "20%" },
-  { title: 'provisioning.onPremises.table.status', value: 'status', width: "15%" },
-  { title: 'provisioning.onPremises.table.role', value: 'role', width: "15%" },
-  { title: 'provisioning.onPremises.table.labels', value: 'labels', width: "30%" },
-];
-
-nodes.value = [
-  { ip: '192.168.0.1', wid: 'W01', mac: 'AA:BB:CC:DD:EE:01', role: null,  labels: ["Test"] },
-  { IP: '192.168.0.2', WID: 'W02', MAC: 'AA:BB:CC:DD:EE:02', role: 'Worker', labels: []},
+const roles = [
+    { key: 'worker', title: 'Worker' },
+    { key: 'control-plane', title: 'Control plane' },
 ];
 
 //mounted
@@ -109,17 +110,35 @@ onMounted(() => {
     fetchConnectedNodes();
 });
 
+// Computed
+const nodeHeaders = computed(() => [
+  { title: t('provisioning.onPremises.table.headers.ip'), value: 'ip_address'},
+  { title: t('provisioning.onPremises.table.headers.mac'), value: 'mac_address', width: "20%" },
+  { title: t('provisioning.onPremises.table.headers.status'), value: 'status', width: "15%" },
+  { title: t('provisioning.onPremises.table.headers.role'), value: 'role', width: "20%" },
+  { title: t('provisioning.onPremises.table.headers.labels'), value: 'labels', width: "30%" },
+]);
+const canProvision = computed(() => {
+  if (!nodes.value.length) return false
+
+  return nodes.value.every(node => 
+    node.role && node.labels && node.labels.length > 0
+  )
+})
 
 // Methods
 function fetchConnectedNodes() {
     loading.value = true;
     getConnectedNodes({status: "pending"})
     .then(response => {
-        nodes.value = response.data.map(node => ({
-            ...node,
-        }));
-        console.log(nodes.value);
-        
+        nodes.value = response
+            .filter(node => node.provider?.toLowerCase() === "onprem")
+            .map(node => ({
+                ...node,
+                status: node.status.charAt(0).toUpperCase() + node.status.slice(1),
+                role: null,
+                labels: [],
+            }));
     })
     .catch(error => {
         console.error('Error fetching connected nodes:', error);
@@ -134,6 +153,23 @@ function addLabel(item) {
         item.labels.push(item.newLabel);
     }
     item.newLabel = '';
+}
+
+function provisionConnectedNodes() {
+    if (!canProvision.value) return;
+    overlay.value = true;
+
+    createNodesWithRoleAndLabels({ nodes: nodes.value })
+    .then(() => {
+        //TODO: create a notification reused everywhere
+        route.push('/dashboard');
+    })
+    .catch(error => {
+        console.error('Error provisioning connected nodes:', error);
+    })
+    .finally(() => {
+        overlay.value = false;
+    });    
 }
 </script>
 

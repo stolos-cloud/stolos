@@ -81,11 +81,14 @@
     "provisioning": {
         "title": "Provisionnement",
         "onPremises": {
+            "sidemenuTitle": "On-Premises",
             "title": "Provisionnement On-Premises",
             "subheading": "Gérez vos ressources sur site",
             "table": {
+                "title": "Nœuds connectés",
                 "loadingText": "Chargement des nœuds connectés...",
                 "noDataText": "Aucun nœud connecté trouvé.",
+                "itemsPerPageText": "Articles par page :",
                 "headers": {
                     "ip": "IP",
                     "wid": "WID",
@@ -101,6 +104,7 @@
             }
         },
         "cloud": {
+            "sidemenuTitle": "Cloud",
             "title": "Provisionnement Cloud",
             "subheading": "Gérez vos ressources cloud"
         }
@@ -155,6 +159,10 @@
         "search": "Rechercher"
     },
     "errors": {
+        "sessionExpired": "Votre session a expiré ou est invalide. Veuillez vous reconnecter.",
+        "failedLogin": "Échec de la connexion. Veuillez vérifier vos identifiants et réessayer.",
+        "failedFetchProfile": "Échec de la récupération du profil utilisateur. Veuillez réessayer.",
+        "failedRefreshToken": "Échec du rafraîchissement du token. Veuillez vous reconnecter.",
         "403": {
             "title": "403 - Interdit",
             "message": "Vous n'avez pas la permission d'accéder à cette page."

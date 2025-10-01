@@ -48,8 +48,6 @@ export class Checkbox {
     }
 
     change(value) {
-        console.log("Checkbox changed:", value);
-        
         this.value = value;
     }
 }

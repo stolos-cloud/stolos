@@ -81,14 +81,16 @@
     "provisioning": {
         "title": "Provisioning",
         "onPremises": {
+            "sidemenuTitle": "On-Premises",
             "title": "On-Premises provisioning",
             "subheading": "Manage your on-premises resources",
             "table": {
+                "title": "Connected Nodes",
                 "loadingText": "Loading connected nodes...",
                 "noDataText": "No connected nodes found.",
+                "itemsPerPageText": "Items per page :",
                 "headers": {
                     "ip": "IP",
-                    "wid": "WID",
                     "status": "Status",
                     "mac": "MAC",
                     "role": "Role",
@@ -101,6 +103,7 @@
             }
         },
         "cloud": {
+            "sidemenuTitle": "Cloud",
             "title": "Cloud provisioning",
             "subheading": "Manage your cloud resources"
         }
@@ -156,6 +159,10 @@
         "search": "Search"
     },
     "errors": {
+        "sessionExpired": "Your session has expired or is invalid. Please log in again.",
+        "failedLogin": "Login failed. Please check your credentials and try again.",
+        "failedFetchProfile": "Failed to fetch user profile. Please try again.",
+        "failedRefreshToken": "Failed to refresh token. Please log in again.",
         "403": {
             "title": "403 - Forbidden",
             "message": "You do not have permission to access this page."

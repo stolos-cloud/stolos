@@ -82,8 +82,8 @@ const developerMenu = [
 const operatorMenu = [
   { title: 'dashboard.title', icon: 'mdi-view-dashboard', route: '/dashboard' },
   { title: 'provisioning.title', icon: 'mdi-server', children: [
-      { title: 'On-Premises', route: '/provisioning/on-premises' },
-      { title: 'Cloud', route: '/provisioning/cloud' },
+      { title: 'provisioning.onPremises.sidemenuTitle', route: '/provisioning/on-premises' },
+      { title: 'provisioning.cloud.sidemenuTitle', route: '/provisioning/cloud' },
     ]
   },
   { title: 'cloudProvider.title', icon: 'mdi-cloud', route: '/cloud-provider' },
