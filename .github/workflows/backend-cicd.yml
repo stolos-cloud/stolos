@@ -49,15 +49,15 @@ jobs:
         run: go vet ./...
 
       - name: Run tests
-        run: go test -race -count=1 ./tests/
+        run: go test -race -count=1 ./...
 
 
   build-push-ghcr:
     needs: ci
-    uses: stolos-cloud/stolos/.github/workflows/build-push-ghcr.yml@feature/backend-deployment
+    uses: stolos-cloud/stolos/.github/workflows/build-push-ghcr.yml@main
     with:
       container-name: stolos-backend
       branch: ${{ github.event.inputs.branch }}
-      context: backend
+      context: .
       file: backend/Dockerfile
     secrets: inherit

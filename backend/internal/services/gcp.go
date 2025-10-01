@@ -4,10 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/etsmtl-pfe-cloudnative/backend/internal/config"
-	"github.com/etsmtl-pfe-cloudnative/backend/internal/models"
-	"github.com/etsmtl-pfe-cloudnative/backend/pkg/gcp"
 	"github.com/google/uuid"
+	gcpconfig "github.com/stolos-cloud/stolos-bootstrap/pkg/gcp"
+	"github.com/stolos-cloud/stolos/backend/internal/config"
+	"github.com/stolos-cloud/stolos/backend/internal/models"
+	"github.com/stolos-cloud/stolos/backend/pkg/gcp"
 	"gorm.io/gorm"
 )
 
@@ -66,7 +67,7 @@ func (s *GCPService) GetCurrentConfig() (*models.GCPConfig, error) {
 	return &config, nil
 }
 
-// returns config including service account credentials // TODO handle better
+// returns config including service account credentials
 func (s *GCPService) GetCurrentConfigWithCredentials() (*models.GCPConfig, error) {
 	var config models.GCPConfig
 	err := s.db.Where("is_configured = ?", true).First(&config).Error
@@ -92,15 +93,14 @@ func (s *GCPService) GetTerraformBackendConfig() (map[string]string, error) {
 
 
 func (s *GCPService) UpdateServiceAccount(ctx context.Context, projectID, region, serviceAccountJSON string, bucketName ...string) (*models.GCPConfig, error) {
-	gcpConfig := &gcp.Config{
-		ProjectID:          projectID,
-		Region:             region,
-		ServiceAccountJSON: serviceAccountJSON,
-	}
-
-	_, err := gcp.NewClientFromConfig(gcpConfig)
+	gcpConfig, err := gcpconfig.NewConfig(projectID, region, serviceAccountJSON, "")
 	if err != nil {
 		return nil, fmt.Errorf("invalid service account configuration: %w", err)
+	}
+
+	_, err = gcp.NewClientFromConfig(gcpConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create GCP client: %w", err)
 	}
 
 	var dbConfig models.GCPConfig
@@ -150,21 +150,20 @@ func (s *GCPService) CreateTerraformBucket(ctx context.Context, projectID, regio
 		if err != nil {
 			return "", fmt.Errorf("failed to get database config: %w", err)
 		}
-		gcpClient, err = gcp.NewClientFromConfig(&gcp.Config{
-			ProjectID:           config.ProjectID,
-			Region:              config.Region,
-			ServiceAccountJSON:  config.ServiceAccountKeyJSON,
-			ServiceAccountEmail: config.ServiceAccountEmail,
-		})
+		gcpCfg, err := gcpconfig.NewConfig(config.ProjectID, config.Region, config.ServiceAccountKeyJSON, config.ServiceAccountEmail)
+		if err != nil {
+			return "", fmt.Errorf("failed to create GCP config from database: %w", err)
+		}
+		gcpClient, err = gcp.NewClientFromConfig(gcpCfg)
 		if err != nil {
 			return "", fmt.Errorf("failed to create GCP client from database config: %w", err)
 		}
 	} else if s.IsConfiguredFromEnv() {
-		gcpClient, err = gcp.NewClientFromConfig(&gcp.Config{
-			ProjectID:          projectID,
-			Region:             region,
-			ServiceAccountJSON: s.cfg.GCP.ServiceAccountJSON,
-		})
+		gcpCfg, err := gcpconfig.NewConfig(projectID, region, s.cfg.GCP.ServiceAccountJSON, "")
+		if err != nil {
+			return "", fmt.Errorf("failed to create GCP config from env: %w", err)
+		}
+		gcpClient, err = gcp.NewClientFromConfig(gcpCfg)
 		if err != nil {
 			return "", fmt.Errorf("failed to create GCP client from env config: %w", err)
 		}

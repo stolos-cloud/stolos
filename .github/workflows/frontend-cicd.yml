@@ -59,7 +59,7 @@ jobs:
 
   build-push-ghcr:
     needs: ci
-    uses: stolos-cloud/stolos/.github/workflows/build-push-ghcr.yml@feature/backend-deployment
+    uses: stolos-cloud/stolos/.github/workflows/build-push-ghcr.yml@main
     with:
       container-name: stolos-frontend
       branch: ${{ github.event.inputs.branch }}

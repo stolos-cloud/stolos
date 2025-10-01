@@ -3,10 +3,10 @@ package routes
 import (
 	"net/http"
 
-	"github.com/etsmtl-pfe-cloudnative/backend/internal/handlers"
-	"github.com/etsmtl-pfe-cloudnative/backend/internal/middleware"
-	"github.com/etsmtl-pfe-cloudnative/backend/internal/models"
 	"github.com/gin-gonic/gin"
+	"github.com/stolos-cloud/stolos/backend/internal/handlers"
+	"github.com/stolos-cloud/stolos/backend/internal/middleware"
+	"github.com/stolos-cloud/stolos/backend/internal/models"
 )
 
 func SetupRoutes(r *gin.Engine, h *handlers.Handlers) {

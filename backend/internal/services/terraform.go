@@ -8,10 +8,10 @@ import (
 	"path/filepath"
 	"text/template"
 
-	"github.com/etsmtl-pfe-cloudnative/backend/internal/config"
-	"github.com/etsmtl-pfe-cloudnative/backend/pkg/gcp"
-	"github.com/etsmtl-pfe-cloudnative/backend/pkg/github"
 	"github.com/hashicorp/terraform-exec/tfexec"
+	"github.com/stolos-cloud/stolos/backend/internal/config"
+	"github.com/stolos-cloud/stolos/backend/pkg/gcp"
+	"github.com/stolos-cloud/stolos/backend/pkg/github"
 	"gorm.io/gorm"
 )
 

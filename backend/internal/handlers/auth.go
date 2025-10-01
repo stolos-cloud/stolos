@@ -4,10 +4,10 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/etsmtl-pfe-cloudnative/backend/internal/api"
-	"github.com/etsmtl-pfe-cloudnative/backend/internal/middleware"
-	"github.com/etsmtl-pfe-cloudnative/backend/internal/models"
 	"github.com/gin-gonic/gin"
+	"github.com/stolos-cloud/stolos/backend/internal/api"
+	"github.com/stolos-cloud/stolos/backend/internal/middleware"
+	"github.com/stolos-cloud/stolos/backend/internal/models"
 	"gorm.io/gorm"
 )
 

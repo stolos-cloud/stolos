@@ -1,8 +1,8 @@
 package api
 
 import (
-	"github.com/etsmtl-pfe-cloudnative/backend/internal/models"
 	"github.com/google/uuid"
+	"github.com/stolos-cloud/stolos/backend/internal/models"
 )
 
 type UserResponse struct {

@@ -5,13 +5,13 @@ import (
 	"os"
 	"strings"
 
-	"github.com/etsmtl-pfe-cloudnative/backend/internal/config"
-	"github.com/etsmtl-pfe-cloudnative/backend/internal/database"
-	"github.com/etsmtl-pfe-cloudnative/backend/internal/handlers"
-	"github.com/etsmtl-pfe-cloudnative/backend/internal/routes"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"github.com/stolos-cloud/stolos/backend/internal/config"
+	"github.com/stolos-cloud/stolos/backend/internal/database"
+	"github.com/stolos-cloud/stolos/backend/internal/handlers"
+	"github.com/stolos-cloud/stolos/backend/internal/routes"
 )
 
 func main() {
