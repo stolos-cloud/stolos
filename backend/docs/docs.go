@@ -765,9 +765,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/nodes/sample": {
+        "/nodes/samples": {
             "post": {
-                "description": "Create sample pending nodes for testing purposes",
+                "description": "Create samples pending nodes for testing purposes",
                 "consumes": [
                     "application/json"
                 ],
@@ -777,7 +777,7 @@ const docTemplate = `{
                 "tags": [
                     "nodes"
                 ],
-                "summary": "Create sample pending nodes",
+                "summary": "Create samples pending nodes",
                 "responses": {
                     "200": {
                         "description": "Message indicating success",

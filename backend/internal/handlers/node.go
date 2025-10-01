@@ -131,14 +131,14 @@ func (h *NodeHandlers) UpdateNodesConfig(c *gin.Context) {
 }
 
 // CreateSampleNodes godoc
-// @Summary Create sample pending nodes
-// @Description Create sample pending nodes for testing purposes
+// @Summary Create samples pending nodes
+// @Description Create samples pending nodes for testing purposes
 // @Tags nodes
 // @Accept json
 // @Produce json
 // @Success 200 {object} map[string]string "Message indicating success"
 // @Failure 500 {object} map[string]string
-// @Router /nodes/sample [post]
+// @Router /nodes/samples [post]
 func (h *NodeHandlers) CreateSampleNodes(c *gin.Context) {
 	err := h.nodeService.CreateSamplePendingNodes()
 	if err != nil {
