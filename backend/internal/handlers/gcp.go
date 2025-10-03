@@ -62,7 +62,7 @@ func (h *GCPHandlers) GetGCPStatus(c *gin.Context) {
 // @Tags gcp
 // @Accept json
 // @Produce json
-// @Param config body object{project_id=string,region=string,service_account_json=string} true "GCP configuration"
+// @Param config body object{region=string,service_account_json=string} true "GCP configuration"
 // @Success 200 {object} models.GCPConfig
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
@@ -70,7 +70,6 @@ func (h *GCPHandlers) GetGCPStatus(c *gin.Context) {
 // @Security BearerAuth
 func (h *GCPHandlers) ConfigureGCP(c *gin.Context) {
 	var req struct {
-		ProjectID          string `json:"project_id" binding:"required"`
 		Region             string `json:"region" binding:"required"`
 		ServiceAccountJSON string `json:"service_account_json" binding:"required"`
 	}
@@ -80,7 +79,13 @@ func (h *GCPHandlers) ConfigureGCP(c *gin.Context) {
 		return
 	}
 
-	gcpConfig, err := h.gcpService.ConfigureGCP(c.Request.Context(), req.ProjectID, req.Region, req.ServiceAccountJSON)
+	ProjectID, err := h.gcpService.ExtractProjectID([]byte(req.ServiceAccountJSON))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid service account JSON"})
+		return
+	}
+
+	gcpConfig, err := h.gcpService.ConfigureGCP(c.Request.Context(), ProjectID, req.Region, req.ServiceAccountJSON)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
