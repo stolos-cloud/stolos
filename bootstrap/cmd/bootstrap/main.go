@@ -110,6 +110,7 @@ func main() {
 		OnEnter:     RunGitHubAuthStepInBackground,
 		OnExit: func(m *tui.Model, s *tui.Step) {
 			// TODO CHECK GH AUTH
+			oauthServer.Stop(context.Background())
 		},
 	}
 
@@ -163,6 +164,7 @@ func main() {
 			if !gcpEnabled {
 				return nil
 			}
+			RunOAuthServerInBackround(m.Logger)
 			go func() {
 				gcpToken, err = oauthServer.Authenticate(context.Background(), "GCP")
 				if err != nil {
@@ -173,6 +175,10 @@ func main() {
 				s.IsDone = true
 			}()
 			return nil
+		},
+		OnExit: func(m *tui.Model, s *tui.Step) {
+			// TODO CHECK GH AUTH
+			oauthServer.Stop(context.Background())
 		},
 	}
 
@@ -285,7 +291,9 @@ func main() {
 		&deployPortalStep,
 	}
 
-	p, model := tui.NewWizard(tui.Steps)
+	f, _ := os.OpenFile("./stolos.log", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	defer f.Close()
+	p, model := tui.NewWizard(tui.Steps, f)
 
 	// Setup the OAuth providers and get feature enablement state
 	oauthServer = SetupOAuthServer(model.Logger)
@@ -294,10 +302,6 @@ func main() {
 	}
 	if gitHubEnabled {
 		SetupGitHub()
-	}
-
-	if gitHubEnabled || gcpEnabled {
-		RunOAuthServerInBackround(model.Logger)
 	}
 
 	// Run will block.
@@ -398,6 +402,7 @@ func RunGitHubRepoStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 }
 
 func RunGitHubAuthStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
+	RunOAuthServerInBackround(m.Logger)
 	go func() {
 		var err error
 		githubToken, err = oauthServer.Authenticate(context.Background(), "GitHub")

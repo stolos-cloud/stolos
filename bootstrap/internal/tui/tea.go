@@ -4,6 +4,7 @@ package tui
 import (
 	"fmt"
 	"log"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -66,6 +67,7 @@ func NewTextField(label, placeholder string, optional bool) Field {
 // It uses Program.Send under the hood
 type UILogger struct {
 	send func(msg tea.Msg)
+	file *os.File
 }
 
 // Info Logs an info line (non-blocking).
@@ -83,15 +85,19 @@ func (l *UILogger) Successf(f string, a ...any) { l.Success(fmt.Sprintf(f, a...)
 
 // emit always spawns a goroutine so the caller can't ever block on the UI thread.
 func (l *UILogger) emit(m tea.Msg) {
-	go func() { l.send(m) }()
+	go func() {
+		l.send(m)
+		_, _ = l.file.WriteString(fmt.Sprintf("[%s] [LEVEL-%d] %s\n", m.(logMsg).At.Format("2006-01-02 15:04:05"), m.(logMsg).Level, m.(logMsg).Text))
+		_ = l.file.Sync()
+	}()
 }
 
 // NewWizard constructs the Bubble Tea Program + UILogger from the provided Steps.
-func NewWizard(steps []*Step) (*tea.Program, *Model) {
+func NewWizard(steps []*Step, file *os.File) (*tea.Program, *Model) {
 	m := newModel(steps)
 	p := tea.NewProgram(&m, tea.WithAltScreen())
 	m.Program = p
-	l := &UILogger{send: p.Send}
+	l := &UILogger{send: p.Send, file: file}
 	m.Logger = l
 	return p, &m
 }
