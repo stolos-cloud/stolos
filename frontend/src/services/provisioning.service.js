@@ -30,10 +30,21 @@ export async function getConnectedNodes({status}) {
 
 export async function createNodesWithRoleAndLabels({ nodes }) {
     try {
-        const response = await api.post('/api/nodes', { params: { nodes } });
+        const response = await api.put('/api/nodes/config', { nodes });
         return response.data;
     } catch (error) {
         console.error('Error creating connected nodes:', error);
+        throw error;
+    }
+}
+
+//For testing purposes only - to be removed in production
+export async function createSamplesNodes() {
+    try {
+        const response = await api.post('/api/nodes/samples');
+        return response.data;
+    } catch (error) {
+        console.error('Error creating samples nodes with pending status:', error);
         throw error;
     }
 }
@@ -52,9 +63,13 @@ export async function getGCPStatus() {
     }
 }
 
-export async function configureGCPServiceAccount(payload) {
+export async function configureGCPServiceAccountUpload({ projectId, region, serviceAccountFile }) {
     try {
-        const response = await api.put('/api/gcp/service-account', payload);
+        const formData = new FormData();
+        formData.append('project_id', projectId);
+        formData.append('region', region);
+        formData.append('service_account_file', serviceAccountFile);
+        const response = await api.post('/api/gcp/configure/upload', formData);
         return response.data;
     } catch (error) {
         console.error('Error configuring GCP service account:', error);

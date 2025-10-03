@@ -40,6 +40,19 @@
     "dashboard": {
         "title": "Dashboard",
         "subheading": "Welcome to Stolos",
+        "onPremises": {
+            "table": {
+                "title": "Active connected nodes",
+                "loadingText": "Loading connected nodes...",
+                "noDataText": "No active connected nodes found.",
+                "itemsPerPageText": "Items per page :",
+                "headers": {
+                    "nodename": "Node name",
+                    "status": "Status",
+                    "role": "Role"
+                }
+            }
+        },
         "dialogs": {
             "downloadISOOnPremise":  {
                 "title": "Download ISO On-Premise",
@@ -110,7 +123,37 @@
     },
     "cloudProvider": {
         "title": "Cloud Provider",
-        "subheading": "Manage your cloud provider settings"
+        "subheading": "Manage your cloud provider configuration",
+        "table": {
+            "title": "GCP provider configuration",
+            "loadingText": "Loading connected nodes...",
+            "noDataText": "No connected nodes found.",
+            "itemsPerPageText": "Items per page :",
+            "headers": {
+                "projectId": "Project ID",
+                "bucketName": "Bucket name",
+                "region": "Region",
+                "emailSA": "Service account email",
+                "actions": "Actions"
+            }
+        },
+        "formfields": {
+            "projectId": "Project ID",
+            "region": "Region",
+            "serviceAccountFile": "Service account file (JSON)"
+        },
+        "dialogs": {
+            "updateCloudConfiguration":  {
+                "title": "Update GCP provider configuration"
+            },
+            "configurateCloudConfig": {
+                "title": "Configure GCP provider"
+            }
+        },
+        "buttons": {
+            "updateConfiguration": "Update",
+            "cancel": "Cancel"
+        }
     },
     "templates": {
         "title": "Templates"

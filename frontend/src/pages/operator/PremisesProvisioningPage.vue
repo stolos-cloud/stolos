@@ -16,6 +16,8 @@
                 :items-per-page="10"
                 :items-per-page-text="$t('provisioning.onPremises.table.itemsPerPageText')"
                 class="elevation-8 mt-2"
+                mobile-breakpoint="md"
+                disable-sort="true"
             >
                 <!-- Slot for status -->
                 <template #item.status="{ item }">
@@ -130,7 +132,7 @@ const canProvision = computed(() => {
 function fetchConnectedNodes() {
     loading.value = true;
     getConnectedNodes({status: "pending"})
-    .then(response => {
+    .then(response => {        
         nodes.value = response
             .filter(node => node.provider?.toLowerCase() === "onprem")
             .map(node => ({
@@ -159,7 +161,13 @@ function provisionConnectedNodes() {
     if (!canProvision.value) return;
     overlay.value = true;
 
-    createNodesWithRoleAndLabels({ nodes: nodes.value })
+    const payloadNodes = nodes.value.map(node => ({
+        id: node.id,
+        role: node.role,
+        labels: node.labels,
+    }));
+
+    createNodesWithRoleAndLabels({ nodes: payloadNodes })
     .then(() => {
         //TODO: create a notification reused everywhere
         route.push('/dashboard');

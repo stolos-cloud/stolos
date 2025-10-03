@@ -81,7 +81,7 @@ const emit = defineEmits(['update:drawer', 'go-to-profile', 'change-language', '
 
 // Methods
 function toggleTheme() {
-  theme.global.name.value = isDark.value ? 'light' : 'dark';
+  theme.change(isDark.value ? 'light' : 'dark');
 }
 
 function toggleSidebar() {
