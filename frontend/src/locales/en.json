@@ -138,7 +138,6 @@
             }
         },
         "formfields": {
-            "projectId": "Project ID",
             "region": "Region",
             "serviceAccountFile": "Service account file (JSON)"
         },

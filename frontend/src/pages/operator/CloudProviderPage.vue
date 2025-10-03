@@ -147,7 +147,6 @@ function updateCloudConfiguration() {
   })
   .finally(() => {
     overlay.value = false;
-    formFields.projectId.value = undefined;
     formFields.region.value = undefined;
     formFields.serviceAccountFile.value = undefined;
   });

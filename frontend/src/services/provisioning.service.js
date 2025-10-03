@@ -63,10 +63,9 @@ export async function getGCPStatus() {
     }
 }
 
-export async function configureGCPServiceAccountUpload({ projectId, region, serviceAccountFile }) {
+export async function configureGCPServiceAccountUpload({ region, serviceAccountFile }) {
     try {
         const formData = new FormData();
-        formData.append('project_id', projectId);
         formData.append('region', region);
         formData.append('service_account_file', serviceAccountFile);
         const response = await api.post('/api/gcp/configure/upload', formData);
