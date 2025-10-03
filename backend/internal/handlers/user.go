@@ -179,7 +179,7 @@ func (h *UserHandlers) DeleteUser(c *gin.Context) {
 // CreateUser godoc
 // @Summary Create a new user
 // @Description Register a new user
-// @Tags auth
+// @Tags users
 // @Accept json
 // @Produce json
 // @Param user body RegisterRequest true "User registration data"

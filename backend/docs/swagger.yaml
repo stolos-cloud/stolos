@@ -1154,7 +1154,7 @@ paths:
       - BearerAuth: []
       summary: Create a new user
       tags:
-      - auth
+      - users
 securityDefinitions:
   BearerAuth:
     description: Type "Bearer" followed by a space and JWT token.
