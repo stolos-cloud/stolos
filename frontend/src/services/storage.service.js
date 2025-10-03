@@ -14,7 +14,7 @@ export const StorageService = {
         try {
             const value = localStorage.getItem(key)
             if (!value) return null
-            if (typeof value == 'string') {
+            if (typeof value === 'string') {
                 return value;
             }
             return JSON.parse(value);
