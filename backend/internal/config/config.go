@@ -9,10 +9,11 @@ import (
 )
 
 type Config struct {
-	Database    DatabaseConfig `mapstructure:"database"`
-	GitOps      GitOpsConfig   `mapstructure:"gitops"`
-	GCP         GCPConfig      `mapstructure:"gcp"`
-	GitHub      GitHubConfig   `mapstructure:"github"`
+	Database DatabaseConfig `mapstructure:"database"`
+	GitOps   GitOpsConfig   `mapstructure:"gitops"`
+	GCP      GCPConfig      `mapstructure:"gcp"`
+	GitHub   GitHubConfig   `mapstructure:"github"`
+	JWT      JWTConfig      `mapstructure:"jwt"`
 }
 
 type DatabaseConfig struct {
@@ -41,9 +42,15 @@ type GitHubConfig struct {
 }
 
 type GCPConfig struct {
-	ProjectID            string `mapstructure:"project_id"`
-	Region               string `mapstructure:"region"`
-	ServiceAccountJSON   string `mapstructure:"service_account_json"`
+	ProjectID          string `mapstructure:"project_id"`
+	Region             string `mapstructure:"region"`
+	ServiceAccountJSON string `mapstructure:"service_account_json"`
+}
+
+type JWTConfig struct {
+	SecretKey     string `mapstructure:"secret_key"`
+	Issuer        string `mapstructure:"issuer"`
+	ExpiryMinutes int    `mapstructure:"expiry_minutes"`
 }
 
 func Load() (*Config, error) {
@@ -95,6 +102,24 @@ func Load() (*Config, error) {
 		if installationID, err := strconv.ParseInt(ghInstallationID, 10, 64); err == nil {
 			config.GitHub.InstallationID = installationID
 		}
+	}
+
+	// JWT Config
+	if jwtSecret := os.Getenv("JWT_SECRET_KEY"); jwtSecret != "" {
+		config.JWT.SecretKey = jwtSecret
+	}
+	if jwtIssuer := os.Getenv("JWT_ISSUER"); jwtIssuer != "" {
+		config.JWT.Issuer = jwtIssuer
+	} else {
+		config.JWT.Issuer = "stolos-backend" // default issuer
+	}
+	if jwtExpiry := os.Getenv("JWT_EXPIRY_MINUTES"); jwtExpiry != "" {
+		if expiry, err := strconv.Atoi(jwtExpiry); err == nil {
+			config.JWT.ExpiryMinutes = expiry
+		}
+	}
+	if config.JWT.ExpiryMinutes == 0 {
+		config.JWT.ExpiryMinutes = 1440 // default 24 hours
 	}
 
 	return &config, nil

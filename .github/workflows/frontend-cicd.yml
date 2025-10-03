@@ -1,0 +1,68 @@
+name: Stolos Frontend CICD
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - frontend/**
+  pull_request:
+    branches:
+      - main
+    paths:
+      - frontend/**
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to build'
+        required: true
+        default: 'main'
+
+permissions:
+  contents: read
+  packages: write
+  security-events: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: CI
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 20.x
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install deps
+        run: npm ci --no-audit --no-fund
+
+      - name: Lint
+        run: npm run lint --if-present
+
+      - name: Test
+        run: npm test --if-present -- --ci
+
+      - name: Build
+        run: npm run build --if-present
+
+  build-push-ghcr:
+    needs: ci
+    uses: stolos-cloud/stolos/.github/workflows/build-push-ghcr.yml@main
+    with:
+      container-name: stolos-frontend
+      branch: ${{ github.event.inputs.branch }}
+      context: frontend
+      file: frontend/Dockerfile
+    secrets: inherit

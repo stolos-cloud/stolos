@@ -37,10 +37,16 @@ type SaveState struct {
 	ClusterEndpoint string             `json:"ClusterEndpoint"`
 	BootstrapInfo   BootstrapInfo      `json:"BootstrapInfo"`
 	MachinesCache   Machines           `json:"MachinesCache"`
+	MachinesDisks   map[string]string  `json:"MachinesDisks"`
 	GitHubApp       github.AppManifest `json:"GitHubApp"`
 }
 
 type Machines struct {
 	ControlPlanes map[string][]byte `json:"ControlPlanes"` // map IP : Hostname
 	Workers       map[string][]byte `json:"Workers"`       // map IP : Hostname
+}
+
+type ServerConfig struct {
+	Role        int `json:"Role" field_label:"Kubernetes role"`
+	InstallDisk int `json:"InstallDisk" field_required:"true" field_label:"Install disk" `
 }

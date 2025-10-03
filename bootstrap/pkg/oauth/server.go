@@ -61,12 +61,13 @@ func (s *Server) Start(ctx context.Context) error {
 	s.mu.RUnlock()
 
 	s.server = &http.Server{
-		Addr:    ":" + s.port,
+		Addr:    "localhost:" + s.port,
 		Handler: mux,
 	}
 
 	go func() {
-		if err := s.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		err := s.server.ListenAndServe()
+		if err != nil {
 			s.logger.Errorf("Failed to start OAuth server: %v", err)
 		}
 	}()
@@ -226,6 +227,8 @@ func (s *Server) Authenticate(ctx context.Context, providerName string) (*oauth2
 	delete(s.channels, providerName)
 	delete(s.errorChannels, providerName)
 	s.mu.Unlock()
+
+	_ = s.server.Shutdown(context.Background())
 
 	return token, nil
 

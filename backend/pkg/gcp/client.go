@@ -8,21 +8,15 @@ import (
 	"math/big"
 	"os"
 
+	gcpconfig "github.com/stolos-cloud/stolos-bootstrap/pkg/gcp"
 	"golang.org/x/oauth2/google"
 	compute "google.golang.org/api/compute/v1"
 	"google.golang.org/api/option"
 	"google.golang.org/api/storage/v1"
 )
 
-type Config struct {
-	ProjectID           string `json:"project_id"`
-	Region              string `json:"region"`
-	ServiceAccountJSON  string `json:"service_account_json"`
-	ServiceAccountEmail string `json:"service_account_email"`
-}
-
 type Client struct {
-	config        *Config
+	config        *gcpconfig.Config
 	computeClient *compute.Service
 	storageClient *storage.Service
 }
@@ -36,7 +30,7 @@ func NewClientFromEnv() (*Client, error) {
 	return NewClientFromConfig(config)
 }
 
-func NewClientFromConfig(config *Config) (*Client, error) {
+func NewClientFromConfig(config *gcpconfig.Config) (*Client, error) {
 	ctx := context.Background()
 	credentials, err := google.CredentialsFromJSON(ctx, []byte(config.ServiceAccountJSON), compute.CloudPlatformScope, storage.CloudPlatformScope)
 	if err != nil {
@@ -64,7 +58,7 @@ func NewClientFromConfig(config *Config) (*Client, error) {
 	}, nil
 }
 
-func configFromEnv() (*Config, error) {
+func configFromEnv() (*gcpconfig.Config, error) {
 	projectID := os.Getenv("GCP_PROJECT_ID")
 	if projectID == "" {
 		return nil, fmt.Errorf("GCP_PROJECT_ID environment variable is required")
@@ -82,15 +76,10 @@ func configFromEnv() (*Config, error) {
 
 	serviceAccountEmail := os.Getenv("GCP_SERVICE_ACCOUNT_EMAIL")
 	if serviceAccountEmail == "" {
-		return nil, fmt.Errorf("GCP_SERVICE_ACCOUNT_EMAIL environment variable is required")
+		serviceAccountEmail = extractServiceAccountEmail(serviceAccountJSON)
 	}
 
-	return &Config{
-		ProjectID:           projectID,
-		Region:              region,
-		ServiceAccountJSON:  serviceAccountJSON,
-		ServiceAccountEmail: serviceAccountEmail,
-	}, nil
+	return gcpconfig.NewConfig(projectID, region, serviceAccountJSON, serviceAccountEmail)
 }
 
 func (c *Client) GetProjectInfo() (projectID, region string) {
@@ -101,7 +90,7 @@ func (c *Client) GetComputeService() *compute.Service {
 	return c.computeClient
 }
 
-func (c *Client) GetConfig() *Config {
+func (c *Client) GetConfig() *gcpconfig.Config {
 	return c.config
 }
 
@@ -173,6 +162,19 @@ func extractServiceAccountEmail(serviceAccountJSON string) string {
 	}
 	json.Unmarshal([]byte(serviceAccountJSON), &sa)
 	return sa.ClientEmail
+}
+
+func ExtractProjectIDFromServiceAccount(serviceAccountJSON []byte) (string, error) {
+	var sa struct {
+		ProjectID string `json:"project_id"`
+	}
+	if err := json.Unmarshal(serviceAccountJSON, &sa); err != nil {
+		return "", err
+	}
+	if sa.ProjectID == "" {
+		return "", fmt.Errorf("project_id not found in service account JSON")
+	}
+	return sa.ProjectID, nil
 }
 
 func generateRandomString(length int) string {
