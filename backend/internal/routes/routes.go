@@ -66,14 +66,6 @@ func setupAuthRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
 			authenticated.POST("/refresh", h.AuthHandlers().RefreshToken)
 			authenticated.GET("/profile", h.AuthHandlers().GetProfile)
 		}
-
-		// Admin-only routes
-		admin := auth.Group("/admin")
-		admin.Use(middleware.JWTAuthMiddleware(h.JWTService(), h.DB()))
-		admin.Use(middleware.RequireRole(models.RoleAdmin))
-		{
-			admin.POST("/users", h.AuthHandlers().CreateUser)
-		}
 	}
 }
 
@@ -98,6 +90,7 @@ func setupUserRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
 		users.GET("/:id", h.UserHandlers().GetUser)
 		users.PUT("/:id/role", h.UserHandlers().UpdateUserRole)
 		users.DELETE("/:id", h.UserHandlers().DeleteUser)
+		users.POST("/create", h.UserHandlers().CreateUser)
 	}
 }
 
