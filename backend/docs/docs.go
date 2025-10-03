@@ -16,8 +16,8 @@ const docTemplate = `{
             "email": "support@stolos.cloud"
         },
         "license": {
-            "name": "Apache 2.0",
-            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+            "name": "TBD",
+            "url": "http://TBD"
         },
         "version": "{{.Version}}"
     },
@@ -1800,7 +1800,7 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
-	Host:             "localhost:8080",
+	Host:             "",
 	BasePath:         "/api/v1",
 	Schemes:          []string{},
 	Title:            "Stolos API",

@@ -172,7 +172,6 @@ definitions:
       role:
         type: string
     type: object
-host: localhost:8080
 info:
   contact:
     email: support@stolos.cloud
@@ -180,8 +179,8 @@ info:
     url: https://github.com/stolos-cloud/stolos
   description: API for Stolos Cloud Platform
   license:
-    name: Apache 2.0
-    url: http://www.apache.org/licenses/LICENSE-2.0.html
+    name: TBD
+    url: http://TBD
   termsOfService: http://swagger.io/terms/
   title: Stolos API
   version: "1.0"

@@ -10,12 +10,11 @@
             "email": "support@stolos.cloud"
         },
         "license": {
-            "name": "Apache 2.0",
-            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+            "name": "TBD",
+            "url": "http://TBD"
         },
         "version": "1.0"
     },
-    "host": "localhost:8080",
     "basePath": "/api/v1",
     "paths": {
         "/auth/login": {
