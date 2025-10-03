@@ -77,10 +77,16 @@ export const user = {
                 commit('CLEAR_USER');
             });
         },
-        async refreshTokenUser({ commit }) {
+        async refreshTokenUser({ commit, state }) {
             await refreshToken()
             .then(({ token }) => {
-                commit('SET_USER', { token });
+                commit('SET_USER', {
+                    email: state.email,
+                    role: state.role,
+                    id: state.id,
+                    teams: state.teams,
+                    token
+                });
             });
         }
     }
