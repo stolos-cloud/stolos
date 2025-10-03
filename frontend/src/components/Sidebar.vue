@@ -48,8 +48,9 @@
 
 <script setup>
 import { computed } from 'vue';
+import { useStore } from 'vuex';
 
-const role = 'operator'; // This should be dynamically set based on the logged-in user's role
+const store = useStore();
 
 // Props
 const props = defineProps({
@@ -92,8 +93,10 @@ const operatorMenu = [
 ];
 
 // Computed
+const role = computed(() => store.getters['user/getRole']);
 const sidebarWidth = computed(() => (props.drawer ? 230 : 60));
-const menuItems = computed(() => role === 'developer' ? developerMenu : operatorMenu);
+const menuItems = computed(() => role.value === 'developer' ? developerMenu : operatorMenu);
+
 </script>
 
 <style scoped> 
