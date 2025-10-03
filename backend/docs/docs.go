@@ -406,13 +406,6 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "GCP Project ID",
-                        "name": "project_id",
-                        "in": "formData",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
                         "description": "GCP Region",
                         "name": "region",
                         "in": "formData",

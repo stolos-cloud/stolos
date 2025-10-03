@@ -416,11 +416,6 @@ paths:
       - multipart/form-data
       description: Configure GCP by uploading service account JSON file
       parameters:
-      - description: GCP Project ID
-        in: formData
-        name: project_id
-        required: true
-        type: string
       - description: GCP Region
         in: formData
         name: region
