@@ -160,7 +160,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.getCurrentStep().OnExit != nil {
 			m.getCurrentStep().OnExit(m, m.getCurrentStep())
 		}
-		return m, m.enterStepCmd(m.CurrentStepIndex + 1)
+		return m, m.advanceCmd()
 	}
 
 	switch msg := msg.(type) {
@@ -354,7 +354,7 @@ func (m *Model) enterStepCmd(i int) tea.Cmd {
 
 func (m *Model) advanceCmd() tea.Cmd {
 	// TODO : Execute OnExit
-	m.getCurrentStep()
+	// m.getCurrentStep() <=== WHY IS THAT THERE?
 	if m.CurrentStepIndex >= len(m.Steps)-1 {
 		return tea.Quit
 	}
