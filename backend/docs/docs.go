@@ -1326,7 +1326,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "auth"
+                    "users"
                 ],
                 "summary": "Create a new user",
                 "parameters": [
