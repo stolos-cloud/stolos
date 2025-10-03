@@ -9,6 +9,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/pkg/browser"
 	"github.com/stolos-cloud/stolos-bootstrap/internal/configserver"
 	"github.com/stolos-cloud/stolos-bootstrap/internal/tui"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/gcp"
@@ -40,6 +41,8 @@ var githubToken *oauth2.Token
 var gcpToken *oauth2.Token
 var gcpEnabled = gcp.GCPClientId != "" && gcp.GCPClientSecret != ""
 var gitHubEnabled = github.GithubClientId != "" && github.GithubClientSecret != ""
+var gitHubUser *github.User
+var gitHubAppManifestParams *github.AppManifestParams
 
 func main() {
 
@@ -123,9 +126,9 @@ func main() {
 				listenAddr := "127.0.0.1:19999"
 				webhookEndpoint := "https://" + bootstrapInfos.GitHubInfo.BaseDomain + "/stolos/api/v1/github_webhook"
 
-				user, err := github.GetGitHubUser(context.Background(), bootstrapInfos.GitHubInfo.RepoOwner, *githubToken)
-				params := github.CreateGitHubManifestParameters(webhookEndpoint, listenAddr)
-				app, err := github.GitHubAppManifestFlow(context.Background(), listenAddr, m.Logger, params, *user)
+				gitHubUser, err = github.GetGitHubUser(context.Background(), bootstrapInfos.GitHubInfo.RepoOwner, *githubToken)
+				gitHubAppManifestParams = github.CreateGitHubManifestParameters(webhookEndpoint, listenAddr)
+				app, err := github.GitHubAppManifestFlow(context.Background(), listenAddr, m.Logger, gitHubAppManifestParams, *gitHubUser)
 				if err != nil {
 					m.Logger.Errorf("GitHub App Manifest Flow Error: %s", err.Error())
 				}
@@ -135,6 +138,26 @@ func main() {
 				m.Logger.Successf("GitHub App was created successfuly! App name: %s, App ID: %s", app.Name, app.ID)
 				s.IsDone = true
 			}()
+			return nil
+		},
+	}
+
+	githubInstallAppStep := tui.Step{
+		Name:        "GitHubInstallApp",
+		Title:       "1.3) Install GitHub App",
+		Kind:        tui.StepSpinner,
+		IsDone:      false,
+		AutoAdvance: true,
+		OnEnter: func(m *tui.Model, s *tui.Step) tea.Cmd {
+
+			m.Logger.Infof("Please install the github app to either your user, organization, or directly to the stolos repo.")
+
+			var appInstallLink = github.BuildGitHubAppUrl(gitHubUser, "install", gitHubAppManifestParams.Name)
+			err = browser.OpenURL(appInstallLink)
+			if err != nil {
+				m.Logger.Warnf("Failed to open browser, please install the app via: %s", appInstallLink)
+			}
+
 			return nil
 		},
 	}
@@ -278,6 +301,7 @@ func main() {
 		&githubAuthStep,
 		&githubRepoStep,
 		&githubAppStep,
+		&githubInstallAppStep,
 		&gcpInfoStep,
 		&gcpAuthStep,
 		&gcpSAStep,

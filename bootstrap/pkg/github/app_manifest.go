@@ -236,11 +236,7 @@ func buildGitHubManifestRedirect(addr, path string, params *AppManifestParams, u
 	}
 
 	var baseURL string
-	if user.Type == "user" {
-		baseURL = "https://github.com/settings/apps/new"
-	} else {
-		baseURL = fmt.Sprintf("https://github.com/organizations/%s/settings/apps/new", user.Login)
-	}
+	baseURL = BuildGitHubAppUrl(&user, "create", params.Name)
 
 	// TODO : Implement CSRF
 	//ghURL := fmt.Sprintf("%s?state=%s", baseURL, params.State)
@@ -262,6 +258,29 @@ func buildGitHubManifestRedirect(addr, path string, params *AppManifestParams, u
 `, baseURL, string(manifestJSON), params.State)
 
 	return baseURL, htmlForm, nil
+}
+
+// BuildGitHubAppUrl returns apps url based on user type, mode is either "create", or "install"
+func BuildGitHubAppUrl(user *User, mode string, appName string) string {
+
+	var baseUrl string
+
+	if user.Type == "user" {
+		baseUrl = "https://github.com/settings/apps"
+	} else {
+		baseUrl = fmt.Sprintf("https://github.com/organizations/%s/settings/apps", user.Login)
+	}
+
+	switch mode {
+	case "create":
+		return fmt.Sprintf("%s/new", baseUrl)
+	case "install":
+		return fmt.Sprintf("%s/%s/installations", baseUrl, appName)
+	case "manage":
+		return fmt.Sprintf("%s/%s/", baseUrl, appName)
+	}
+
+	return "invalid" // unreachable
 }
 
 // exchangeManifestCode calls GitHub API to exchange code -> manifest result
