@@ -185,6 +185,14 @@ func (s *GCPService) getGCPClient(projectID, region string) (*gcp.Client, error)
 	return nil, fmt.Errorf("GCP not configured in database or environment")
 }
 
+func (s *GCPService) ExtractProjectID(serviceAccountJSON []byte) (string, error) {
+	projectID, err := gcp.ExtractProjectIDFromServiceAccount(serviceAccountJSON)
+	if err != nil {
+		return "", fmt.Errorf("failed to extract project ID: %w", err)
+	}
+	return projectID, nil
+}
+
 func (s *GCPService) CreateTerraformBucket(ctx context.Context, projectID, region string) (string, error) {
 	gcpClient, err := s.getGCPClient(projectID, region)
 	if err != nil {

@@ -95,7 +95,6 @@ func (h *GCPHandlers) ConfigureGCP(c *gin.Context) {
 // @Tags gcp
 // @Accept multipart/form-data
 // @Produce json
-// @Param project_id formData string true "GCP Project ID"
 // @Param region formData string true "GCP Region"
 // @Param service_account_file formData file true "Service Account JSON file"
 // @Success 200 {object} models.GCPConfig
@@ -104,11 +103,10 @@ func (h *GCPHandlers) ConfigureGCP(c *gin.Context) {
 // @Router /gcp/configure/upload [post]
 // @Security BearerAuthAuth
 func (h *GCPHandlers) ConfigureGCPUpload(c *gin.Context) {
-	projectID := c.PostForm("project_id")
 	region := c.PostForm("region")
 
-	if projectID == "" || region == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "project_id and region are required"})
+	if region == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "region is required"})
 		return
 	}
 
@@ -129,6 +127,12 @@ func (h *GCPHandlers) ConfigureGCPUpload(c *gin.Context) {
 	serviceAccountJSON, err := io.ReadAll(f)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to read file contents"})
+		return
+	}
+
+	projectID, err := h.gcpService.ExtractProjectID(serviceAccountJSON)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid service account JSON"})
 		return
 	}
 
