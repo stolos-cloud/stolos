@@ -40,6 +40,19 @@
     "dashboard": {
         "title": "Tableau de Bord",
         "subheading": "Bienvenue sur Stolos",
+        "onPremises": {
+            "table": {
+                "title": "Noeuds connectés actifs",
+                "loadingText": "Chargement des nœuds connectés...",
+                "noDataText": "Aucun noeud connecté actif trouvé.",
+                "itemsPerPageText": "Articles par page :",
+                "headers": {
+                    "nodename": "Nom du noeud",
+                    "status": "Statut",
+                    "role": "Rôle"
+                }
+            }
+        },
         "dialogs": {
             "downloadISOOnPremise":  {
                 "title": "Télécharger l'ISO On-Premise",
@@ -81,11 +94,14 @@
     "provisioning": {
         "title": "Provisionnement",
         "onPremises": {
+            "sidemenuTitle": "On-Premises",
             "title": "Provisionnement On-Premises",
             "subheading": "Gérez vos ressources sur site",
             "table": {
+                "title": "Nœuds connectés",
                 "loadingText": "Chargement des nœuds connectés...",
                 "noDataText": "Aucun nœud connecté trouvé.",
+                "itemsPerPageText": "Articles par page :",
                 "headers": {
                     "ip": "IP",
                     "wid": "WID",
@@ -101,12 +117,43 @@
             }
         },
         "cloud": {
+            "sidemenuTitle": "Cloud",
             "title": "Provisionnement Cloud",
             "subheading": "Gérez vos ressources cloud"
         }
     },
     "cloudProvider": {
-        "title": "Fournisseur de Cloud"
+        "title": "Fournisseur de Cloud",
+        "subheading": "Gérez la configuration de votre fournisseur de cloud",
+        "table": {
+            "title": "Configuration du fournisseur GCP",
+            "loadingText": "Chargement des noeuds connectés...",
+            "noDataText": "Aucun noeud connecté trouvé.",
+            "itemsPerPageText": "Articles par page :",
+            "headers": {
+                "projectId": "ID de projet",
+                "bucketName": "Nom du bucket",
+                "region": "Région",
+                "emailSA": "Email du compte de service",
+                "actions": "Actions"
+            }
+        },
+        "formfields": {
+            "region": "Région",
+            "serviceAccountFile": "Fichier de compte de service (JSON)"
+        },
+        "dialogs": {
+            "updateCloudConfiguration":  {
+                "title": "Mettre à jour la configuration du fournisseur GCP"
+            },
+            "configurateCloudConfig": {
+                "title": "Configurer le fournisseur GCP"
+            }
+        },
+        "buttons": {
+            "updateConfiguration": "Mettre à jour",
+            "cancel": "Annuler"
+        }
     },
     "templates": {
         "title": "Modèles"
@@ -155,6 +202,10 @@
         "search": "Rechercher"
     },
     "errors": {
+        "sessionExpired": "Votre session a expiré ou est invalide. Veuillez vous reconnecter.",
+        "failedLogin": "Échec de la connexion. Veuillez vérifier vos identifiants et réessayer.",
+        "failedFetchProfile": "Échec de la récupération du profil utilisateur. Veuillez réessayer.",
+        "failedRefreshToken": "Échec du rafraîchissement du token. Veuillez vous reconnecter.",
         "403": {
             "title": "403 - Interdit",
             "message": "Vous n'avez pas la permission d'accéder à cette page."

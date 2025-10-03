@@ -1,104 +1,58 @@
-import axios from 'axios'
+import api from './api'
+import { StorageService } from './storage.service'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1'
+export async function login(email, password) {
+  try {
+    const response = await api.post('/api/auth/login', {
+      email,
+      password
+    })
+    const { token, user } = response.data
 
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json'
-  }
-})
+    StorageService.set('token', token);
+    StorageService.set('user', JSON.stringify(user));
 
-// Add request interceptor to include auth token
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
-    return config
-  },
-  (error) => {
-    return Promise.reject(error)
-  }
-)
-
-// Add response interceptor to handle auth errors
-api.interceptors.response.use(
-  (response) => {
-    return response
-  },
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
-      // Could redirect to login here if needed
-    }
-    return Promise.reject(error)
-  }
-)
-
-export class AuthService {
-  async login(email, password) {
-    try {
-      const response = await api.post('/auth/login', {
-        email,
-        password
-      })
-
-      const { token, user } = response.data
-
-      // Store token and user data
-      localStorage.setItem('token', token)
-      localStorage.setItem('user', JSON.stringify(user))
-
-      return { token, user }
-    } catch (error) {
-      throw new Error(error.response?.data?.error || 'Login failed')
-    }
-  }
-
-  async logout() {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-  }
-
-  async getProfile() {
-    try {
-      const response = await api.get('/auth/profile')
-      return response.data.user
-    } catch (error) {
-      throw new Error(error.response?.data?.error || 'Failed to get profile')
-    }
-  }
-
-  async refreshToken() {
-    try {
-      const response = await api.post('/auth/refresh')
-      const { token, user } = response.data
-
-      localStorage.setItem('token', token)
-      localStorage.setItem('user', JSON.stringify(user))
-
-      return { token, user }
-    } catch (error) {
-      throw new Error(error.response?.data?.error || 'Token refresh failed')
-    }
-  }
-
-  isAuthenticated() {
-    return !!localStorage.getItem('token')
-  }
-
-  getUser() {
-    const userData = localStorage.getItem('user')
-    return userData ? JSON.parse(userData) : null
-  }
-
-  getToken() {
-    return localStorage.getItem('token')
+    return { token, user }
+  } catch (error) {
+    throw new Error(error.response?.data?.error || 'failedLogin')
   }
 }
 
-export default new AuthService()
+export async function logout() {
+  StorageService.remove('token');
+  StorageService.remove('user');
+}
+
+export async function getProfile() {
+  try {
+    const response = await api.get('/api/auth/profile')
+    return response.data.user
+  } catch (error) {
+    throw new Error(error.response?.data?.error || 'failedFetchProfile')
+  }
+}
+
+export async function refreshToken() {
+  try {
+    const response = await api.post('/api/auth/refresh')
+    const { token } = response.data
+
+    StorageService.set('token', token)
+    return { token }
+  } catch (error) {
+    throw new Error(error.response?.data?.error || 'failedRefreshToken')
+  }
+}
+
+export async function initAuthenticationExistingToken() {
+  try {
+    const token = StorageService.get('token');
+    if(!token) {
+      return null;
+    }
+    const user = await getProfile();
+    return { token, user };
+  } catch (error) {
+    throw new Error(error.response?.data?.error || 'failedInitAuth');
+  }
+}

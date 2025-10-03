@@ -1,7 +1,8 @@
-export class Checkbox {
-    constructor({ label, value, readonly, required, rules }) {
+export class FileInput {
+    constructor({ label, value, accept, readonly, required, rules }) {
         this.label = label;
         this.value = value;
+        this.accept = accept;
         this.readonly = readonly;
         this.required = required;
         this.rules = rules;
@@ -13,6 +14,10 @@ export class Checkbox {
 
     getValue() {
         return this.value;
+    }
+
+    getAccept() {
+        return this.accept;
     }
 
     isReadonly() {
@@ -33,6 +38,10 @@ export class Checkbox {
     
     setValue(value) {
         this.value = value;
+    }
+
+    setAccept(accept) {
+        this.accept = accept;
     }
 
     setReadonly(readonly) {

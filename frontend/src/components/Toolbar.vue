@@ -50,6 +50,7 @@
 import { useI18n } from 'vue-i18n';
 import { useTheme } from 'vuetify';
 import { computed } from 'vue';
+import { useStore } from "vuex";
 import router from '@/router';
 
 // Props
@@ -68,16 +69,19 @@ const props = defineProps({
   },
 });
 
+const i18n = useI18n();
+const theme = useTheme();
+const store = useStore();
+
+const isDark = computed(() => theme.global.current.value.dark);
+
 // Emits
 const emit = defineEmits(['update:drawer', 'go-to-profile', 'change-language', 'logout']);
 
-const i18n = useI18n();
-const theme = useTheme();
-const isDark = computed(() => theme.global.current.value.dark);
 
 // Methods
 function toggleTheme() {
-  theme.global.name.value = isDark.value ? 'light' : 'dark';
+  theme.change(isDark.value ? 'light' : 'dark');
 }
 
 function toggleSidebar() {
@@ -93,6 +97,8 @@ function changeLanguage(lang) {
 }
 
 function logout() {
-  router.push('/login');
+  store.dispatch('user/logoutUser').then(() => {
+    router.push('/login');
+  });
 }
 </script>

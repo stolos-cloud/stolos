@@ -1,8 +1,9 @@
 <template>
     <v-dialog v-model="isOpen" :width="width" :persistent="persistent">
         <v-card>
-            <v-card-title class="d-flex justify-space-between align-center">
+            <v-card-title class="d-flex align-center">
                 <span>{{ title }}</span>
+                <v-spacer></v-spacer>
                 <v-btn 
                     v-if="closable" 
                     variant="text" 
@@ -14,7 +15,6 @@
                 <slot></slot>
             </v-card-text>
             <v-card-actions>
-                <v-spacer></v-spacer>
                 <slot name="actions"></slot>
             </v-card-actions>
         </v-card>   

@@ -40,6 +40,19 @@
     "dashboard": {
         "title": "Dashboard",
         "subheading": "Welcome to Stolos",
+        "onPremises": {
+            "table": {
+                "title": "Active connected nodes",
+                "loadingText": "Loading connected nodes...",
+                "noDataText": "No active connected nodes found.",
+                "itemsPerPageText": "Items per page :",
+                "headers": {
+                    "nodename": "Node name",
+                    "status": "Status",
+                    "role": "Role"
+                }
+            }
+        },
         "dialogs": {
             "downloadISOOnPremise":  {
                 "title": "Download ISO On-Premise",
@@ -81,14 +94,16 @@
     "provisioning": {
         "title": "Provisioning",
         "onPremises": {
+            "sidemenuTitle": "On-Premises",
             "title": "On-Premises provisioning",
             "subheading": "Manage your on-premises resources",
             "table": {
+                "title": "Connected Nodes",
                 "loadingText": "Loading connected nodes...",
                 "noDataText": "No connected nodes found.",
+                "itemsPerPageText": "Items per page :",
                 "headers": {
                     "ip": "IP",
-                    "wid": "WID",
                     "status": "Status",
                     "mac": "MAC",
                     "role": "Role",
@@ -101,13 +116,43 @@
             }
         },
         "cloud": {
+            "sidemenuTitle": "Cloud",
             "title": "Cloud provisioning",
             "subheading": "Manage your cloud resources"
         }
     },
     "cloudProvider": {
         "title": "Cloud Provider",
-        "subheading": "Manage your cloud provider settings"
+        "subheading": "Manage your cloud provider configuration",
+        "table": {
+            "title": "GCP provider configuration",
+            "loadingText": "Loading connected nodes...",
+            "noDataText": "No connected nodes found.",
+            "itemsPerPageText": "Items per page :",
+            "headers": {
+                "projectId": "Project ID",
+                "bucketName": "Bucket name",
+                "region": "Region",
+                "emailSA": "Service account email",
+                "actions": "Actions"
+            }
+        },
+        "formfields": {
+            "region": "Region",
+            "serviceAccountFile": "Service account file (JSON)"
+        },
+        "dialogs": {
+            "updateCloudConfiguration":  {
+                "title": "Update GCP provider configuration"
+            },
+            "configurateCloudConfig": {
+                "title": "Configure GCP provider"
+            }
+        },
+        "buttons": {
+            "updateConfiguration": "Update",
+            "cancel": "Cancel"
+        }
     },
     "templates": {
         "title": "Templates"
@@ -156,6 +201,10 @@
         "search": "Search"
     },
     "errors": {
+        "sessionExpired": "Your session has expired or is invalid. Please log in again.",
+        "failedLogin": "Login failed. Please check your credentials and try again.",
+        "failedFetchProfile": "Failed to fetch user profile. Please try again.",
+        "failedRefreshToken": "Failed to refresh token. Please log in again.",
         "403": {
             "title": "403 - Forbidden",
             "message": "You do not have permission to access this page."

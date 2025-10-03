@@ -164,6 +164,19 @@ func extractServiceAccountEmail(serviceAccountJSON string) string {
 	return sa.ClientEmail
 }
 
+func ExtractProjectIDFromServiceAccount(serviceAccountJSON []byte) (string, error) {
+	var sa struct {
+		ProjectID string `json:"project_id"`
+	}
+	if err := json.Unmarshal(serviceAccountJSON, &sa); err != nil {
+		return "", err
+	}
+	if sa.ProjectID == "" {
+		return "", fmt.Errorf("project_id not found in service account JSON")
+	}
+	return sa.ProjectID, nil
+}
+
 func generateRandomString(length int) string {
 	const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
 	b := make([]byte, length)

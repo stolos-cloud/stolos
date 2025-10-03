@@ -5,14 +5,41 @@
             :subheading="$t('dashboard.subheading')"
             :actions="actions"
         />
-        <!-- Tableau d'état final des noeuds -->
+        <!-- Active connected nodes -->
         <div class="mt-4">
-            <h3>{{ $t('provisioning.nodeStatesTitle') }}</h3>
+          <h3>{{ $t('dashboard.onPremises.table.title') }}</h3>
+          <v-card flat>
+            <template v-slot:text>
+                <v-text-field
+                  v-model="search"
+                  label="Search"
+                  prepend-inner-icon="mdi-magnify"
+                  variant="outlined"
+                  hide-details
+                  single-line
+                />
+            </template>
             <v-data-table
-                :headers="stateHeaders"
-                :items="nodeStates"
-                class="elevation-1 mt-2"
-            ></v-data-table>
+                :headers="nodeHeaders"
+                :items="nodes"
+                :items-length="nodes.length"
+                :search="search"
+                :loading="loading"
+                :loading-text="$t('dashboard.onPremises.table.loadingText')"
+                :no-data-text="$t('dashboard.onPremises.table.noDataText')"
+                :items-per-page="10"
+                :items-per-page-text="$t('dashboard.onPremises.table.itemsPerPageText')"
+                class="elevation-8 mt-2"
+                mobile-breakpoint="md"
+              >
+              <!-- Slot for status -->
+              <template #item.status="{ item }">
+                  <v-chip color="success">
+                      {{ item.status }}
+                  </v-chip>
+              </template>
+            </v-data-table>
+          </v-card>
         </div>
         <BaseDialog v-model="dialogDownloadISOOnPremise" :title="$t('dashboard.dialogs.downloadISOOnPremise.title')" width="600" closable>
           <v-form v-model="isValid">
@@ -20,8 +47,8 @@
             <BaseRadioButtons :RadioGroup="isoRadioButtons" />
           </v-form>
           <template #actions>
-            <BaseButton size="small" :text="$t('dashboard.buttons.cancel')" @click="cancelDownloadISO" />
-            <BaseButton size="small" color="primary" :text="$t('dashboard.buttons.download')" @click="confirmDownloadISO" :disabled="!isValid"/>
+            <BaseButton size="small" variant="outlined" :text="$t('dashboard.buttons.cancel')" @click="cancelDownloadISO" />
+            <BaseButton size="small" :text="$t('dashboard.buttons.download')" @click="confirmDownloadISO" :disabled="!isValid"/>
           </template>
         </BaseDialog>
     </PortalLayout>
@@ -35,21 +62,18 @@ import BaseDialog from '@/components/base/BaseDialog.vue';
 import BaseNotice from '@/components/base/BaseNotice.vue';
 import BaseRadioButtons from '@/components/base/BaseRadioButtons.vue';
 import { RadioGroup } from '@/models/RadioGroup.js';
-import { downloadISO } from '@/services/provisioning.service';
-import { computed, ref } from 'vue';
+import { downloadISO, createSamplesNodes, getConnectedNodes } from '@/services/provisioning.service';
+import { computed, ref, reactive, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { reactive } from 'vue';
 
 const { t } = useI18n();
-const nodeStates = ref([]);
 
-const actions = computed(() => [
-  {
-    text: t('dashboard.buttons.downloadISOOnPremise'),
-    color: 'primary',
-    onClick: () => dialogDownloadISOOnPremise.value = true
-  }
-]);
+// State
+const dialogDownloadISOOnPremise = ref(false);
+const isValid = ref(false);
+const search = ref('');
+const loading = ref(false);
+const nodes = ref([]);
 
 const isoRadioButtons = reactive(new RadioGroup({
   label: "ISO choice",
@@ -68,14 +92,24 @@ const isoRadioButtons = reactive(new RadioGroup({
   rules: [(v) => !!v || t('dashboard.dialogs.downloadISOOnPremise.radioOptions.required') ]
 }));
 
-// State
-const dialogDownloadISOOnPremise = ref(false);
-const isValid = ref(false);
+//mounted
+onMounted(() => {
+    fetchConnectedNodesActive();
+});
 
-nodeStates.value = [
-  { Nodename: 'node-1', role: 'Control-plane', state: 'Ready' },
-  { Nodename: 'node-2', role: 'Worker', state: 'NotReady' },
-];
+// Computed
+const actions = computed(() => [
+  {
+    text: t('dashboard.buttons.downloadISOOnPremise'),
+    color: 'primary',
+    onClick: () => dialogDownloadISOOnPremise.value = true
+  }
+]);
+const nodeHeaders = computed(() => [
+  { title: t('dashboard.onPremises.table.headers.nodename'), value: 'name' },
+  { title: t('dashboard.onPremises.table.headers.status'), value: 'status' },
+  { title: t('dashboard.onPremises.table.headers.role'), value: 'role' }
+]);
 
 // Methods
 function cancelDownloadISO() {
@@ -86,6 +120,7 @@ function cancelDownloadISO() {
 function confirmDownloadISO() {
     if (!isValid.value) return;
 
+    createSamplesNodes();
     downloadISO({ iso: isoRadioButtons.value })
     .then(({ data, headers }) => {
       let filename = "fallback.iso";
@@ -111,6 +146,27 @@ function confirmDownloadISO() {
     .finally(() => {
         isoRadioButtons.value = undefined;
         dialogDownloadISOOnPremise.value = false;
+    });
+}
+
+function fetchConnectedNodesActive() {
+    loading.value = true;
+
+    getConnectedNodes({status: "active"})
+    .then(response => {        
+        nodes.value = response
+            .filter(node => node.provider?.toLowerCase() === "onprem")
+            .map(node => ({
+                ...node,
+                status: node.status.charAt(0).toUpperCase() + node.status.slice(1),
+                role: node.role.charAt(0).toUpperCase() + node.role.slice(1)
+            }));
+    })
+    .catch(error => {
+        console.error('Error fetching connected nodes active:', error);
+    })
+    .finally(() => {
+        loading.value = false;
     });
 }
 </script>

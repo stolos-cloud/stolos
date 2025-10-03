@@ -11,11 +11,9 @@
                         <BaseTextfield :Textfield="textfields.email" />
                         <BaseTextfield :Textfield="textfields.password" :iconAction="passwordEyeIcon" @clickIcon="showPassword = !showPassword" />
                     </v-form>
-                    <v-alert v-if="errorMessage" type="error" class="mb-3" variant="outlined">
-                        {{ errorMessage }}
-                    </v-alert>
-                    <BaseCheckbox :Checkbox="checkboxes.rememberMe" />
-                    <BaseButton :text="$t('login.buttons.login')" class="w-100 mt-4" :disabled="!isValid || isLoading" :loading="isLoading" @click="login" />
+                    <BaseNotice v-if="sessionExpired" :text="$t('errors.sessionExpired')" type="error" closable />
+                    <BaseNotice v-if="errorMessage" :text="errorMessage" type="error" />
+                    <BaseButton :text="$t('login.buttons.login')" class="w-100 mt-4" :disabled="!isValid || isLoading" @click="loginUser" />
                 </v-card-text>
                 <v-card-actions class="d-flex flex-column align-center mt-4">
                     <RouterLink to="/403" class="mb-1 text-router-link">
@@ -32,25 +30,36 @@ import AuthLayout from "@/components/layouts/AuthLayout.vue";
 import BaseTitle from "@/components/base/BaseTitle.vue";
 import BaseTextfield from "@/components/base/BaseTextfield.vue";
 import BaseButton from "@/components/base/BaseButton.vue";
-import BaseCheckbox from "@/components/base/BaseCheckbox.vue";
+
 import { TextField } from "@/models/TextField.js";
-import { Checkbox } from "@/models/Checkbox.js";
 import { FormValidationRules } from "@/composables/FormValidationRules.js";
 import { ref, computed, reactive } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
-import authService from "@/services/auth.service.js";
+import { useStore } from "vuex";
 
 const { t } = useI18n();
 const { emailRules, passwordRules } = FormValidationRules();
 const router = useRouter();
+const store = useStore();
+
+const props = defineProps({
+  message: {
+    type: String,
+    default: ''
+  }
+});
+
+// Validation state
+const isValid = ref(false);
+const isLoading = ref(false);
+const errorMessage = ref('');
 const showPassword = ref(false);
 
 //Computed
 const passwordEyeIcon = computed(() => showPassword.value ? 'mdi-eye' : 'mdi-eye-off');
 const passwordType = computed(() => showPassword.value ? "text" : "password");
-console.log(t('login.email'));
-
+const sessionExpired = computed(() => props.message === 'sessionExpired');
 
 // Form state
 const textfields = reactive({
@@ -67,31 +76,39 @@ const textfields = reactive({
     rules: passwordRules
   }),
 });
-const checkboxes = reactive({
-    rememberMe: new Checkbox({
-        label: t('login.rememberMe')
-    })
-});
-
-// Validation state
-const isValid = ref(false);
-const isLoading = ref(false);
-const errorMessage = ref('');
 
 // Methods
-async function login() {
+function loginUser() {
   if (!isValid.value) return;
 
   isLoading.value = true;
   errorMessage.value = '';
-
-  try {
-    await authService.login(textfields.email.value, textfields.password.value);
+  
+  store.dispatch('user/loginUser', {
+    email: textfields.email.value,
+    password: textfields.password.value
+  })
+  .then(() => {
     router.push('/dashboard');
-  } catch (error) {
-    errorMessage.value = error.message;
-  } finally {
+  })
+  .catch((error) => {
+    handleLoginError(error);
+  })
+  .finally(() => {
+    textfields.email.value = undefined;
+    textfields.password.value = undefined;
     isLoading.value = false;
+    errorMessage.value = '';
+  });
+}
+//TODO : Put this methods into a error Composable in the futur if needed
+function handleLoginError(error) {
+  switch (error.message) {
+    case 'failedLogin':
+      errorMessage.value = t('errors.failedLogin');
+      break;
+    default:
+      errorMessage.value = "An unexpected error occurred. Please try again later.";
   }
 }
 </script>
