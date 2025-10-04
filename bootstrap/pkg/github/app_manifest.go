@@ -128,7 +128,6 @@ func GitHubAppManifestFlow(ctx context.Context, listenAddr string, logger logger
 
 	htmlPath := "/post_form"
 	redirectPath := "/_github_app_manifest_callback"
-	installCallbackPath := "/_github_app_install_callback"
 
 	// build the GitHub manifest redirect URL
 	_, formHTML, err := buildGitHubManifestRedirect(listener.Addr().String(), redirectPath, ghManifestParams, user)
@@ -183,15 +182,6 @@ func GitHubAppManifestFlow(ctx context.Context, listenAddr string, logger logger
 		fmt.Fprintf(w, "<html><body>GitHub App creation in progress. You may close this window.</body></html>")
 	})
 
-	// Handler for POST-INSTALL
-	mux.HandleFunc(installCallbackPath, func(w http.ResponseWriter, r *http.Request) {
-		// GitHub redirects here once the App is installed/authorized
-		logger.Infof("GitHub App installed/authorized callback received. Query: %v", r.URL.Query())
-
-		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprintf(w, "<html><body>GitHub App installed successfully. You may close this window.</body></html>")
-	})
-
 	// run server in background
 	go func() {
 		if err := server.Serve(listener); err != nil && err != http.ErrServerClosed {
@@ -216,6 +206,78 @@ func GitHubAppManifestFlow(ctx context.Context, listenAddr string, logger logger
 	case manifest := <-manifestResultCh:
 		server.Close()
 		return manifest, nil
+	}
+}
+
+// AppInstallCallbackResult holds the information GitHub sends during the post-install callback.
+type AppInstallCallbackResult struct {
+	Code           string
+	InstallationID string
+	SetupAction    string
+}
+
+// GitHubAppInstallFlow handles post install redirect to get installation ID.
+func GitHubAppInstallFlow(ctx context.Context, listenAddr string, user *User, app *AppManifest, logger logger.Logger) (*AppInstallCallbackResult, error) {
+	resultCh := make(chan *AppInstallCallbackResult, 1)
+	errCh := make(chan error, 1)
+
+	listener, err := net.Listen("tcp", listenAddr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to listen on port: %w", err)
+	}
+	defer listener.Close()
+
+	installCallbackPath := "/_github_app_install_callback"
+
+	mux := http.NewServeMux()
+	server := &http.Server{
+		Handler: mux,
+	}
+
+	// Handler for POST-INSTALL
+	mux.HandleFunc(installCallbackPath, func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		code := q.Get("code")
+		installationID := q.Get("installation_id")
+		setupAction := q.Get("setup_action")
+
+		logger.Successf("GitHub App installed installed!. code=%s, installation_id=%s, setup_action=%s", code, installationID, setupAction)
+
+		// Push result into channel
+		resultCh <- &AppInstallCallbackResult{
+			Code:           code,
+			InstallationID: installationID,
+			SetupAction:    setupAction,
+		}
+
+		w.Header().Set("Content-Type", "text/html")
+		fmt.Fprintf(w, "<html><body>GitHub App installed successfully. You may close this window.</body></html>")
+	})
+
+	// Run server in background
+	go func() {
+		if err := server.Serve(listener); err != nil && err != http.ErrServerClosed {
+			logger.Errorf("HTTP server error: %v", err)
+		}
+	}()
+
+	var appInstallLink = BuildGitHubAppUrl(user, "install", app.Slug)
+	err = browser.OpenURL(appInstallLink)
+	if err != nil {
+		logger.Warnf("Failed to open browser, please install the app via: %s", appInstallLink)
+	}
+
+	// Wait for either result or error or context done
+	select {
+	case <-ctx.Done():
+		server.Close()
+		return nil, ctx.Err()
+	case err := <-errCh:
+		server.Close()
+		return nil, err
+	case result := <-resultCh:
+		server.Close()
+		return result, nil
 	}
 }
 
@@ -261,7 +323,7 @@ func buildGitHubManifestRedirect(addr, path string, params *AppManifestParams, u
 }
 
 // BuildGitHubAppUrl returns apps url based on user type, mode is either "create", or "install"
-func BuildGitHubAppUrl(user *User, mode string, appName string) string {
+func BuildGitHubAppUrl(user *User, mode string, nameOrSlug string) string {
 
 	var baseUrl string
 
@@ -275,9 +337,9 @@ func BuildGitHubAppUrl(user *User, mode string, appName string) string {
 	case "create":
 		return fmt.Sprintf("%s/new", baseUrl)
 	case "install":
-		return fmt.Sprintf("%s/%s/installations", baseUrl, appName)
+		return fmt.Sprintf("%s/%s/installations", baseUrl, nameOrSlug)
 	case "manage":
-		return fmt.Sprintf("%s/%s/", baseUrl, appName)
+		return fmt.Sprintf("%s/%s/", baseUrl, nameOrSlug)
 	}
 
 	return "invalid" // unreachable

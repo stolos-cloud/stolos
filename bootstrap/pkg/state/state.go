@@ -34,11 +34,12 @@ type TalosInfo struct {
 }
 
 type SaveState struct {
-	ClusterEndpoint string             `json:"ClusterEndpoint"`
-	BootstrapInfo   BootstrapInfo      `json:"BootstrapInfo"`
-	MachinesCache   Machines           `json:"MachinesCache"`
-	MachinesDisks   map[string]string  `json:"MachinesDisks"`
-	GitHubApp       github.AppManifest `json:"GitHubApp"`
+	ClusterEndpoint        string                          `json:"ClusterEndpoint"`
+	BootstrapInfo          BootstrapInfo                   `json:"BootstrapInfo"`
+	MachinesCache          Machines                        `json:"MachinesCache"`
+	MachinesDisks          map[string]string               `json:"MachinesDisks"`
+	GitHubApp              github.AppManifest              `json:"GitHubApp"`
+	GitHubAppInstallResult github.AppInstallCallbackResult `json:"GitHubAppInstallResult"`
 }
 
 type Machines struct {

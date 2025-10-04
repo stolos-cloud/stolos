@@ -15,7 +15,6 @@ import (
 	"github.com/cavaliergopher/grab/v3"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/olekukonko/tablewriter"
-	"github.com/pkg/browser"
 	"github.com/siderolabs/image-factory/pkg/schematic"
 	"github.com/siderolabs/siderolink/pkg/events"
 	"github.com/siderolabs/talos/pkg/machinery/api/storage"
@@ -47,6 +46,7 @@ var gcpEnabled = gcp.GCPClientId != "" && gcp.GCPClientSecret != ""
 var gitHubEnabled = github.GithubClientId != "" && github.GithubClientSecret != ""
 var gitHubUser *github.User
 var gitHubAppManifestParams *github.AppManifestParams
+var gitHubAppManifest *github.AppManifest
 
 const _gigabyte = 1073741824
 
@@ -81,19 +81,13 @@ func main() {
 		bootstrapInfos = &state.BootstrapInfo{}
 	}
 
-	if didReadBootstrapInfos {
-		// TODO
-		//talosStep.AutoAdvance = true
-		//githubStep.AutoAdvance = true
-	}
-
 	githubInfoStep := tui.Step{
 		Name:        "GitHubInfo",
 		Title:       "1) Enter GitHub Repository Information",
 		Kind:        tui.StepForm,
 		Fields:      tui.CreateFieldsForStruct[github.GitHubInfo](),
 		IsDone:      true,
-		AutoAdvance: false,
+		AutoAdvance: didReadBootstrapInfos,
 		OnExit: func(m *tui.Model, s *tui.Step) {
 			if !didReadBootstrapInfos {
 				githubInfo, err := tui.RetrieveStructFromFields[github.GitHubInfo](s.Fields)
@@ -141,15 +135,31 @@ func main() {
 				webhookEndpoint := "https://" + bootstrapInfos.GitHubInfo.BaseDomain + "/stolos/api/v1/github_webhook"
 
 				gitHubUser, err = github.GetGitHubUser(context.Background(), bootstrapInfos.GitHubInfo.RepoOwner, *githubToken)
+
+				if err != nil {
+					m.Logger.Errorf("Failed to get GitHub User: %v", err)
+					return
+				}
+
+				if gitHubUser.Type != "Organization" {
+					m.Logger.Errorf("You must login as an organization!")
+					return
+				}
+
 				gitHubAppManifestParams = github.CreateGitHubManifestParameters(webhookEndpoint, listenAddr)
-				app, err := github.GitHubAppManifestFlow(context.Background(), listenAddr, m.Logger, gitHubAppManifestParams, *gitHubUser)
+				gitHubAppManifest, err = github.GitHubAppManifestFlow(context.Background(), listenAddr, m.Logger, gitHubAppManifestParams, *gitHubUser)
 				if err != nil {
 					m.Logger.Errorf("GitHub App Manifest Flow Error: %s", err.Error())
 				}
 
-				saveState.GitHubApp = *app
+				saveState.GitHubApp = *gitHubAppManifest
+				//err = marshal.SaveStateToJSON(saveState)
+				//if err != nil {
+				//	m.Logger.Errorf("Failed to save state: %s", err.Error())
+				//	return
+				//}
 
-				m.Logger.Successf("GitHub App was created successfuly! App name: %s, App ID: %s", app.Name, app.ID)
+				m.Logger.Successf("GitHub App was created successfuly! App name: %s, App ID: %d", gitHubAppManifest.Name, gitHubAppManifest.ID)
 				s.IsDone = true
 			}()
 			return nil
@@ -164,13 +174,18 @@ func main() {
 		AutoAdvance: true,
 		OnEnter: func(m *tui.Model, s *tui.Step) tea.Cmd {
 
-			m.Logger.Infof("Please install the github app to either your user, organization, or directly to the stolos repo.")
+			m.Logger.Infof("Opening the github app install page...")
 
-			var appInstallLink = github.BuildGitHubAppUrl(gitHubUser, "install", gitHubAppManifestParams.Name)
-			err = browser.OpenURL(appInstallLink)
-			if err != nil {
-				m.Logger.Warnf("Failed to open browser, please install the app via: %s", appInstallLink)
-			}
+			go func() {
+				listenAddr := "127.0.0.1:19999"
+				postInstallResult, err := github.GitHubAppInstallFlow(context.Background(), listenAddr, gitHubUser, gitHubAppManifest, m.Logger)
+				if err != nil {
+					m.Logger.Errorf("GitHub App Install Flow Error: %s", err.Error())
+					return
+				}
+				saveState.GitHubAppInstallResult = *postInstallResult
+				s.IsDone = true
+			}()
 
 			return nil
 		},
@@ -182,7 +197,7 @@ func main() {
 		Kind:        tui.StepForm,
 		Fields:      tui.CreateFieldsForStruct[state.GCPInfo](),
 		IsDone:      true,
-		AutoAdvance: false,
+		AutoAdvance: didReadBootstrapInfos,
 		OnEnter: func(m *tui.Model, s *tui.Step) tea.Cmd {
 			// TODO
 			return nil
@@ -239,7 +254,7 @@ func main() {
 		Kind:        tui.StepForm,
 		Fields:      tui.CreateFieldsForStruct[state.TalosInfo](),
 		IsDone:      true,
-		AutoAdvance: false,
+		AutoAdvance: didReadBootstrapInfos,
 		OnEnter: func(m *tui.Model, s *tui.Step) tea.Cmd {
 			if doRestoreProgress {
 				m.Logger.Info("State file found, skipping talos info form")
