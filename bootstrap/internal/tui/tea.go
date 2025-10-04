@@ -429,7 +429,7 @@ func (m *Model) renderLogsPane() string {
 	}
 
 	// Keep only the last lines that fit into available Height
-	maxLines := max(m.Height - 10) // adaptive Height
+	maxLines := max(m.Height-10, 0) // adaptive Height
 	if len(allLines) > maxLines {
 		allLines = allLines[len(allLines)-maxLines:]
 	}
