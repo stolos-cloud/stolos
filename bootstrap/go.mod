@@ -10,6 +10,7 @@ require (
 	github.com/cosi-project/runtime v1.10.7
 	github.com/goccy/go-json v0.10.5
 	github.com/goccy/go-yaml v1.18.0
+	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/google/go-github/v74 v74.0.0
 	github.com/mittwald/go-helm-client v0.12.18
 	github.com/olekukonko/tablewriter v0.0.5
@@ -18,6 +19,7 @@ require (
 	github.com/siderolabs/siderolink v0.3.15
 	github.com/siderolabs/talos v1.11.0-beta.0
 	github.com/siderolabs/talos/pkg/machinery v1.11.0-beta.0
+	github.com/stolos-cloud/stolos/k8s_manifests v0.0.0
 	golang.org/x/oauth2 v0.31.0
 	google.golang.org/api v0.249.0
 	google.golang.org/grpc v1.75.0
@@ -119,7 +121,6 @@ require (
 	github.com/go-openapi/swag v0.23.1 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang-jwt/jwt/v5 v5.2.2 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/btree v1.1.3 // indirect
 	github.com/google/cel-go v0.26.0 // indirect
@@ -285,3 +286,5 @@ require (
 	sigs.k8s.io/structured-merge-diff/v6 v6.2.0 // indirect
 	sigs.k8s.io/yaml v1.5.0 // indirect
 )
+
+replace github.com/stolos-cloud/stolos/k8s_manifests v0.0.0 => ../k8s-manifests

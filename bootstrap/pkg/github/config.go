@@ -232,10 +232,11 @@ func CreateOrUpdateArgoCDGitHubSecrets(
 	client kubernetes.Interface,
 	namespace, secretName string,
 	appID string,
+	appPEM string,
 	repoUrl string,
 	installID string,
 ) error {
-	// TODO: Does not support GitHub Enterprise.
+	// TODO : Does not support GitHub Enterprise.
 
 	// 1. ArgoCD GH Repo secret
 	repoSecret := &corev1.Secret{
@@ -250,9 +251,9 @@ func CreateOrUpdateArgoCDGitHubSecrets(
 		StringData: map[string]string{
 			"type":                    "git",
 			"url":                     repoUrl,
-			"githubAppID":             fmt.Sprintf("%d", appID),
-			"githubAppPrivateKey":     app.PEM,
-			"githubAppInstallationID": fmt.Sprintf("%d", installID),
+			"githubAppID":             appID,
+			"githubAppPrivateKey":     appPEM,
+			"githubAppInstallationID": installID,
 		},
 	}
 
@@ -286,7 +287,7 @@ func CreateOrUpdateArgoCDGitHubSecrets(
 	return nil
 }
 
-// createOrUpdateSecret performs a create or update operation for a Kubernetes Secret.
+// createOrUpdateSecret performs a create or update operation for a Kubernetes Secret. // TODO use this helper everywhere and remove duplications
 func createOrUpdateSecret(ctx context.Context, client kubernetes.Interface, secret *corev1.Secret) error {
 	existing, err := client.CoreV1().Secrets(secret.Namespace).Get(ctx, secret.Name, metav1.GetOptions{})
 	if errors.IsNotFound(err) {

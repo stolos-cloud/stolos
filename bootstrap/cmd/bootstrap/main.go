@@ -7,10 +7,13 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
 	"time"
+
+	manifests "github.com/stolos-cloud/stolos/k8s_manifests"
 
 	"github.com/cavaliergopher/grab/v3"
 	tea "github.com/charmbracelet/bubbletea"
@@ -352,6 +355,17 @@ func main() {
 		&deployArgoStep,
 		&deployPortalStep,
 	}
+
+	tui.DisableStep(&githubInfoStep, true)
+	tui.DisableStep(&githubAuthStep, true)
+	tui.DisableStep(&githubRepoStep, true)
+	tui.DisableStep(&githubAppStep, true)
+	tui.DisableStep(&githubInstallAppStep, true)
+	tui.DisableStep(&gcpInfoStep, true)
+	tui.DisableStep(&gcpAuthStep, true)
+	tui.DisableStep(&gcpSAStep, true)
+	tui.DisableStep(&talosInfoStep, true)
+	tui.DisableStep(&talosISOStep, true)
 
 	f, _ := os.OpenFile("./stolos.log", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	defer f.Close()
@@ -744,7 +758,21 @@ func DeployArgoCD(loggerRef *tui.UILogger) {
 	}
 
 	loggerRef.Infof("Deploying ArgoCD...")
-	release, err := helm.HelmInstallArgo(helmClient)
+
+	//manifests.ArgoValuesYaml
+
+	tmpDir, err := os.MkdirTemp("", "helm-values-*")
+	if err != nil {
+		panic(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	valuesPath := filepath.Join(tmpDir, "values.yaml")
+	if err := os.WriteFile(valuesPath, manifests.ArgoValuesYaml, 0644); err != nil {
+		panic(err)
+	}
+
+	release, err := helm.HelmInstallArgo(helmClient, "stolos-argocd", "stolos-argocd", []string{valuesPath})
 	if err != nil {
 		loggerRef.Errorf("Failed to deploy ArgoCD: %s", err)
 		return
@@ -790,7 +818,8 @@ func CreateProviderSecrets(loggerRef *tui.UILogger) {
 			} else {
 				loggerRef.Success("GitHub credentials secret created successfully")
 			}
-			err = github.CreateOrUpdateArgoCDGitHubSecrets(ctx, k8sClient, "stolos-argocd", "stolos-github-repo", strconv.FormatInt(gitHubAppManifest.ID, 10), "https://github.com/"+bootstrapInfos.GitHubInfo.RepoOwner+"/"+bootstrapInfos.GitHubInfo.RepoName, saveState.GitHubAppInstallResult.InstallationID)
+			repoUrl := "https://github.com/" + bootstrapInfos.GitHubInfo.RepoOwner + "/" + bootstrapInfos.GitHubInfo.RepoName
+			err = github.CreateOrUpdateArgoCDGitHubSecrets(ctx, k8sClient, "stolos-argocd", "stolos-github-repo", strconv.FormatInt(gitHubAppManifest.ID, 10), gitHubAppManifest.PEM, repoUrl, saveState.GitHubAppInstallResult.InstallationID)
 			if err != nil {
 				loggerRef.Errorf("Failed to create GitHub Argo Repo secret: %s", err)
 			} else {
