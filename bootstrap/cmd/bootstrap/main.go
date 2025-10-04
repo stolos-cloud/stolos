@@ -18,6 +18,7 @@ import (
 	"github.com/siderolabs/image-factory/pkg/schematic"
 	"github.com/siderolabs/siderolink/pkg/events"
 	"github.com/siderolabs/talos/pkg/machinery/api/storage"
+	"github.com/stolos-cloud/stolos-bootstrap/internal/logging"
 	"github.com/stolos-cloud/stolos-bootstrap/internal/tui"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/gcp"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/github"
@@ -336,10 +337,9 @@ func RunOAuthServerInBackround(logger *tui.UILogger) {
 	}()
 }
 
-func SetupOAuthServer(logger *tui.UILogger) *oauth.Server {
+func SetupOAuthServer(logger *tui.UILogger) {
 	// Setup OAuth server
-	server := oauth.NewServer("9999", logger)
-	return server
+	oauth.CreateServerIfNotExists("9999", logger)
 }
 
 func SetupGitHub() {
@@ -648,7 +648,9 @@ func RunClusterBootstrapStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 
 		//RunDetailedClusterHealthCheck(talosApiClient, m.Logger)
 		time.Sleep(10 * time.Second)
-		talos.RunBasicClusterHealthCheck(talosApiClient, m.Logger)
+		var logger logging.Logger
+		logger = m.Logger
+		talos.RunBasicClusterHealthCheck(talosApiClient, &logger)
 		m.Logger.Success("Cluster health check succeeded!")
 
 		kubeconfig, err = talosApiClient.Kubeconfig(context.Background())
@@ -692,7 +694,9 @@ func RunPortalStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 
 func DeployArgoCD(loggerRef *tui.UILogger) {
 	loggerRef.Info("Setting up helm...")
-	helmClient, err := helm.SetupHelmClient(loggerRef, kubeconfig)
+	var logger logging.Logger
+	logger = loggerRef
+	helmClient, err := helm.SetupHelmClient(&logger, kubeconfig)
 	if err != nil {
 		loggerRef.Errorf("Failed to setup helm client: %s", err)
 		return

@@ -8,9 +8,10 @@ import (
 	"sync"
 
 	"github.com/pkg/browser"
-	"github.com/stolos-cloud/stolos-bootstrap/pkg/oauth/providers"
 	"golang.org/x/oauth2"
 )
+
+var CurrentServer *Server
 
 type Provider interface {
 	GetConfig() *oauth2.Config
@@ -36,15 +37,17 @@ type Logger interface {
 	Success(msg string)
 }
 
-func NewServer(port string, logger Logger) *Server {
-	return &Server{
-		port:          port,
-		providers:     make(map[string]Provider),
-		tokens:        make(map[string]*oauth2.Token),
-		errors:        make(map[string]error),
-		channels:      make(map[string]chan string),
-		errorChannels: make(map[string]chan error),
-		logger:        logger,
+func CreateServerIfNotExists(port string, logger Logger) {
+	if CurrentServer == nil {
+		CurrentServer = &Server{
+			port:          port,
+			providers:     make(map[string]Provider),
+			tokens:        make(map[string]*oauth2.Token),
+			errors:        make(map[string]error),
+			channels:      make(map[string]chan string),
+			errorChannels: make(map[string]chan error),
+			logger:        logger,
+		}
 	}
 }
 
@@ -241,9 +244,9 @@ func (s *Server) Authenticate(ctx context.Context, providerName string) (*oauth2
 }
 
 func NewGitHubProvider(clientID, clientSecret string) Provider {
-	return providers.NewGitHubProvider(clientID, clientSecret)
+	return NewGitHubProvider(clientID, clientSecret)
 }
 
 func NewGCPProvider(clientID, clientSecret string) Provider {
-	return providers.NewGCPProvider(clientID, clientSecret)
+	return NewGCPProvider(clientID, clientSecret)
 }

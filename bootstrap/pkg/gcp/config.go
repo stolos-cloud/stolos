@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/oauth"
+	"github.com/stolos-cloud/stolos-bootstrap/pkg/oauth/providers"
 
 	"golang.org/x/oauth2"
 	resourcemanager "google.golang.org/api/cloudresourcemanager/v1"
@@ -258,7 +259,7 @@ func assignServiceAccountRoles(rmService *resourcemanager.Service, projectID, se
 func AuthenticateAndSetup(oauthServer *oauth.Server, clientID, clientSecret, projectID, region string, logger oauth.Logger) (*GCPConfig, error) {
 	ctx := context.Background()
 
-	provider := oauth.NewGCPProvider(clientID, clientSecret)
+	provider := providers.NewGCPProvider(clientID, clientSecret)
 	oauthServer.RegisterProvider(provider)
 
 	token, err := oauthServer.Authenticate(ctx, "GCP")

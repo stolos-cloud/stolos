@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/oauth"
+	"github.com/stolos-cloud/stolos-bootstrap/pkg/oauth/providers"
 
 	"github.com/goccy/go-yaml"
 	"github.com/google/go-github/v74/github"
@@ -139,7 +140,7 @@ func (c *Client) GetToken() *oauth2.Token {
 func AuthenticateAndSetup(oauthServer *oauth.Server, clientID, clientSecret string, info *GitHubInfo, logger oauth.Logger) (*Client, error) {
 	ctx := context.Background()
 
-	provider := oauth.NewGitHubProvider(clientID, clientSecret)
+	provider := providers.NewGitHubProvider(clientID, clientSecret)
 	oauthServer.RegisterProvider(provider)
 
 	token, err := oauthServer.Authenticate(ctx, "GitHub")
