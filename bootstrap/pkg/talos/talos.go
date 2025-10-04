@@ -230,7 +230,7 @@ func CreateMachineConfigBundle(controlPlaneIp string, bootstrapInfos *state.Boot
 		generate.WithNetworkOptions(
 			v1alpha1.WithKubeSpan(),
 		),
-		generate.WithInstallImage("ghcr.io/siderolabs/installer:latest"),
+		generate.WithInstallImage(fmt.Sprintf("ghcr.io/siderolabs/installer:%s", bootstrapInfos.TalosInfo.TalosVersion)),
 		// generate.WithAdditionalSubjectAltNames([]string{_____}),// TODO : Add the right SAN for external IP / DNS
 		generate.WithPersist(true),
 		generate.WithClusterDiscovery(true),
