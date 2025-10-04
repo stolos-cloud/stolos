@@ -30,7 +30,7 @@ func SetupHelmClient(logger *tui.UILogger, kubeconfig []byte) (helmclient.Client
 	return helmclient.NewClientFromKubeConf(&kubeclientOptions)
 }
 
-func HelmInstallArgo(helmClient helmclient.Client) (*release.Release, error) {
+func HelmInstallArgo(helmClient helmclient.Client, releaseName string, namespace string, valuesFiles []string) (*release.Release, error) {
 	err := helmClient.AddOrUpdateChartRepo(repo.Entry{
 		Name: "argo",
 		URL:  "https://argoproj.github.io/argo-helm",
@@ -41,14 +41,11 @@ func HelmInstallArgo(helmClient helmclient.Client) (*release.Release, error) {
 
 	chartSpec := helmclient.ChartSpec{
 		ReleaseName: "stolos-argocd",
-		Description: "ArgoCD Deployed by Stolos Cloud bootstrapper",
+		Description: "ArgoCD Deployed by Stolos Cloud",
 		ChartName:   "argo/argo-cd",
-		Namespace:   "stolos-argocd",
+		Namespace:   namespace,
 		ValuesOptions: values.Options{
-			ValueFiles: []string{
-				"./argo.default.values.yaml",
-				//"../k8s-manifests/argocd/helm/values.yaml"
-			},
+			ValueFiles: valuesFiles,
 		},
 		Version:         "8.5.2",
 		CreateNamespace: true,
@@ -58,5 +55,5 @@ func HelmInstallArgo(helmClient helmclient.Client) (*release.Release, error) {
 		Timeout:         2 * time.Minute,
 	}
 
-	return helmClient.InstallChart(context.Background(), &chartSpec, &helmclient.GenericHelmOptions{})
+	return helmClient.InstallOrUpgradeChart(context.Background(), &chartSpec, &helmclient.GenericHelmOptions{})
 }

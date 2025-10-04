@@ -7,10 +7,13 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
 	"time"
+
+	manifests "github.com/stolos-cloud/stolos/k8s_manifests"
 
 	"github.com/cavaliergopher/grab/v3"
 	tea "github.com/charmbracelet/bubbletea"
@@ -46,6 +49,9 @@ var githubToken *oauth2.Token
 var gcpToken *oauth2.Token
 var gcpEnabled = gcp.GCPClientId != "" && gcp.GCPClientSecret != ""
 var gitHubEnabled = github.GithubClientId != "" && github.GithubClientSecret != ""
+var gitHubUser *github.User
+var gitHubAppManifestParams *github.AppManifestParams
+var gitHubAppManifest *github.AppManifest
 
 const _gigabyte = 1073741824
 
@@ -80,19 +86,13 @@ func main() {
 		bootstrapInfos = &state.BootstrapInfo{}
 	}
 
-	if didReadBootstrapInfos {
-		// TODO
-		//talosStep.AutoAdvance = true
-		//githubStep.AutoAdvance = true
-	}
-
 	githubInfoStep := tui.Step{
 		Name:        "GitHubInfo",
 		Title:       "1) Enter GitHub Repository Information",
 		Kind:        tui.StepForm,
 		Fields:      tui.CreateFieldsForStruct[github.GitHubInfo](),
 		IsDone:      true,
-		AutoAdvance: false,
+		AutoAdvance: didReadBootstrapInfos,
 		OnExit: func(m *tui.Model, s *tui.Step) {
 			if !didReadBootstrapInfos {
 				githubInfo, err := tui.RetrieveStructFromFields[github.GitHubInfo](s.Fields)
@@ -131,8 +131,71 @@ func main() {
 		Name:        "GitHubApp",
 		Title:       "1.3) Create GitHub App",
 		Kind:        tui.StepSpinner,
-		IsDone:      true,
+		IsDone:      false,
 		AutoAdvance: true,
+		OnEnter: func(m *tui.Model, s *tui.Step) tea.Cmd {
+			m.Logger.Infof("Starting GitHub App Manifest Flow...")
+			go func() {
+				listenAddr := "127.0.0.1:19999"
+				remoteBaseUrl := "https://api." + bootstrapInfos.GitHubInfo.BaseDomain //URL when deployed
+				webhookEndpoint := "/api/v1/github_webhook"                            //webhook endpoint
+				callbacksEndpoint := "/api/v1/github_callback"                         // additional install callback for deployed URL
+
+				gitHubUser, err = github.GetGitHubUser(context.Background(), bootstrapInfos.GitHubInfo.RepoOwner, *githubToken)
+
+				if err != nil {
+					m.Logger.Errorf("Failed to get GitHub User: %v", err)
+					return
+				}
+
+				if gitHubUser.Type != "Organization" {
+					m.Logger.Errorf("You must login as an organization!")
+					return
+				}
+
+				gitHubAppManifestParams = github.CreateGitHubManifestParameters(remoteBaseUrl, webhookEndpoint, callbacksEndpoint, listenAddr)
+				gitHubAppManifest, err = github.GitHubAppManifestFlow(context.Background(), listenAddr, m.Logger, gitHubAppManifestParams, *gitHubUser)
+				if err != nil {
+					m.Logger.Errorf("GitHub App Manifest Flow Error: %s", err.Error())
+				}
+
+				saveState.GitHubApp = *gitHubAppManifest
+				//err = marshal.SaveStateToJSON(saveState)
+				//if err != nil {
+				//	m.Logger.Errorf("Failed to save state: %s", err.Error())
+				//	return
+				//}
+
+				m.Logger.Successf("GitHub App was created successfuly! App name: %s, App ID: %d", gitHubAppManifest.Name, gitHubAppManifest.ID)
+				s.IsDone = true
+			}()
+			return nil
+		},
+	}
+
+	githubInstallAppStep := tui.Step{
+		Name:        "GitHubInstallApp",
+		Title:       "1.3) Install GitHub App",
+		Kind:        tui.StepSpinner,
+		IsDone:      false,
+		AutoAdvance: true,
+		OnEnter: func(m *tui.Model, s *tui.Step) tea.Cmd {
+
+			m.Logger.Infof("Opening the github app install page...")
+
+			go func() {
+				listenAddr := "127.0.0.1:19999"
+				postInstallResult, err := github.GitHubAppInstallFlow(context.Background(), listenAddr, gitHubUser, gitHubAppManifest, m.Logger)
+				if err != nil {
+					m.Logger.Errorf("GitHub App Install Flow Error: %s", err.Error())
+					return
+				}
+				saveState.GitHubAppInstallResult = *postInstallResult
+				s.IsDone = true
+			}()
+
+			return nil
+		},
 	}
 
 	gcpInfoStep := tui.Step{
@@ -141,7 +204,7 @@ func main() {
 		Kind:        tui.StepForm,
 		Fields:      tui.CreateFieldsForStruct[state.GCPInfo](),
 		IsDone:      true,
-		AutoAdvance: false,
+		AutoAdvance: didReadBootstrapInfos,
 		OnEnter: func(m *tui.Model, s *tui.Step) tea.Cmd {
 			// TODO
 			return nil
@@ -171,8 +234,7 @@ func main() {
 				gcpToken, err = oauthServer.Authenticate(context.Background(), "GCP")
 				if err != nil {
 					m.Logger.Errorf("Failed to authenticate with GCP: %v", err)
-					s.IsDone = true
-					// TODO handle fail
+					s.IsDone = true // TODO handle fail
 				}
 				s.IsDone = true
 			}()
@@ -199,7 +261,7 @@ func main() {
 		Kind:        tui.StepForm,
 		Fields:      tui.CreateFieldsForStruct[state.TalosInfo](),
 		IsDone:      true,
-		AutoAdvance: false,
+		AutoAdvance: didReadBootstrapInfos,
 		OnEnter: func(m *tui.Model, s *tui.Step) tea.Cmd {
 			if doRestoreProgress {
 				m.Logger.Info("State file found, skipping talos info form")
@@ -282,6 +344,7 @@ func main() {
 		&githubAuthStep,
 		&githubRepoStep,
 		&githubAppStep,
+		&githubInstallAppStep,
 		&gcpInfoStep,
 		&gcpAuthStep,
 		&gcpSAStep,
@@ -292,6 +355,17 @@ func main() {
 		&deployArgoStep,
 		&deployPortalStep,
 	}
+
+	tui.DisableStep(&githubInfoStep, true)
+	tui.DisableStep(&githubAuthStep, true)
+	tui.DisableStep(&githubRepoStep, true)
+	tui.DisableStep(&githubAppStep, true)
+	tui.DisableStep(&githubInstallAppStep, true)
+	tui.DisableStep(&gcpInfoStep, true)
+	tui.DisableStep(&gcpAuthStep, true)
+	tui.DisableStep(&gcpSAStep, true)
+	tui.DisableStep(&talosInfoStep, true)
+	tui.DisableStep(&talosISOStep, true)
 
 	f, _ := os.OpenFile("./stolos.log", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	defer f.Close()
@@ -684,7 +758,21 @@ func DeployArgoCD(loggerRef *tui.UILogger) {
 	}
 
 	loggerRef.Infof("Deploying ArgoCD...")
-	release, err := helm.HelmInstallArgo(helmClient)
+
+	//manifests.ArgoValuesYaml
+
+	tmpDir, err := os.MkdirTemp("", "helm-values-*")
+	if err != nil {
+		panic(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	valuesPath := filepath.Join(tmpDir, "values.yaml")
+	if err := os.WriteFile(valuesPath, manifests.ArgoValuesYaml, 0644); err != nil {
+		panic(err)
+	}
+
+	release, err := helm.HelmInstallArgo(helmClient, "stolos-argocd", "stolos-argocd", []string{valuesPath})
 	if err != nil {
 		loggerRef.Errorf("Failed to deploy ArgoCD: %s", err)
 		return
@@ -729,6 +817,13 @@ func CreateProviderSecrets(loggerRef *tui.UILogger) {
 				loggerRef.Errorf("Failed to create GitHub secret: %s", err)
 			} else {
 				loggerRef.Success("GitHub credentials secret created successfully")
+			}
+			repoUrl := "https://github.com/" + bootstrapInfos.GitHubInfo.RepoOwner + "/" + bootstrapInfos.GitHubInfo.RepoName
+			err = github.CreateOrUpdateArgoCDGitHubSecrets(ctx, k8sClient, "stolos-argocd", "stolos-github-repo", strconv.FormatInt(gitHubAppManifest.ID, 10), gitHubAppManifest.PEM, repoUrl, saveState.GitHubAppInstallResult.InstallationID)
+			if err != nil {
+				loggerRef.Errorf("Failed to create GitHub Argo Repo secret: %s", err)
+			} else {
+				loggerRef.Success("GitHub Repo credentials secret created successfully")
 			}
 		}
 	}
