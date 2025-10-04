@@ -1,16 +1,10 @@
 <template>
-    <v-navigation-drawer
-      :width="sidebarWidth"
-      app
-      permanent
-      :elevation="props.elevation"
-    >
-      <v-list-item class="sidebar-top" :style="{ height: props.toolbarHeight + 'px' }">
+    <v-navigation-drawer v-model="drawerModel" :width="sidebarWidth" app :permanent="!temporary" :temporary="temporary" :elevation="props.elevation">
+      <v-list-item :style="{ height: props.toolbarHeight + 'px' }">
         <template #prepend>
             <v-icon>mdi-rocket</v-icon>
         </template>
         <v-list-item-title>{{ $t('applicationName') }}</v-list-item-title>
-        <v-list-item-subtitle>Admin</v-list-item-subtitle> <!-- Role  to be added-->
       </v-list-item>
 
       <v-divider></v-divider>
@@ -43,6 +37,10 @@
           </v-list-item>
         </template>
       </v-list>
+      <template #append>
+        <v-divider></v-divider>
+        <BottomSidebar />
+      </template>
     </v-navigation-drawer>
 </template>
 
@@ -61,6 +59,10 @@ const props = defineProps({
     toolbarHeight: {
         type: Number,
         default: 64,
+    },
+    temporary: {
+        type: Boolean,
+        default: false,
     },
     elevation: {
         type: Number,
@@ -92,10 +94,19 @@ const operatorMenu = [
   { title: 'secretsSecurity.title',  icon: 'mdi-shield', route: '/secrets-security' },
 ];
 
+// Emits
+const emit = defineEmits(['update:drawer']);
+
 // Computed
 const role = computed(() => store.getters['user/getRole']);
 const sidebarWidth = computed(() => (props.drawer ? 230 : 60));
 const menuItems = computed(() => role.value === 'developer' ? developerMenu : operatorMenu);
+const drawerModel = computed({
+    get: () => props.drawer,
+    set: (value) => {
+        emit('update:drawer', value);
+    }
+});
 
 </script>
 

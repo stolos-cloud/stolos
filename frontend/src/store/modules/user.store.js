@@ -1,4 +1,5 @@
 import { login, logout, refreshToken, initAuthenticationExistingToken } from '@/services/auth.service';
+import { StorageService } from '@/services/storage.service';
 
 export const user = {
     namespaced: true,
@@ -8,7 +9,9 @@ export const user = {
         id: null,
         token: null,
         teams: [],
-        isAuthenticated: false
+        isAuthenticated: false,
+        theme: StorageService.get('theme') || 'dark',
+        language: StorageService.get('language') || 'en'
     },
     getters: {
         getEmail: (state) => state.email,
@@ -16,7 +19,9 @@ export const user = {
         getId: (state) => state.id,
         getToken: (state) => state.token,
         isAuthenticated: (state) => state.isAuthenticated,
-        getTeams: (state) => state.teams
+        getTeams: (state) => state.teams,
+        getTheme: (state) => state.theme,
+        getLanguage: (state) => state.language
     },
     mutations: {
         SET_USER(state, { email, role, id, token, teams }) {
@@ -36,6 +41,16 @@ export const user = {
         SET_TEAMS(state, teams) {
             state.teams = teams;
         },
+        SET_THEME(state, theme) {
+            console.log(theme);
+            
+            state.theme = theme;
+            StorageService.set('theme', theme);
+        },
+        SET_LANGUAGE(state, language) {
+            state.language = language;
+            StorageService.set('language', language);
+        },
         CLEAR_USER(state) {
             state.email = null;
             state.role = null;
@@ -54,6 +69,12 @@ export const user = {
         },
         setTeams({ commit }, teams) {
             commit('SET_TEAMS', teams);
+        },
+        setTheme({ commit }, theme) {
+            commit('SET_THEME', theme);
+        },
+        setLanguage({ commit }, language) {
+            commit('SET_LANGUAGE', language);
         },
         async initAuth({ commit }) {
             await initAuthenticationExistingToken()

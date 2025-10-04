@@ -10,6 +10,10 @@
             "en": "English",
             "fr": "French"
         },
+        "theme": {
+            "dark": "Dark mode",
+            "light": "Light mode"
+        }, 
         "logout": "Logout"
     },
     "login": {

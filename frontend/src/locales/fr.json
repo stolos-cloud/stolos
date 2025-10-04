@@ -10,6 +10,10 @@
             "en": "Anglais",
             "fr": "Français"
         },
+        "theme": {
+            "dark": "Mode sombre",
+            "light": "Mode clair"
+        },
         "logout": "Se Déconnecter"
     },
      "login": {
