@@ -63,7 +63,7 @@ const store = useStore();
 const userEmail = computed(() => store.getters['user/getEmail']);
 const userRole = computed(() => {
     const role = store.getters['user/getRole'];
-    return role.charAt(0).toUpperCase() + role.slice(1);
+    return role ? role.charAt(0).toUpperCase() + role.slice(1) : '';
 });
 const isDark = computed({
     get: () => store.getters['user/getTheme'] === "dark",

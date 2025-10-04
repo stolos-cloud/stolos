@@ -210,6 +210,7 @@
         "failedLogin": "Échec de la connexion. Veuillez vérifier vos identifiants et réessayer.",
         "failedFetchProfile": "Échec de la récupération du profil utilisateur. Veuillez réessayer.",
         "failedRefreshToken": "Échec du rafraîchissement du token. Veuillez vous reconnecter.",
+        "unexpected": "Une erreur inattendue est survenue. Veuillez réessayer plus tard.",
         "403": {
             "title": "403 - Interdit",
             "message": "Vous n'avez pas la permission d'accéder à cette page."

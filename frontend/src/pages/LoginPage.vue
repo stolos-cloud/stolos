@@ -7,13 +7,13 @@
             </v-col>
             <v-card width="500" class="pa-2" elevation="8">
                 <v-card-text>
-                    <v-form v-model="isValid">
+                    <v-form v-model="isValid" @submit.prevent="loginUser">
                         <BaseTextfield :Textfield="textfields.email" />
                         <BaseTextfield :Textfield="textfields.password" :iconAction="passwordEyeIcon" @clickIcon="showPassword = !showPassword" />
+                        <BaseNotice v-if="sessionExpired" :text="$t('errors.sessionExpired')" type="error" closable />
+                        <BaseNotice v-if="errorMessage" :text="errorMessage" type="error" />
+                        <BaseButton :text="$t('login.buttons.login')" type="submit" class="w-100 mt-4" :disabled="!isValid || isLoading" />
                     </v-form>
-                    <BaseNotice v-if="sessionExpired" :text="$t('errors.sessionExpired')" type="error" closable />
-                    <BaseNotice v-if="errorMessage" :text="errorMessage" type="error" />
-                    <BaseButton :text="$t('login.buttons.login')" class="w-100 mt-4" :disabled="!isValid || isLoading" @click="loginUser" />
                 </v-card-text>
                 <v-card-actions class="d-flex flex-column align-center mt-4">
                     <RouterLink to="/403" class="mb-1 text-router-link">
@@ -33,6 +33,7 @@ import BaseButton from "@/components/base/BaseButton.vue";
 
 import { TextField } from "@/models/TextField.js";
 import { FormValidationRules } from "@/composables/FormValidationRules.js";
+import { ErrorHandler } from "@/composables/ErrorHandler.js";
 import { ref, computed, reactive } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
@@ -40,6 +41,7 @@ import { useStore } from "vuex";
 
 const { t } = useI18n();
 const { emailRules, passwordRules } = FormValidationRules();
+const { handleLoginError } = ErrorHandler();
 const router = useRouter();
 const store = useStore();
 
@@ -71,7 +73,7 @@ const textfields = reactive({
   }),
   password: new TextField({
     label: t('login.password'),
-    type: passwordType,
+    type: passwordType.value,
     required: true,
     rules: passwordRules
   }),
@@ -92,24 +94,12 @@ function loginUser() {
     router.push('/dashboard');
   })
   .catch((error) => {
-    handleLoginError(error);
+    errorMessage.value = handleLoginError(error);
   })
   .finally(() => {
-    textfields.email.value = undefined;
-    textfields.password.value = undefined;
     isLoading.value = false;
     errorMessage.value = '';
   });
-}
-//TODO : Put this methods into a error Composable in the futur if needed
-function handleLoginError(error) {
-  switch (error.message) {
-    case 'failedLogin':
-      errorMessage.value = t('errors.failedLogin');
-      break;
-    default:
-      errorMessage.value = "An unexpected error occurred. Please try again later.";
-  }
 }
 </script>
 

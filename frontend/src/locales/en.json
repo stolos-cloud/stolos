@@ -209,6 +209,7 @@
         "failedLogin": "Login failed. Please check your credentials and try again.",
         "failedFetchProfile": "Failed to fetch user profile. Please try again.",
         "failedRefreshToken": "Failed to refresh token. Please log in again.",
+        "unexpected": "An unexpected error occurred. Please try again later.",
         "403": {
             "title": "403 - Forbidden",
             "message": "You do not have permission to access this page."
