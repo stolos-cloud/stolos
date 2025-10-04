@@ -28,6 +28,8 @@ import (
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/state"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/talos"
 	"golang.org/x/oauth2"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var bootstrapInfos = &state.BootstrapInfo{}
@@ -356,7 +358,8 @@ func RunGCPSAStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 	go func() {
 		if gcp.GCPClientId != "" && gcp.GCPClientSecret != "" {
 			// Create GCP service account
-			_, err := gcp.CreateServiceAccountWithOAuth(
+			var err error
+			gcpConfig, err = gcp.CreateServiceAccountWithOAuth(
 				context.Background(),
 				bootstrapInfos.GCPInfo.GCPProjectID,
 				bootstrapInfos.GCPInfo.GCPRegion,
@@ -696,6 +699,16 @@ func CreateProviderSecrets(loggerRef *tui.UILogger) {
 		loggerRef.Errorf("Failed to create Kubernetes client: %s", err)
 	} else {
 		ctx := context.Background()
+
+		// Create namespace if it does not exists
+		_, err = k8sClient.CoreV1().Namespaces().Get(ctx, "stolos-system", metav1.GetOptions{})
+		if err != nil {
+			_, err = k8sClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "stolos-system",
+				},
+			}, metav1.CreateOptions{})
+		}
 
 		// Create GCP service account secret
 		if gcpConfig != nil {
