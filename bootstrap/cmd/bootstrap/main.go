@@ -356,17 +356,6 @@ func main() {
 		&deployPortalStep,
 	}
 
-	tui.DisableStep(&githubInfoStep, true)
-	tui.DisableStep(&githubAuthStep, true)
-	tui.DisableStep(&githubRepoStep, true)
-	tui.DisableStep(&githubAppStep, true)
-	tui.DisableStep(&githubInstallAppStep, true)
-	tui.DisableStep(&gcpInfoStep, true)
-	tui.DisableStep(&gcpAuthStep, true)
-	tui.DisableStep(&gcpSAStep, true)
-	tui.DisableStep(&talosInfoStep, true)
-	tui.DisableStep(&talosISOStep, true)
-
 	f, _ := os.OpenFile("./stolos.log", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	defer f.Close()
 	p, model := tui.NewWizard(tui.Steps, f)
