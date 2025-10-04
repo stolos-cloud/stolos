@@ -31,6 +31,32 @@ definitions:
           $ref: '#/definitions/api.TeamInfo'
         type: array
     type: object
+  config.GCPMachineType:
+    properties:
+      description:
+        type: string
+      guest_cpus:
+        type: integer
+      memory_mb:
+        type: integer
+      name:
+        type: string
+    type: object
+  config.GCPResources:
+    properties:
+      last_updated:
+        type: string
+      machine_types_by_zone:
+        additionalProperties:
+          items:
+            $ref: '#/definitions/config.GCPMachineType'
+          type: array
+        type: object
+      zones:
+        items:
+          type: string
+        type: array
+    type: object
   handlers.AddUserToTeamRequest:
     properties:
       user_id:
@@ -400,7 +426,7 @@ paths:
               type: string
             type: object
       security:
-      - BearerAuthAuth: []
+      - BearerAuth: []
       summary: Configure GCP with file upload
       tags:
       - gcp
@@ -477,6 +503,55 @@ paths:
       security:
       - BearerAuth: []
       summary: Query GCP instances
+      tags:
+      - gcp
+  /gcp/resources:
+    get:
+      consumes:
+      - application/json
+      description: Get list of available zones and machine types for VM provisioning
+        forms
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/config.GCPResources'
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get available GCP resources
+      tags:
+      - gcp
+  /gcp/resources/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Fetch and update the cached list of zones and machine types from
+        GCP
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Refresh GCP resources cache
       tags:
       - gcp
   /gcp/status:
@@ -1015,6 +1090,46 @@ paths:
       tags:
       - users
   /users/{id}:
+    delete:
+      description: Delete a user by their ID
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete a user
+      tags:
+      - users
     get:
       description: Get details of a user by their ID
       parameters:

@@ -130,19 +130,17 @@ func (h *UserHandlers) UpdateUserRole(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"user": api.ToUserResponse(&user)})
 }
 
-// UpdateUserRole godoc
-// @Summary Update user role
-// @Description Update the role of a user (e.g., admin, user)
+// DeleteUser godoc
+// @Summary Delete a user
+// @Description Delete a user by their ID
 // @Tags users
-// @Accept json
 // @Produce json
 // @Param id path string true "User ID"
-// @Param role body UpdateUserRoleRequest true "New role"
-// @Success 200 {object} map[string]api.UserResponse
+// @Success 200 {object} map[string]string
 // @Failure 400 {object} map[string]string
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
-// @Router /users/{id}/role [put]
+// @Router /users/{id} [delete]
 // @Security BearerAuth
 func (h *UserHandlers) DeleteUser(c *gin.Context) {
 	userID := c.Param("id")

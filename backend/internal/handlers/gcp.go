@@ -7,22 +7,26 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stolos-cloud/stolos/backend/internal/config"
 	"github.com/stolos-cloud/stolos/backend/internal/services"
+	gcpservices "github.com/stolos-cloud/stolos/backend/internal/services/gcp"
 	"gorm.io/gorm"
 )
 
 type GCPHandlers struct {
-	db               *gorm.DB
-	gcpService       *services.GCPService
-	nodeService      *services.NodeService
-	terraformService *services.TerraformService
+	db                  *gorm.DB
+	gcpService          *gcpservices.GCPService
+	nodeService         *services.NodeService
+	terraformService    *services.TerraformService
+	gcpResourcesService *gcpservices.GCPResourcesService
 }
 
-func NewGCPHandlers(db *gorm.DB, cfg *config.Config) *GCPHandlers {
+func NewGCPHandlers(db *gorm.DB, cfg *config.Config, providerManager *services.ProviderManager) *GCPHandlers {
+	gcpService := gcpservices.NewGCPService(db, cfg)
 	return &GCPHandlers{
-		db:               db,
-		gcpService:       services.NewGCPService(db, cfg),
-		nodeService:      services.NewNodeService(db, cfg),
-		terraformService: services.NewTerraformService(db, cfg),
+		db:                  db,
+		gcpService:          gcpService,
+		nodeService:         services.NewNodeService(db, cfg, providerManager),
+		terraformService:    services.NewTerraformService(db, cfg, providerManager),
+		gcpResourcesService: gcpservices.NewGCPResourcesService(db, gcpService),
 	}
 }
 
@@ -106,7 +110,7 @@ func (h *GCPHandlers) ConfigureGCP(c *gin.Context) {
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /gcp/configure/upload [post]
-// @Security BearerAuthAuth
+// @Security BearerAuth
 func (h *GCPHandlers) ConfigureGCPUpload(c *gin.Context) {
 	region := c.PostForm("region")
 
@@ -216,7 +220,7 @@ func (h *GCPHandlers) QueryGCPInstances(c *gin.Context) {
 // @Router /gcp/init-infra [post]
 // @Security BearerAuth
 func (h *GCPHandlers) InitInfra(c *gin.Context) {
-	err := h.terraformService.InitializeInfrastructure(c.Request.Context())
+	err := h.terraformService.InitializeInfrastructure(c.Request.Context(), "gcp")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -236,11 +240,63 @@ func (h *GCPHandlers) InitInfra(c *gin.Context) {
 // @Router /gcp/delete-infra [post]
 // @Security BearerAuth
 func (h *GCPHandlers) DeleteInfra(c *gin.Context) {
-	err := h.terraformService.DestroyInfrastructure(c.Request.Context())
+	err := h.terraformService.DestroyInfrastructure(c.Request.Context(), "gcp")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Terraform infrastructure destroyed successfully"})
+}
+
+// GetGCPResources godoc
+// @Summary Get available GCP resources
+// @Description Get list of available zones and machine types for VM provisioning forms
+// @Tags gcp
+// @Accept json
+// @Produce json
+// @Success 200 {object} config.GCPResources
+// @Failure 500 {object} map[string]string
+// @Router /gcp/resources [get]
+// @Security BearerAuth
+func (h *GCPHandlers) GetGCPResources(c *gin.Context) {
+	resources, err := h.gcpResourcesService.GetResources()
+	if err != nil {
+		if err.Error() == "record not found" {
+			// Return empty resources if none cached
+			c.JSON(http.StatusOK, gin.H{
+				"last_updated":          "",
+				"zones":                 []string{},
+				"machine_types_by_zone": map[string][]string{},
+			})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, resources)
+}
+
+// RefreshGCPResources godoc
+// @Summary Refresh GCP resources cache
+// @Description Fetch and update the cached list of zones and machine types from GCP
+// @Tags gcp
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Failure 500 {object} map[string]string
+// @Router /gcp/resources/refresh [post]
+// @Security BearerAuth
+func (h *GCPHandlers) RefreshGCPResources(c *gin.Context) {
+	resources, err := h.gcpResourcesService.RefreshFromGCP(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":      "GCP resources refreshed successfully",
+		"last_updated": resources.LastUpdated,
+		"zones":        len(resources.Zones),
+	})
 }

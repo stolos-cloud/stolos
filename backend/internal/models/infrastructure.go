@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
@@ -75,6 +76,22 @@ type GCPConfig struct {
 }
 
 func (g *GCPConfig) BeforeCreate(tx *gorm.DB) error {
+	if g.ID == (uuid.UUID{}) {
+		g.ID = uuid.New()
+	}
+	return nil
+}
+
+type GCPResources struct {
+	ID          uuid.UUID      `json:"id" gorm:"type:uuid;primary_key"`
+	LastUpdated time.Time      `json:"last_updated" gorm:"not null"`
+	Resources   datatypes.JSON `json:"resources" gorm:"type:jsonb;not null"`
+	CreatedAt   time.Time      `json:"created_at"`
+	UpdatedAt   time.Time      `json:"updated_at"`
+	DeletedAt   gorm.DeletedAt `json:"-" gorm:"index"`
+}
+
+func (g *GCPResources) BeforeCreate(tx *gorm.DB) error {
 	if g.ID == (uuid.UUID{}) {
 		g.ID = uuid.New()
 	}
