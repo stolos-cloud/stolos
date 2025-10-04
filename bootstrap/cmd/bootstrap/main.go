@@ -132,7 +132,9 @@ func main() {
 			m.Logger.Infof("Starting GitHub App Manifest Flow...")
 			go func() {
 				listenAddr := "127.0.0.1:19999"
-				webhookEndpoint := "https://" + bootstrapInfos.GitHubInfo.BaseDomain + "/stolos/api/v1/github_webhook"
+				remoteBaseUrl := "https://api." + bootstrapInfos.GitHubInfo.BaseDomain //URL when deployed
+				webhookEndpoint := "/api/v1/github_webhook"                            //webhook endpoint
+				callbacksEndpoint := "/api/v1/github_callback"                         // additional install callback for deployed URL
 
 				gitHubUser, err = github.GetGitHubUser(context.Background(), bootstrapInfos.GitHubInfo.RepoOwner, *githubToken)
 
@@ -146,7 +148,7 @@ func main() {
 					return
 				}
 
-				gitHubAppManifestParams = github.CreateGitHubManifestParameters(webhookEndpoint, listenAddr)
+				gitHubAppManifestParams = github.CreateGitHubManifestParameters(remoteBaseUrl, webhookEndpoint, callbacksEndpoint, listenAddr)
 				gitHubAppManifest, err = github.GitHubAppManifestFlow(context.Background(), listenAddr, m.Logger, gitHubAppManifestParams, *gitHubUser)
 				if err != nil {
 					m.Logger.Errorf("GitHub App Manifest Flow Error: %s", err.Error())

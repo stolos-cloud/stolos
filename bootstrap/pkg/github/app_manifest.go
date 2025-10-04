@@ -75,23 +75,24 @@ type AppInstallation struct {
 	UpdatedAt           time.Time `json:"updated_at"`
 }
 
-func CreateGitHubManifestParameters(webhookEndpoint string, listenAddr string) *AppManifestParams {
+func CreateGitHubManifestParameters(remoteBaseUrl string, webhookEndpoint string, additionalCallbackEndpoint string, listenAddr string) *AppManifestParams {
 	return &AppManifestParams{
 		Name: "Stolos Platform",
 		URL:  "https://stolos.cloud",
 		HookAttributes: HookAttributes{
-			Url:    webhookEndpoint, // WebHook events endpoint
+			Url:    remoteBaseUrl + webhookEndpoint, // WebHook events endpoint
 			Active: true,
 		},
 		RedirectURL: listenAddr + "/_github_app_manifest_callback", // hit After manifest register, set in next phase
 		CallbackURLs: []string{
-			"http://" + listenAddr + "/_github_app_install_callback",
+			"http://" + listenAddr + "/_github_app_install_callback", //TODO, we will have to remove this later somehow.
+			remoteBaseUrl + additionalCallbackEndpoint,
 		}, // hit After app installation
-		SetupURL:    "", // hit After app install if more setup needed (?)
-		Description: "The Stolos Platform app allows Stolos to make commits to the templates repository created in the previous step.",
+		//SetupURL:    "", // hit After app install if more setup needed (?)
+		Description: "The Stolos Platform app allows Stolos to make commits to the GitOps Repository.",
 		Public:      false,
 		DefaultEvents: []string{
-			// TODO : Check full even list and see what we want to subscribe to.
+			// TODO : Check full event list and see what we want to subscribe to.
 			"workflow_run",
 			"workflow_dispatch",
 		},
