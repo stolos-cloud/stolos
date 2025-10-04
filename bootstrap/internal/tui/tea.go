@@ -87,7 +87,26 @@ func (l *UILogger) Successf(f string, a ...any) { l.Success(fmt.Sprintf(f, a...)
 func (l *UILogger) emit(m tea.Msg) {
 	go func() {
 		l.send(m)
-		_, _ = l.file.WriteString(fmt.Sprintf("[%s] [LEVEL-%d] %s\n", m.(logMsg).At.Format("2006-01-02 15:04:05"), m.(logMsg).Level, m.(logMsg).Text))
+		var level string
+		switch m.(logMsg).Level {
+		case LevelDebug:
+			level = "DEBUG"
+			break
+		case LevelInfo:
+			level = "INFO"
+			break
+		case LevelWarn:
+			level = "WARN"
+			break
+		case LevelError:
+			level = "ERROR"
+			break
+		case LevelSuccess:
+			level = "SUCCESS"
+			break
+
+		}
+		_, _ = l.file.WriteString(fmt.Sprintf("[%s] [%s] %s\n", m.(logMsg).At.Format("2006-01-02 15:04:05"), level, m.(logMsg).Text))
 		_ = l.file.Sync()
 	}()
 }
@@ -429,7 +448,7 @@ func (m *Model) renderLogsPane() string {
 	}
 
 	// Keep only the last lines that fit into available Height
-	maxLines := max(m.Height - 10) // adaptive Height
+	maxLines := max(m.Height-10, 0) // adaptive Height
 	if len(allLines) > maxLines {
 		allLines = allLines[len(allLines)-maxLines:]
 	}
