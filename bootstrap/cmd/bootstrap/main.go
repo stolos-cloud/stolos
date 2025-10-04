@@ -327,6 +327,15 @@ func main() {
 		OnEnter:     RunPortalStepInBackground,
 	}
 
+	endStep := tui.Step{
+		Name:        "EndStep",
+		Title:       "Done",
+		Body:        "Stolos Setup has completed! Press Enter to exit the CLI.",
+		Kind:        tui.StepPlain,
+		IsDone:      false,
+		AutoAdvance: false,
+	}
+
 	// Skip all gcp steps if not enabled
 	tui.DisableStep(&gcpInfoStep, !gcpEnabled)
 	tui.DisableStep(&gcpAuthStep, !gcpEnabled)
@@ -354,6 +363,7 @@ func main() {
 		&clusterBootstrapStep,
 		&deployArgoStep,
 		&deployPortalStep,
+		&endStep,
 	}
 
 	f, _ := os.OpenFile("./stolos.log", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
