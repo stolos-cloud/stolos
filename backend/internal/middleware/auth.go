@@ -28,14 +28,12 @@ type JWTService struct {
 	expiryMinutes int
 }
 
-func NewJWTService(cfg *config.Config) (*JWTService, error) {
-	service := &JWTService{
+func NewJWTService(cfg *config.Config) *JWTService {
+	return &JWTService{
 		secretKey:     cfg.JWT.SecretKey,
 		issuer:        cfg.JWT.Issuer,
 		expiryMinutes: cfg.JWT.ExpiryMinutes,
 	}
-
-	return service, nil
 }
 
 func (j *JWTService) GenerateToken(user *models.User) (string, error) {

@@ -69,3 +69,13 @@ swag init -g cmd/server/main.go -o docs
 ```bash
  go test ./...
 ```
+
+## Populating GCP Resources
+
+Run this script to fetch and cache available zones and machine types for the
+configured region. This data is used to populate dropdowns in the VM
+provisioning forms.
+
+```bash
+go run cmd/gcp-resources/main.go
+```

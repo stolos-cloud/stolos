@@ -16,10 +16,10 @@ type NodeHandlers struct {
 	nodeService *services.NodeService
 }
 
-func NewNodeHandlers(db *gorm.DB, cfg *config.Config) *NodeHandlers {
+func NewNodeHandlers(db *gorm.DB, cfg *config.Config, providerManager *services.ProviderManager) *NodeHandlers {
 	return &NodeHandlers{
 		db:          db,
-		nodeService: services.NewNodeService(db, cfg),
+		nodeService: services.NewNodeService(db, cfg, providerManager),
 	}
 }
 

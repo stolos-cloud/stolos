@@ -3,6 +3,7 @@ package handlers
 import (
 	"github.com/stolos-cloud/stolos/backend/internal/config"
 	"github.com/stolos-cloud/stolos/backend/internal/middleware"
+	"github.com/stolos-cloud/stolos/backend/internal/services"
 	"gorm.io/gorm"
 )
 
@@ -17,22 +18,19 @@ type Handlers struct {
 	db           *gorm.DB
 }
 
-func NewHandlers(db *gorm.DB, cfg *config.Config) (*Handlers, error) {
-	jwtService, err := middleware.NewJWTService(cfg)
-	if err != nil {
-		return nil, err
-	}
+func NewHandlers(db *gorm.DB, cfg *config.Config, providerManager *services.ProviderManager) *Handlers {
+	jwtService := middleware.NewJWTService(cfg)
 
 	return &Handlers{
 		authHandlers: NewAuthHandlers(db, jwtService),
 		teamHandlers: NewTeamHandlers(db),
 		userHandlers: NewUserHandlers(db),
 		isoHandlers:  NewISOHandlers(db, cfg),
-		nodeHandlers: NewNodeHandlers(db, cfg),
-		gcpHandlers:  NewGCPHandlers(db, cfg),
+		nodeHandlers: NewNodeHandlers(db, cfg, providerManager),
+		gcpHandlers:  NewGCPHandlers(db, cfg, providerManager),
 		jwtService:   jwtService,
 		db:           db,
-	}, nil
+	}
 }
 
 func (h *Handlers) AuthHandlers() *AuthHandlers {

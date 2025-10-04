@@ -8,22 +8,37 @@ import (
 	"github.com/google/uuid"
 	"github.com/stolos-cloud/stolos/backend/internal/config"
 	"github.com/stolos-cloud/stolos/backend/internal/models"
-	"github.com/stolos-cloud/stolos/backend/pkg/gcp"
+	gcpservices "github.com/stolos-cloud/stolos/backend/internal/services/gcp"
 	"gorm.io/gorm"
 )
 
 type NodeService struct {
-	db  *gorm.DB
-	cfg *config.Config
+	db              *gorm.DB
+	cfg             *config.Config
+	providerManager *ProviderManager
 }
 
-func NewNodeService(db *gorm.DB, cfg *config.Config) *NodeService {
-	return &NodeService{db: db, cfg: cfg}
+func NewNodeService(db *gorm.DB, cfg *config.Config, providerManager *ProviderManager) *NodeService {
+	return &NodeService{
+		db:              db,
+		cfg:             cfg,
+		providerManager: providerManager,
+	}
 }
 
+// Sample: list all instances
 func (s *NodeService) QueryGCPInstances(ctx context.Context) error {
-	// Sample: Create GCP client from environment and list all instances
-	client, err := gcp.NewClientFromEnv()
+	provider, ok := s.providerManager.GetProvider("gcp")
+	if !ok {
+		return fmt.Errorf("GCP provider not configured")
+	}
+
+	gcpService, ok := provider.(*gcpservices.GCPService)
+	if !ok {
+		return fmt.Errorf("provider is not GCP")
+	}
+
+	client, err := gcpService.GetClient()
 	if err != nil {
 		return fmt.Errorf("failed to create GCP client: %w", err)
 	}

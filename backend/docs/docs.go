@@ -308,7 +308,7 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "BearerAuthAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Configure GCP by uploading service account JSON file",
@@ -472,6 +472,81 @@ const docTemplate = `{
                             "additionalProperties": {
                                 "type": "string"
                             }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/gcp/resources": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get list of available zones and machine types for VM provisioning forms",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "gcp"
+                ],
+                "summary": "Get available GCP resources",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/config.GCPResources"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/gcp/resources/refresh": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Fetch and update the cached list of zones and machine types from GCP",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "gcp"
+                ],
+                "summary": "Refresh GCP resources cache",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
@@ -1575,6 +1650,46 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/api.TeamInfo"
+                    }
+                }
+            }
+        },
+        "config.GCPMachineType": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "guest_cpus": {
+                    "type": "integer"
+                },
+                "memory_mb": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "config.GCPResources": {
+            "type": "object",
+            "properties": {
+                "last_updated": {
+                    "type": "string"
+                },
+                "machine_types_by_zone": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/definitions/config.GCPMachineType"
+                        }
+                    }
+                },
+                "zones": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
                     }
                 }
             }

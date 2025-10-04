@@ -97,12 +97,21 @@ func setupUserRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
 func setupGCPRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
 	gcp := api.Group("/gcp")
 	{
+		// Checks if SA is configured
 		gcp.GET("/status", h.GCPHandlers().GetGCPStatus)
+		// Uploads with JSON body
 		gcp.PUT("/configure", h.GCPHandlers().ConfigureGCP)
 		gcp.POST("/configure/upload", h.GCPHandlers().ConfigureGCPUpload)
+		// Uploads with form-data (file)
 		gcp.POST("/bucket", h.GCPHandlers().CreateTerraformBucket)
+
 		gcp.POST("/init-infra", h.GCPHandlers().InitInfra)
 		gcp.POST("/delete-infra", h.GCPHandlers().DeleteInfra)
+
 		gcp.POST("/instances", h.GCPHandlers().QueryGCPInstances)
+
+
+		gcp.GET("/resources", h.GCPHandlers().GetGCPResources)
+		gcp.POST("/resources/refresh", h.GCPHandlers().RefreshGCPResources)
 	}
 }

@@ -51,17 +51,15 @@ func main() {
 		log.Fatal("Failed to initialize database:", err)
 	}
 
-	// Initialize GCP if environment variables are set
-	gcpService := services.NewGCPService(db, cfg)
+	// Initialize providers
 	ctx := context.Background()
-	gcpConfig, err := gcpService.InitializeGCP(ctx)
-	if err != nil {
-		log.Fatal("Failed to initialize GCP:", err)
+	providerManager := services.NewProviderManager(db, cfg)
+	if err := providerManager.InitializeProviders(ctx); err != nil {
+		log.Fatal("Failed to initialize providers:", err)
 	}
-	if gcpConfig != nil {
-		log.Printf("GCP initialized successfully with project: %s", gcpConfig.ProjectID)
-	} else {
-		log.Println("GCP not configured. Skipping initialization")
+
+	if !providerManager.HasConfiguredProviders() {
+		log.Println("No cloud providers configured")
 	}
 
 	r := gin.Default()
@@ -73,10 +71,7 @@ func main() {
 		AllowCredentials: true,
 	}))
 
-	h, err := handlers.NewHandlers(db, cfg)
-	if err != nil {
-		log.Fatal("Failed to initialize handlers:", err)
-	}
+	h := handlers.NewHandlers(db, cfg, providerManager)
 
 	routes.SetupRoutes(r, h)
 
