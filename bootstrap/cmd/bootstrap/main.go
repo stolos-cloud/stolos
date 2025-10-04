@@ -25,21 +25,20 @@ import (
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/k8s"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/marshal"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/oauth"
-	"github.com/stolos-cloud/stolos-bootstrap/pkg/state"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/talos"
 	"golang.org/x/oauth2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var bootstrapInfos = &state.BootstrapInfo{}
+var bootstrapInfos = &BootstrapInfo{}
 var doRestoreProgress = false
 var didReadBootstrapInfos = false
 
 // var tui.Steps []tui.Step
 var kubeconfig []byte
-var saveState state.SaveState
-var gcpConfig *gcp.Config
+var saveState SaveState
+var gcpConfig *gcp.GCPConfig
 var githubConfig *github.Config
 var oauthServer *oauth.Server
 var githubToken *oauth2.Token
@@ -47,37 +46,47 @@ var gcpToken *oauth2.Token
 var gcpEnabled = gcp.GCPClientId != "" && gcp.GCPClientSecret != ""
 var gitHubEnabled = github.GithubClientId != "" && github.GithubClientSecret != ""
 
+const _bootstrapStateFile = "bootstrap-state.json"
+const _bootstrapConfigFile = "bootstrap-config.json"
 const _gigabyte = 1073741824
 
 func main() {
 
 	tui.RegisterDefaultFunc("GetOutboundIP", GetOutboundIP)
 
-	_, err := os.Stat("bootstrap-state.json")
+	_, err := os.Stat(_bootstrapStateFile)
 
 	if !(errors.Is(err, os.ErrNotExist)) {
-		saveState = marshal.ReadStateFromJSON()
-		bootstrapInfos = &saveState.BootstrapInfo
-		didReadBootstrapInfos = true
-		doRestoreProgress = true
-	} else {
-		saveState = state.SaveState{
+		saveState, err = marshal.UnmarshalFromFile[SaveState](_bootstrapStateFile)
+		var err2 error
+		ConfigBundle, err2 = marshal.ReadSplitConfigBundleFiles()
+		if err == nil && err2 == nil {
+			bootstrapInfos = &saveState.BootstrapInfo
+			didReadBootstrapInfos = true
+			doRestoreProgress = true
+		}
+	}
+	if !didReadBootstrapInfos {
+		saveState = SaveState{
 			MachinesDisks: make(map[string]string),
-			MachinesCache: state.Machines{
+			MachinesCache: talos.Machines{
 				Workers:       make(map[string][]byte),
 				ControlPlanes: make(map[string][]byte),
 			},
 		}
 	}
 
-	_, err = os.Stat("bootstrap-config.json")
+	_, err = os.Stat(_bootstrapConfigFile)
 	if !(errors.Is(err, os.ErrNotExist)) {
-		marshal.ReadBootstrapInfos("bootstrap-config.json", bootstrapInfos)
-		didReadBootstrapInfos = true
+		readBootstrapInfos, err := marshal.UnmarshalFromFile[BootstrapInfo](_bootstrapConfigFile)
+		if err == nil {
+			bootstrapInfos = &readBootstrapInfos
+			didReadBootstrapInfos = true
+		}
 	}
 
 	if !didReadBootstrapInfos {
-		bootstrapInfos = &state.BootstrapInfo{}
+		bootstrapInfos = &BootstrapInfo{}
 	}
 
 	if didReadBootstrapInfos {
@@ -139,7 +148,7 @@ func main() {
 		Name:        "GCPInfo",
 		Title:       "2) GCP Information",
 		Kind:        tui.StepForm,
-		Fields:      tui.CreateFieldsForStruct[state.GCPInfo](),
+		Fields:      tui.CreateFieldsForStruct[gcp.GCPConfig](),
 		IsDone:      true,
 		AutoAdvance: false,
 		OnEnter: func(m *tui.Model, s *tui.Step) tea.Cmd {
@@ -148,7 +157,7 @@ func main() {
 		},
 		OnExit: func(m *tui.Model, s *tui.Step) {
 			if !didReadBootstrapInfos {
-				gcpInfo, err := tui.RetrieveStructFromFields[state.GCPInfo](s.Fields)
+				gcpInfo, err := tui.RetrieveStructFromFields[gcp.GCPConfig](s.Fields)
 				if err != nil {
 				}
 				bootstrapInfos.GCPInfo = *gcpInfo
@@ -197,7 +206,7 @@ func main() {
 		Name:        "TalosInfo",
 		Title:       "3) Talos and Kubernetes Information",
 		Kind:        tui.StepForm,
-		Fields:      tui.CreateFieldsForStruct[state.TalosInfo](),
+		Fields:      tui.CreateFieldsForStruct[talos.TalosInfo](),
 		IsDone:      true,
 		AutoAdvance: false,
 		OnEnter: func(m *tui.Model, s *tui.Step) tea.Cmd {
@@ -210,7 +219,7 @@ func main() {
 		},
 		OnExit: func(m *tui.Model, s *tui.Step) {
 			if !didReadBootstrapInfos {
-				talosInfo, err := tui.RetrieveStructFromFields[state.TalosInfo](s.Fields)
+				talosInfo, err := tui.RetrieveStructFromFields[talos.TalosInfo](s.Fields)
 				if err != nil {
 				}
 				bootstrapInfos.TalosInfo = *talosInfo
@@ -361,8 +370,8 @@ func RunGCPSAStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 			var err error
 			gcpConfig, err = gcp.CreateServiceAccountWithOAuth(
 				context.Background(),
-				bootstrapInfos.GCPInfo.GCPProjectID,
-				bootstrapInfos.GCPInfo.GCPRegion,
+				bootstrapInfos.GCPInfo.ProjectID,
+				bootstrapInfos.GCPInfo.Region,
 				gcpToken,
 				"stolos-platform-sa",
 			)
@@ -434,13 +443,13 @@ func RunWaitForServersStep(model *tui.Model, step *tui.Step) tea.Cmd {
 	model.Logger.Infof("Starting HTTP Receive Server on %s …", addr)
 	go func() {
 		for i := 0; i < 5; i++ {
-			err := talos.EventSink(bootstrapInfos, func(ctx context.Context, event events.Event) error {
+			err := talos.EventSink(&bootstrapInfos.TalosInfo, func(ctx context.Context, event events.Event) error {
 				ip := strings.Split(event.Node, ":")[0]
 				_, ok := saveState.MachinesDisks[ip]
 				if !ok {
 					saveState.MachinesDisks[ip] = ""
 					step.Body = step.Body + fmt.Sprintf("\nNode: %s", ip)
-					err := marshal.SaveStateToJSON(saveState)
+					err := marshal.MarshalToFile(_bootstrapStateFile, saveState)
 					if err != nil {
 						model.Logger.Errorf("Error saving state: %s", err)
 					}
@@ -476,7 +485,7 @@ func ExitWaitForServersStep(model *tui.Model, step *tui.Step) {
 			AutoAdvance: false,
 			OnEnter:     RunConfigureServers(k, &disks),
 			OnExit:      ExitConfigureServer(k, &disks),
-			Fields:      tui.CreateFieldsForStruct[state.ServerConfig](),
+			Fields:      tui.CreateFieldsForStruct[talos.ServerConfig](),
 		})
 		i++
 	}
@@ -526,7 +535,7 @@ func RunConfigureServers(serverIp string, disks *[]*storage.Disk) func(model *tu
 func ExitConfigureServer(serverIp string, disks *[]*storage.Disk) func(model *tui.Model, step *tui.Step) {
 	return func(model *tui.Model, step *tui.Step) {
 
-		config, err := tui.RetrieveStructFromFields[state.ServerConfig](step.Fields)
+		config, err := tui.RetrieveStructFromFields[talos.ServerConfig](step.Fields)
 		if err != nil {
 			model.Logger.Errorf("Error retrieving server config: %s", err)
 		}
@@ -550,7 +559,7 @@ func ExitConfigureServer(serverIp string, disks *[]*storage.Disk) func(model *tu
 			model.Logger.Errorf("Invalid role: %d", config.Role)
 		}
 
-		err = marshal.SaveStateToJSON(saveState)
+		err = marshal.MarshalToFile(_bootstrapStateFile, saveState)
 		if err != nil {
 			model.Logger.Errorf("Error saving state: %s", err)
 		}
@@ -613,16 +622,22 @@ func RunTalosISOStep(m *tui.Model, s *tui.Step) tea.Cmd {
 
 func RunClusterBootstrapStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 	go func() {
+		var err error
 		m.Logger.Debug("RunClusterBootstrapStepInBackground")
-
 		m.Logger.Debug("Applying configs...")
-		err := talos.ApplyConfigsToNodes(&saveState, bootstrapInfos)
+
+		ConfigBundle, err = talos.ApplyConfigsToNodes(&saveState.MachinesCache, saveState.MachinesDisks, &bootstrapInfos.TalosInfo, ConfigBundle)
 		if err != nil {
 			m.Logger.Errorf("Failed to apply configs: %s", err)
+		} else {
+			m.Logger.Debug("Configs applied")
 		}
-		m.Logger.Debug("Configs applied")
-		endpoint := state.ConfigBundle.ControlPlaneCfg.Cluster().Endpoint() //get machineconfig cluster endpoint
-		talosApiClient := talos.CreateMachineryClientFromTalosconfig(state.ConfigBundle.TalosConfig())
+		err = marshal.SaveSplitConfigBundleFiles(ConfigBundle)
+		if err != nil {
+			m.Logger.Errorf("Failed to save split config bundle files: %s", err)
+		}
+		endpoint := ConfigBundle.ControlPlaneCfg.Cluster().Endpoint() //get machineconfig cluster endpoint
+		talosApiClient := talos.CreateMachineryClientFromTalosconfig(ConfigBundle.TalosConfig())
 		m.Logger.Infof("Executing bootstrap with clustername %s and endpoint %s....", bootstrapInfos.TalosInfo.ClusterName, endpoint)
 		err = talos.ExecuteBootstrap(talosApiClient)
 		if err != nil {

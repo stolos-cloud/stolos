@@ -5,18 +5,25 @@ import (
 
 	"github.com/goccy/go-json"
 	"github.com/siderolabs/talos/pkg/machinery/config/bundle"
-	"github.com/stolos-cloud/stolos-bootstrap/pkg/state"
 )
 
-func ReadBootstrapInfos(filename string, bootstrapInfos *state.BootstrapInfo) {
+func UnmarshalFromFile[T interface{}](filename string) (T, error) {
+	object := new(T)
 	configFile, err := os.ReadFile(filename)
 	if err != nil {
-		panic(err)
+		return *object, err
 	}
-	err = json.Unmarshal(configFile, &bootstrapInfos)
+	err = json.Unmarshal(configFile, object)
+	return *object, nil
+}
+
+func MarshalToFile(filename string, object interface{}) error {
+	jsonData, err := json.Marshal(object)
 	if err != nil {
-		panic(err)
+		return err
 	}
+	err = os.WriteFile(filename, jsonData, 0644)
+	return err
 }
 
 // SaveSplitConfigBundleFiles take a config bundle and saves each composite part to individual files for later loading
@@ -41,34 +48,34 @@ func ReadSplitConfigBundleFiles() (*bundle.Bundle, error) {
 	return bundle.NewBundle(configBundleOpts...)
 }
 
-func SaveStateToJSON(saveState state.SaveState) error {
-	jsonData, err := json.Marshal(saveState)
-	if err != nil {
-		return err
-	}
-	err = os.WriteFile("bootstrap-state.json", jsonData, 0644)
-	if err != nil {
-		return err
-	}
-	if state.ConfigBundle != nil {
-		err = SaveSplitConfigBundleFiles(state.ConfigBundle)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
+//func SaveStateToJSON(saveState state.SaveState) error {
+//	jsonData, err := json.Marshal(saveState)
+//	if err != nil {
+//		return err
+//	}
+//	err = os.WriteFile("bootstrap-state.json", jsonData, 0644)
+//	if err != nil {
+//		return err
+//	}
+//	if state.ConfigBundle != nil {
+//		err = SaveSplitConfigBundleFiles(state.ConfigBundle)
+//		if err != nil {
+//			return err
+//		}
+//	}
+//	return nil
+//}
 
-func ReadStateFromJSON() state.SaveState {
-	var saveState state.SaveState
-	stateFile, err := os.ReadFile("bootstrap-state.json")
-	if err != nil {
-		panic(err)
-	}
-	err = json.Unmarshal(stateFile, &saveState)
-	if err != nil {
-		panic(err)
-	}
-	state.ConfigBundle, err = ReadSplitConfigBundleFiles()
-	return saveState
-}
+//func ReadStateFromJSON() state.SaveState {
+//	var saveState state.SaveState
+//	stateFile, err := os.ReadFile("bootstrap-state.json")
+//	if err != nil {
+//		panic(err)
+//	}
+//	err = json.Unmarshal(stateFile, &saveState)
+//	if err != nil {
+//		panic(err)
+//	}
+//	state.ConfigBundle, err = ReadSplitConfigBundleFiles()
+//	return saveState
+//}

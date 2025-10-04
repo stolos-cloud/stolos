@@ -637,33 +637,35 @@ func CreateFieldsForStruct[T any]() []Field {
 	for i := 0; i < t.NumField(); i++ {
 		sf := t.Field(i)
 
-		// 1) Try field_default_func (by name in registry)
-		def := ""
-		if fnName := sf.Tag.Get("field_default_func"); fnName != "" {
-			if fn, ok := DefaultFuncRegistry[fnName]; ok && fn != nil {
-				if v, ok2 := safeCallDefault(fn); ok2 {
-					def = v
+		if sf.Tag.Get("field_label") != "" {
+			// 1) Try field_default_func (by name in registry)
+			def := ""
+			if fnName := sf.Tag.Get("field_default_func"); fnName != "" {
+				if fn, ok := DefaultFuncRegistry[fnName]; ok && fn != nil {
+					if v, ok2 := safeCallDefault(fn); ok2 {
+						def = v
+					}
 				}
 			}
+
+			// 2) Fallback to literal field_default if no value yet
+			if def == "" {
+				def = sf.Tag.Get("field_default")
+			}
+
+			input := textinput.New()
+			input.Prompt = "? "
+			input.SetValue(def) // use your SetDefault if you have one
+
+			// Note: field_required=true -> Optional=false
+			required := strings.EqualFold(sf.Tag.Get("field_required"), "true")
+
+			formFields = append(formFields, Field{
+				Label:    sf.Tag.Get("field_label"),
+				Optional: !required,
+				Input:    input,
+			})
 		}
-
-		// 2) Fallback to literal field_default if no value yet
-		if def == "" {
-			def = sf.Tag.Get("field_default")
-		}
-
-		input := textinput.New()
-		input.Prompt = "? "
-		input.SetValue(def) // use your SetDefault if you have one
-
-		// Note: field_required=true -> Optional=false
-		required := strings.EqualFold(sf.Tag.Get("field_required"), "true")
-
-		formFields = append(formFields, Field{
-			Label:    sf.Tag.Get("field_label"),
-			Optional: !required,
-			Input:    input,
-		})
 	}
 	return formFields
 }

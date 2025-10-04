@@ -7,17 +7,15 @@ import (
 	helmclient "github.com/mittwald/go-helm-client"
 	"github.com/mittwald/go-helm-client/values"
 	"github.com/stolos-cloud/stolos-bootstrap/internal/logging"
-	"github.com/stolos-cloud/stolos-bootstrap/internal/tui"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/repo"
 )
 
-func SetupHelmClient(logger *tui.UILogger, kubeconfig []byte) (helmclient.Client, error) {
+func SetupHelmClient(logger *logging.Logger, kubeconfig []byte) (helmclient.Client, error) {
 	helmClientOptions := &helmclient.Options{
-		Output: logging.NewUILoggerWriter(logger),
-		Debug:  true, // Enable debug logging for Helm operations
+		Debug: true, // Enable debug logging for Helm operations
 		DebugLog: func(format string, v ...interface{}) {
-			logger.Infof(format, v...)
+			(*logger).Infof(format, v...)
 		},
 		Linting: true, // Enable chart linting,
 	}
