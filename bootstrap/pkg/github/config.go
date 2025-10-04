@@ -8,6 +8,7 @@ import (
 
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/logger"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/oauth"
+	"k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/goccy/go-yaml"
 	"github.com/google/go-github/v74/github"
@@ -222,5 +223,83 @@ func (c *Config) CreateOrUpdateSecret(ctx context.Context, client kubernetes.Int
 	existingSecret.Data = secret.Data
 	existingSecret.Labels = secret.Labels
 	_, err = client.CoreV1().Secrets(namespace).Update(ctx, existingSecret, metav1.UpdateOptions{})
+	return err
+}
+
+// CreateOrUpdateArgoCDGitHubSecrets ensures both ArgoCD repository and notifications secrets exist and are up-to-date.
+func CreateOrUpdateArgoCDGitHubSecrets(
+	ctx context.Context,
+	client kubernetes.Interface,
+	namespace, secretName string,
+	appID string,
+	repoUrl string,
+	installID string,
+) error {
+	// TODO: Does not support GitHub Enterprise.
+
+	// 1. ArgoCD GH Repo secret
+	repoSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      secretName,
+			Namespace: namespace,
+			Labels: map[string]string{
+				"argocd.argoproj.io/secret-type": "repository",
+			},
+		},
+		Type: corev1.SecretTypeOpaque,
+		StringData: map[string]string{
+			"type":                    "git",
+			"url":                     repoUrl,
+			"githubAppID":             fmt.Sprintf("%d", appID),
+			"githubAppPrivateKey":     app.PEM,
+			"githubAppInstallationID": fmt.Sprintf("%d", installID),
+		},
+	}
+
+	if err := createOrUpdateSecret(ctx, client, repoSecret); err != nil {
+		return fmt.Errorf("failed to apply ArgoCD repo secret: %w", err)
+	}
+
+	// TODO : Add Notifications controller secret
+	// 2. ArgoCD Notifications GitHub service
+	//tokenSecret := &corev1.Secret{
+	//	ObjectMeta: metav1.ObjectMeta{
+	//		Name:      fmt.Sprintf("%s-notifications", secretName),
+	//		Namespace: namespace,
+	//		Labels: map[string]string{
+	//			"argocd-notifications.argoproj.io/secret-type": "github",
+	//		},
+	//	},
+	//	Type: corev1.SecretTypeOpaque,
+	//	StringData: map[string]string{
+	//		"github-privateKey": app.PEM,
+	//	},
+	//}
+
+	//TODO: Add Notifications CM config (Notifications):
+	// 			"appID":             fmt.Sprintf("%d", app.ID),
+	//			"installationID":    fmt.Sprintf("%d", install.ID),
+	//if err := createOrUpdateSecret(ctx, client, tokenSecret); err != nil {
+	//	return fmt.Errorf("failed to apply ArgoCD notifications secret: %w", err)
+	//}
+
+	return nil
+}
+
+// createOrUpdateSecret performs a create or update operation for a Kubernetes Secret.
+func createOrUpdateSecret(ctx context.Context, client kubernetes.Interface, secret *corev1.Secret) error {
+	existing, err := client.CoreV1().Secrets(secret.Namespace).Get(ctx, secret.Name, metav1.GetOptions{})
+	if errors.IsNotFound(err) {
+		_, err = client.CoreV1().Secrets(secret.Namespace).Create(ctx, secret, metav1.CreateOptions{})
+		return err
+	}
+	if err != nil {
+		return err
+	}
+
+	// Update existing secret
+	existing.StringData = secret.StringData
+	existing.Labels = secret.Labels
+	_, err = client.CoreV1().Secrets(secret.Namespace).Update(ctx, existing, metav1.UpdateOptions{})
 	return err
 }

@@ -790,6 +790,12 @@ func CreateProviderSecrets(loggerRef *tui.UILogger) {
 			} else {
 				loggerRef.Success("GitHub credentials secret created successfully")
 			}
+			err = github.CreateOrUpdateArgoCDGitHubSecrets(ctx, k8sClient, "stolos-argocd", "stolos-github-repo", strconv.FormatInt(gitHubAppManifest.ID, 10), "https://github.com/"+bootstrapInfos.GitHubInfo.RepoOwner+"/"+bootstrapInfos.GitHubInfo.RepoName, saveState.GitHubAppInstallResult.InstallationID)
+			if err != nil {
+				loggerRef.Errorf("Failed to create GitHub Argo Repo secret: %s", err)
+			} else {
+				loggerRef.Success("GitHub Repo credentials secret created successfully")
+			}
 		}
 	}
 }

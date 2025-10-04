@@ -60,16 +60,12 @@ type AppManifest struct {
 	Owner              User              `json:"owner"`
 }
 
-// AppInstallation represents a GitHub App installation object (simplified)
+// AppInstallation represents a GitHub App installation object
 type AppInstallation struct {
 	ID     int64  `json:"id"`
 	NodeID string `json:"node_id"`
 	// Account holds either user or org info
-	Account struct {
-		Login string `json:"login"`
-		ID    int64  `json:"id"`
-		Type  string `json:"type"` // "User" or "Organization"
-	} `json:"account"`
+	Account             User      `json:"account"`
 	RepositorySelection string    `json:"repository_selection"` // "selected" or "all"
 	CreatedAt           time.Time `json:"created_at"`
 	UpdatedAt           time.Time `json:"updated_at"`
@@ -148,7 +144,7 @@ func GitHubAppManifestFlow(ctx context.Context, listenAddr string, logger logger
 	mux.HandleFunc(htmlPath, func(w http.ResponseWriter, r *http.Request) {
 		logger.Infof("Served redirect page...")
 		w.Header().Set("Content-Type", "text/html")
-		_, err := fmt.Fprintf(w, formHTML)
+		_, err := fmt.Fprint(w, formHTML)
 		if err != nil {
 			logger.Errorf("failed serving html: %w", err)
 			return
