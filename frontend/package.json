@@ -13,6 +13,7 @@
     "@mdi/font": "^7.0.96",
     "axios": "^1.12.2",
     "core-js": "^3.34.0",
+    "dompurify": "^3.2.7",
     "roboto-fontface": "*",
     "vue": "^3.3.0",
     "vue-i18n": "^11.1.12",

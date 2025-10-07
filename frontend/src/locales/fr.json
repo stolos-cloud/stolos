@@ -154,8 +154,13 @@
                 "title": "Configurer le fournisseur GCP"
             }
         },
+        "notifications": {
+            "updateSuccess": "Configuration du fournisseur de cloud mise à jour avec succès.",
+            "addSuccess": "Configuration du fournisseur de cloud ajoutée avec succès."
+        },
         "buttons": {
             "updateConfiguration": "Mettre à jour",
+            "addNewConfiguration": "Ajouter une configuration",
             "cancel": "Annuler"
         }
     },
@@ -170,6 +175,51 @@
     },
     "gitopsSynchronization": {
         "title": "GitOps Synchronisation"
+    },
+    "userManagement": {
+        "title": "Gestion des utilisateurs",
+        "subheading": "Gérer les utilisateurs et leurs rôles",
+        "table": {
+            "title": "Utilisateurs",
+            "loadingText": "Chargement des utilisateurs...",
+            "noDataText": "Aucun utilisateur trouvé.",
+            "itemsPerPageText": "Articles par page :",
+            "headers": {
+                "email": "Courriel",
+                "role": "Rôle",
+                "actions": "Actions"
+            }
+        },
+        "dialogs": {
+            "addUser":  {
+                "title": "Ajouter un nouvel utilisateur"
+            },
+            "editUser": {
+                "title": "Modifier l'utilisateur"
+            },
+            "deleteUser": {
+                "title": "Supprimer l'utilisateur",
+                "confirmationText": "Êtes-vous sûr de vouloir supprimer cet utilisateur ? Cette action ne peut pas être annulée."
+            }
+        },
+        "formfields": {
+            "email": "Courriel",
+            "password": "Mot de passe",
+            "confirmPassword": "Confirmer le mot de passe",
+            "role": "Rôle"
+        },
+        "notifications": {
+            "addSuccess": "Utilisateur ajouté avec succès.",
+            "editSuccess": "Utilisateur mis à jour avec succès.",
+            "deleteSuccess": "Utilisateur supprimé avec succès."
+        },
+        "buttons": {
+            "addUser": "Ajouter un utilisateur",
+            "editUser": "Modifier",
+            "deleteUser": "Supprimer",
+            "save": "Enregistrer",
+            "cancel": "Annuler"
+        }
     },
     "rules": {
         "validation": {

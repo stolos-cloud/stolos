@@ -92,6 +92,7 @@ const operatorMenu = [
   { title: 'cloudProvider.title', icon: 'mdi-cloud', route: '/cloud-provider' },
   { title: 'templates.title', icon: 'mdi-layers-triple', route: '/templates' },
   { title: 'secretsSecurity.title',  icon: 'mdi-shield', route: '/secrets-security' },
+  { title: 'userManagement.title', icon: 'mdi-account-supervisor-circle', route: '/user-management' }
 ];
 
 // Emits

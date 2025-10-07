@@ -126,7 +126,7 @@
         }
     },
     "cloudProvider": {
-        "title": "Cloud Provider",
+        "title": "Cloud provider",
         "subheading": "Manage your cloud provider configuration",
         "table": {
             "title": "GCP provider configuration",
@@ -153,8 +153,13 @@
                 "title": "Configure GCP provider"
             }
         },
+        "notifications": {
+            "updateSuccess": "Cloud provider configuration updated successfully.",
+            "addSuccess": "Cloud provider configuration added successfully."
+        },
         "buttons": {
             "updateConfiguration": "Update",
+            "addNewConfiguration": "Add configuration",
             "cancel": "Cancel"
         }
     },
@@ -169,6 +174,53 @@
     },
     "gitopsSynchronization": {
         "title": "GitOps Synchronization"
+    },
+    "userManagement": {
+        "title": "User management",
+        "subheading": "Manage users and their roles",
+        "table": {
+            "title": "Users",
+            "loadingText": "Loading users...",
+            "noDataText": "No users found.",
+            "itemsPerPageText": "Items per page :",
+            "headers": {
+                "email": "Email",
+                "role": "Role",
+                "actions": "Actions"
+            }
+        },
+        "dialogs": {
+            "addUser":  {
+                "title": "Add New User"
+            },
+            "editUser": {
+                "title": "Edit User"
+            },
+            "deleteUser": {
+                "title": "Delete User",
+                "confirmationText": "Are you sure you want to delete this user? This action cannot be undone."
+            }
+        },
+        "formfields": {
+            "firstname": "First Name",
+            "lastname": "Last Name",
+            "email": "Email",
+            "password": "Password",
+            "confirmPassword": "Confirm Password",
+            "role": "Role"
+        },
+        "notifications": {
+            "addSuccess": "User added successfully.",
+            "editSuccess": "User updated successfully.",
+            "deleteSuccess": "User deleted successfully."
+        },
+        "buttons": {
+            "addUser": "Add user",
+            "editUser": "Edit",
+            "deleteUser": "Delete",
+            "save": "Save",
+            "cancel": "Cancel"
+        }
     },
     "rules": {
         "validation": {

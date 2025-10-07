@@ -42,8 +42,6 @@ export const user = {
             state.teams = teams;
         },
         SET_THEME(state, theme) {
-            console.log(theme);
-            
             state.theme = theme;
             StorageService.set('theme', theme);
         },

@@ -6,6 +6,7 @@ import CloudProvisioningPage from '@/pages/operator/CloudProvisioningPage.vue'
 import CloudProviderPage from '@/pages/operator/CloudProviderPage.vue'
 import SecretsSecurityPage from '@/pages/operator/SecretsSecurityPage.vue'
 import TemplatesPage from '@/pages/operator/TemplatesPage.vue'
+import UserManagementPage from '@/pages/operator/UserManagementPage.vue'
 import i18n from '@/plugins/i18n'
 import { createRouter, createWebHistory } from 'vue-router/auto'
 import store from '@/store'
@@ -107,6 +108,12 @@ const routes = [
     name: 'secrets-security',
     component: SecretsSecurityPage,
     meta: { title: 'secretsSecurity.title', requiresAuth: true, roles: ['admin'] }
+  },
+  {
+    path: '/user-management',
+    name: 'user-management',
+    component: UserManagementPage,
+    meta: { title: 'userManagement.title', requiresAuth: true, roles: ['admin'] }
   },
   {
     path: '/policies-compliance',
