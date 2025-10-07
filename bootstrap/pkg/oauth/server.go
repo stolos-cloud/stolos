@@ -8,6 +8,8 @@ import (
 	"sync"
 
 	"github.com/pkg/browser"
+	"github.com/stolos-cloud/stolos-bootstrap/pkg/logger"
+	"github.com/stolos-cloud/stolos-bootstrap/pkg/oauth/providers"
 	"golang.org/x/oauth2"
 )
 
@@ -28,16 +30,10 @@ type Server struct {
 	channels      map[string]chan string
 	errorChannels map[string]chan error
 	mu            sync.RWMutex
-	logger        Logger
+	logger        logger.Logger
 }
 
-type Logger interface {
-	Infof(format string, args ...any)
-	Errorf(format string, args ...any)
-	Success(msg string)
-}
-
-func CreateServerIfNotExists(port string, logger Logger) {
+func CreateServerIfNotExists(port string, logger logger.Logger) {
 	if CurrentServer == nil {
 		CurrentServer = &Server{
 			port:          port,

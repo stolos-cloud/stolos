@@ -15,6 +15,15 @@ type TalosInfo struct {
 	PXEPort           string `json:"PXEPort" field_label:"PXE Server Port (Optional)"`
 }
 
+type SaveState struct {
+	ClusterEndpoint        string                          `json:"ClusterEndpoint"`
+	BootstrapInfo          BootstrapInfo                   `json:"BootstrapInfo"`
+	MachinesCache          Machines                        `json:"MachinesCache"`
+	MachinesDisks          map[string]string               `json:"MachinesDisks"`
+	GitHubApp              github.AppManifest              `json:"GitHubApp"`
+	GitHubAppInstallResult github.AppInstallCallbackResult `json:"GitHubAppInstallResult"`
+}
+
 type Machines struct {
 	ControlPlanes map[string][]byte `json:"ControlPlanes"` // map IP : Hostname
 	Workers       map[string][]byte `json:"Workers"`       // map IP : Hostname

@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/stolos-cloud/stolos-bootstrap/pkg/logger"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/oauth"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/oauth/providers"
 
@@ -256,7 +257,7 @@ func assignServiceAccountRoles(rmService *resourcemanager.Service, projectID, se
 	return nil
 }
 
-func AuthenticateAndSetup(oauthServer *oauth.Server, clientID, clientSecret, projectID, region string, logger oauth.Logger) (*GCPConfig, error) {
+func AuthenticateAndSetup(oauthServer *oauth.Server, clientID, clientSecret, projectID, region string, logger logger.Logger) (*GCPConfig, error) {
 	ctx := context.Background()
 
 	provider := providers.NewGCPProvider(clientID, clientSecret)

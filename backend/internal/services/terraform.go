@@ -10,17 +10,14 @@ import (
 
 	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/stolos-cloud/stolos/backend/internal/config"
-	"github.com/stolos-cloud/stolos/backend/pkg/gcp"
-	"github.com/stolos-cloud/stolos/backend/pkg/github"
+	gcpservices "github.com/stolos-cloud/stolos/backend/internal/services/gcp"
 	"gorm.io/gorm"
 )
 
 type TerraformService struct {
-	db           *gorm.DB
-	cfg          *config.Config
-	gcpClient    *gcp.Client
-	githubClient *github.Client
-	gcpService   *GCPService
+	db              *gorm.DB
+	cfg             *config.Config
+	providerManager *ProviderManager
 }
 
 type NodeConfig struct {
@@ -30,32 +27,12 @@ type NodeConfig struct {
 	Architecture string
 }
 
-func NewTerraformService(db *gorm.DB, cfg *config.Config) *TerraformService {
-	gcpService := NewGCPService(db, cfg)
+func NewTerraformService(db *gorm.DB, cfg *config.Config, providerManager *ProviderManager) *TerraformService {
 	return &TerraformService{
-		db:         db,
-		cfg:        cfg,
-		gcpService: gcpService,
+		db:              db,
+		cfg:             cfg,
+		providerManager: providerManager,
 	}
-}
-
-// initialize the service with GCP and GitHub clients from kubeconfig
-func (s *TerraformService) WithCredentials(kubeconfig []byte) error {
-	// Initialize GCP client from environment variables
-	gcpClient, err := gcp.NewClientFromEnv()
-	if err != nil {
-		return fmt.Errorf("failed to create GCP client: %w", err)
-	}
-
-	// Initialize GitHub client from environment variables
-	githubClient, err := github.NewClientFromEnv()
-	if err != nil {
-		return fmt.Errorf("failed to create GitHub client: %w", err)
-	}
-
-	s.gcpClient = gcpClient
-	s.githubClient = githubClient
-	return nil
 }
 
 // generates Terraform configuration for GCP node
@@ -73,7 +50,7 @@ func (s *TerraformService) CommitToRepo(configContent, commitMessage string) err
 }
 
 // sets up the base infrastructure (VPC, subnets, etc.) needed for VM provisioning
-func (s *TerraformService) InitializeInfrastructure(ctx context.Context) error {
+func (s *TerraformService) InitializeInfrastructure(ctx context.Context, providerName string) error {
 	// Create a temporary directory for terraform files
 	workDir, err := os.MkdirTemp("", "terraform-infra-*")
 	if err != nil {
@@ -82,16 +59,18 @@ func (s *TerraformService) InitializeInfrastructure(ctx context.Context) error {
 	defer os.RemoveAll(workDir)
 
 	// Generate infrastructure terraform configuration
-	if err := s.generateInfrastructureConfig(workDir); err != nil {
+	if err := s.generateInfrastructureConfig(workDir, providerName); err != nil {
 		return fmt.Errorf("failed to generate infrastructure config: %w", err)
 	}
 
-	tf, err := s.initializeTerraform(workDir)
+	tf, err := s.initializeTerraform(workDir, providerName)
 	if err != nil {
 		return fmt.Errorf("failed to initialize terraform: %w", err)
 	}
 
-	// yolo
+	//todo
+	// plan, err := tf.Plan(ctx)
+	
 	if err := s.applyInfrastructure(ctx, tf); err != nil {
 		return fmt.Errorf("failed to apply infrastructure: %w", err)
 	}
@@ -112,14 +91,25 @@ type InfrastructureTemplateData struct {
 }
 
 // generateInfrastructureConfig creates terraform files for base infrastructure using templates
-func (s *TerraformService) generateInfrastructureConfig(workDir string) error {
-	// Get GCP backend configuration
-	backendConfig, err := s.gcpService.GetTerraformBackendConfig()
+func (s *TerraformService) generateInfrastructureConfig(workDir string, providerName string) error {
+	provider, ok := s.providerManager.GetProvider(providerName)
+	if !ok {
+		return fmt.Errorf("provider %s not configured", providerName)
+	}
+
+	// Get backend configuration
+	backendConfig, err := provider.GetTerraformBackendConfig()
 	if err != nil {
 		return fmt.Errorf("failed to get backend config: %w", err)
 	}
 
-	gcpConfig, err := s.gcpService.GetCurrentConfig()
+	// Get provider-specific config (currently only GCP is supported)
+	gcpService, ok := provider.(*gcpservices.GCPService)
+	if !ok {
+		return fmt.Errorf("unsupported provider type")
+	}
+
+	gcpConfig, err := gcpService.GetCurrentConfig()
 	if err != nil {
 		return fmt.Errorf("failed to get GCP config: %w", err)
 	}
@@ -154,7 +144,7 @@ func (s *TerraformService) generateInfrastructureConfig(workDir string) error {
 }
 
 // initializeTerraform initializes terraform in the working directory
-func (s *TerraformService) initializeTerraform(workDir string) (*tfexec.Terraform, error) {
+func (s *TerraformService) initializeTerraform(workDir string, providerName string) (*tfexec.Terraform, error) {
 	// Find terraform binary (assuming it's in PATH)
 	terraformPath, err := exec.LookPath("terraform")
 	if err != nil {
@@ -166,12 +156,21 @@ func (s *TerraformService) initializeTerraform(workDir string) (*tfexec.Terrafor
 		return nil, fmt.Errorf("failed to create terraform instance: %w", err)
 	}
 
-	// Set up GCP credentials
-	gcpConfig, err := s.gcpService.GetCurrentConfigWithCredentials()
+	provider, ok := s.providerManager.GetProvider(providerName)
+	if !ok {
+		return nil, fmt.Errorf("provider %s not configured", providerName)
+	}
+
+	// Set up provider credentials (currently only GCP is supported)
+	gcpService, ok := provider.(*gcpservices.GCPService)
+	if !ok {
+		return nil, fmt.Errorf("unsupported provider type")
+	}
+
+	gcpConfig, err := gcpService.GetCurrentConfigWithCredentials()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get GCP config: %w", err)
 	}
-
 
 	envVars := map[string]string{
 		"GOOGLE_CREDENTIALS": gcpConfig.ServiceAccountKeyJSON,
@@ -228,7 +227,7 @@ func (s *TerraformService) commitInfrastructureToRepo(workDir string) error {
 }
 
 
-func (s *TerraformService) DestroyInfrastructure(ctx context.Context) error {
+func (s *TerraformService) DestroyInfrastructure(ctx context.Context, providerName string) error {
 	// temporary directory for terraform operations
 	workDir, err := os.MkdirTemp("", "terraform-destroy-*")
 	if err != nil {
@@ -237,12 +236,12 @@ func (s *TerraformService) DestroyInfrastructure(ctx context.Context) error {
 	defer os.RemoveAll(workDir)
 
 	// Generate infrastructure configuration
-	if err := s.generateInfrastructureConfig(workDir); err != nil {
+	if err := s.generateInfrastructureConfig(workDir, providerName); err != nil {
 		return fmt.Errorf("failed to generate infrastructure config: %w", err)
 	}
 
 	// Initialize terraform
-	tf, err := s.initializeTerraform(workDir)
+	tf, err := s.initializeTerraform(workDir, providerName)
 	if err != nil {
 		return fmt.Errorf("failed to initialize terraform: %w", err)
 	}
@@ -257,7 +256,7 @@ func (s *TerraformService) DestroyInfrastructure(ctx context.Context) error {
 }
 
 func (s *TerraformService) GetInfrastructureStatus(ctx context.Context) (map[string]any, error) {
-	// Mock .. we could instead do 
+	// Mock .. we could instead do
 	// 1. Check terraform state
 	// 2. Return resource status and outputs
 
@@ -265,7 +264,7 @@ func (s *TerraformService) GetInfrastructureStatus(ctx context.Context) (map[str
 		"status": "provisioned",
 		"vpc":    "main-vpc",
 		"subnet": "main-subnet",
-		"region": s.gcpService.cfg.GCP.Region,
+		"region": s.cfg.GCP.Region,
 	}, nil
 }
 
