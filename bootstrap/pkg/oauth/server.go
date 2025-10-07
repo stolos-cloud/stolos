@@ -59,6 +59,7 @@ func (s *Server) RegisterProvider(provider Provider) {
 }
 
 func (s *Server) Start(ctx context.Context) error {
+
 	mux := http.NewServeMux()
 
 	// Register callback handlers for each provider

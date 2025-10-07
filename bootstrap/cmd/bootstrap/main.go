@@ -305,10 +305,8 @@ func main() {
 
 	f, _ := os.OpenFile("./stolos.log", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	defer f.Close()
-	p, model := tui.NewWizard(tui.Steps, f)
+	p, _ := tui.NewWizard(tui.Steps, f)
 
-	// Setup the OAuth providers and get feature enablement state
-	oauthServer = SetupOAuthServer(model.Logger)
 	if gcpEnabled {
 		SetupGCP()
 	}
