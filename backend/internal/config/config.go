@@ -9,11 +9,12 @@ import (
 )
 
 type Config struct {
-	Database    DatabaseConfig `mapstructure:"database"`
-	GitOps      GitOpsConfig   `mapstructure:"gitops"`
-	GCP         GCPConfig      `mapstructure:"gcp"`
-	GitHub      GitHubConfig   `mapstructure:"github"`
-	JWT         JWTConfig      `mapstructure:"jwt"`
+	Database       DatabaseConfig    `mapstructure:"database"`
+	GitOps         GitOpsConfig      `mapstructure:"gitops"`
+	GCP            GCPConfig         `mapstructure:"gcp"`
+	GitHub         GitHubConfig      `mapstructure:"github"`
+	JWT            JWTConfig         `mapstructure:"jwt"`
+	GCPResources   GCPResources      `mapstructure:"gcp_resources"`
 }
 
 type DatabaseConfig struct {
@@ -42,15 +43,28 @@ type GitHubConfig struct {
 }
 
 type GCPConfig struct {
-	ProjectID            string `mapstructure:"project_id"`
-	Region               string `mapstructure:"region"`
-	ServiceAccountJSON   string `mapstructure:"service_account_json"`
+	ProjectID          string `mapstructure:"project_id"`
+	Region             string `mapstructure:"region"`
+	ServiceAccountJSON string `mapstructure:"service_account_json"`
 }
 
 type JWTConfig struct {
 	SecretKey     string `mapstructure:"secret_key"`
 	Issuer        string `mapstructure:"issuer"`
 	ExpiryMinutes int    `mapstructure:"expiry_minutes"`
+}
+
+type GCPResources struct {
+	LastUpdated        string                       `mapstructure:"last_updated" json:"last_updated"`
+	Zones              []string                     `mapstructure:"zones" json:"zones"`
+	MachineTypesByZone map[string][]GCPMachineType  `mapstructure:"machine_types_by_zone" json:"machine_types_by_zone"`
+}
+
+type GCPMachineType struct {
+	Name        string `mapstructure:"name" json:"name"`
+	Description string `mapstructure:"description" json:"description"`
+	GuestCpus   int64  `mapstructure:"guest_cpus" json:"guest_cpus"`
+	MemoryMb    int64  `mapstructure:"memory_mb" json:"memory_mb"`
 }
 
 
@@ -122,7 +136,6 @@ func Load() (*Config, error) {
 	if config.JWT.ExpiryMinutes == 0 {
 		config.JWT.ExpiryMinutes = 1440 // default 24 hours
 	}
-
 
 	return &config, nil
 }

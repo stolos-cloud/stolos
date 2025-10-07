@@ -7,9 +7,20 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path/filepath"
+	"slices"
+	"strconv"
+	"strings"
 	"time"
 
-	"github.com/stolos-cloud/stolos-bootstrap/internal/configserver"
+	manifests "github.com/stolos-cloud/stolos/k8s_manifests"
+
+	"github.com/cavaliergopher/grab/v3"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/olekukonko/tablewriter"
+	"github.com/siderolabs/image-factory/pkg/schematic"
+	"github.com/siderolabs/siderolink/pkg/events"
+	"github.com/siderolabs/talos/pkg/machinery/api/storage"
 	"github.com/stolos-cloud/stolos-bootstrap/internal/tui"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/gcp"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/github"
@@ -20,10 +31,8 @@ import (
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/state"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/talos"
 	"golang.org/x/oauth2"
-
-	"github.com/cavaliergopher/grab/v3"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/siderolabs/image-factory/pkg/schematic"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var bootstrapInfos = &state.BootstrapInfo{}
@@ -40,6 +49,11 @@ var githubToken *oauth2.Token
 var gcpToken *oauth2.Token
 var gcpEnabled = gcp.GCPClientId != "" && gcp.GCPClientSecret != ""
 var gitHubEnabled = github.GithubClientId != "" && github.GithubClientSecret != ""
+var gitHubUser *github.User
+var gitHubAppManifestParams *github.AppManifestParams
+var gitHubAppManifest *github.AppManifest
+
+const _gigabyte = 1073741824
 
 func main() {
 
@@ -52,6 +66,14 @@ func main() {
 		bootstrapInfos = &saveState.BootstrapInfo
 		didReadBootstrapInfos = true
 		doRestoreProgress = true
+	} else {
+		saveState = state.SaveState{
+			MachinesDisks: make(map[string]string),
+			MachinesCache: state.Machines{
+				Workers:       make(map[string][]byte),
+				ControlPlanes: make(map[string][]byte),
+			},
+		}
 	}
 
 	_, err = os.Stat("bootstrap-config.json")
@@ -64,19 +86,13 @@ func main() {
 		bootstrapInfos = &state.BootstrapInfo{}
 	}
 
-	if didReadBootstrapInfos {
-		// TODO
-		//talosStep.AutoAdvance = true
-		//githubStep.AutoAdvance = true
-	}
-
 	githubInfoStep := tui.Step{
 		Name:        "GitHubInfo",
 		Title:       "1) Enter GitHub Repository Information",
 		Kind:        tui.StepForm,
 		Fields:      tui.CreateFieldsForStruct[github.GitHubInfo](),
 		IsDone:      true,
-		AutoAdvance: false,
+		AutoAdvance: didReadBootstrapInfos,
 		OnExit: func(m *tui.Model, s *tui.Step) {
 			if !didReadBootstrapInfos {
 				githubInfo, err := tui.RetrieveStructFromFields[github.GitHubInfo](s.Fields)
@@ -96,6 +112,7 @@ func main() {
 		OnEnter:     RunGitHubAuthStepInBackground,
 		OnExit: func(m *tui.Model, s *tui.Step) {
 			// TODO CHECK GH AUTH
+			oauthServer.Stop(context.Background())
 		},
 	}
 
@@ -114,8 +131,71 @@ func main() {
 		Name:        "GitHubApp",
 		Title:       "1.3) Create GitHub App",
 		Kind:        tui.StepSpinner,
-		IsDone:      true,
+		IsDone:      false,
 		AutoAdvance: true,
+		OnEnter: func(m *tui.Model, s *tui.Step) tea.Cmd {
+			m.Logger.Infof("Starting GitHub App Manifest Flow...")
+			go func() {
+				listenAddr := "127.0.0.1:19999"
+				remoteBaseUrl := "https://api." + bootstrapInfos.GitHubInfo.BaseDomain //URL when deployed
+				webhookEndpoint := "/api/v1/github_webhook"                            //webhook endpoint
+				callbacksEndpoint := "/api/v1/github_callback"                         // additional install callback for deployed URL
+
+				gitHubUser, err = github.GetGitHubUser(context.Background(), bootstrapInfos.GitHubInfo.RepoOwner, *githubToken)
+
+				if err != nil {
+					m.Logger.Errorf("Failed to get GitHub User: %v", err)
+					return
+				}
+
+				if gitHubUser.Type != "Organization" {
+					m.Logger.Errorf("You must login as an organization!")
+					return
+				}
+
+				gitHubAppManifestParams = github.CreateGitHubManifestParameters(remoteBaseUrl, webhookEndpoint, callbacksEndpoint, listenAddr)
+				gitHubAppManifest, err = github.GitHubAppManifestFlow(context.Background(), listenAddr, m.Logger, gitHubAppManifestParams, *gitHubUser)
+				if err != nil {
+					m.Logger.Errorf("GitHub App Manifest Flow Error: %s", err.Error())
+				}
+
+				saveState.GitHubApp = *gitHubAppManifest
+				//err = marshal.SaveStateToJSON(saveState)
+				//if err != nil {
+				//	m.Logger.Errorf("Failed to save state: %s", err.Error())
+				//	return
+				//}
+
+				m.Logger.Successf("GitHub App was created successfuly! App name: %s, App ID: %d", gitHubAppManifest.Name, gitHubAppManifest.ID)
+				s.IsDone = true
+			}()
+			return nil
+		},
+	}
+
+	githubInstallAppStep := tui.Step{
+		Name:        "GitHubInstallApp",
+		Title:       "1.3) Install GitHub App",
+		Kind:        tui.StepSpinner,
+		IsDone:      false,
+		AutoAdvance: true,
+		OnEnter: func(m *tui.Model, s *tui.Step) tea.Cmd {
+
+			m.Logger.Infof("Opening the github app install page...")
+
+			go func() {
+				listenAddr := "127.0.0.1:19999"
+				postInstallResult, err := github.GitHubAppInstallFlow(context.Background(), listenAddr, gitHubUser, gitHubAppManifest, m.Logger)
+				if err != nil {
+					m.Logger.Errorf("GitHub App Install Flow Error: %s", err.Error())
+					return
+				}
+				saveState.GitHubAppInstallResult = *postInstallResult
+				s.IsDone = true
+			}()
+
+			return nil
+		},
 	}
 
 	gcpInfoStep := tui.Step{
@@ -124,7 +204,7 @@ func main() {
 		Kind:        tui.StepForm,
 		Fields:      tui.CreateFieldsForStruct[state.GCPInfo](),
 		IsDone:      true,
-		AutoAdvance: false,
+		AutoAdvance: didReadBootstrapInfos,
 		OnEnter: func(m *tui.Model, s *tui.Step) tea.Cmd {
 			// TODO
 			return nil
@@ -149,16 +229,20 @@ func main() {
 			if !gcpEnabled {
 				return nil
 			}
+			RunOAuthServerInBackround(m.Logger)
 			go func() {
 				gcpToken, err = oauthServer.Authenticate(context.Background(), "GCP")
 				if err != nil {
 					m.Logger.Errorf("Failed to authenticate with GCP: %v", err)
-					s.IsDone = true
-					// TODO handle fail
+					s.IsDone = true // TODO handle fail
 				}
 				s.IsDone = true
 			}()
 			return nil
+		},
+		OnExit: func(m *tui.Model, s *tui.Step) {
+			// TODO CHECK GH AUTH
+			oauthServer.Stop(context.Background())
 		},
 	}
 
@@ -177,7 +261,15 @@ func main() {
 		Kind:        tui.StepForm,
 		Fields:      tui.CreateFieldsForStruct[state.TalosInfo](),
 		IsDone:      true,
-		AutoAdvance: false,
+		AutoAdvance: didReadBootstrapInfos,
+		OnEnter: func(m *tui.Model, s *tui.Step) tea.Cmd {
+			if doRestoreProgress {
+				m.Logger.Info("State file found, skipping talos info form")
+				s.IsDone = true
+				s.AutoAdvance = true
+			}
+			return nil
+		},
 		OnExit: func(m *tui.Model, s *tui.Step) {
 			if !didReadBootstrapInfos {
 				talosInfo, err := tui.RetrieveStructFromFields[state.TalosInfo](s.Fields)
@@ -197,21 +289,15 @@ func main() {
 		OnEnter:     RunTalosISOStep,
 	}
 
-	waitControlPlaneStep := tui.Step{
-		Name:        "WaitControlPlaneStep",
-		Title:       "3.2) Wait Control Plane",
+	waitforServersStep := tui.Step{
+		Name:        "WaitServersStep",
+		Title:       "3.2) Wait for servers",
 		Kind:        tui.StepSpinner,
-		IsDone:      false, // Set by server
-		AutoAdvance: true,
-		OnEnter:     RunStartMachineconfigServerStep,
-	}
-
-	waitWorkerStep := tui.Step{
-		Name:        "WaitWorkerStep",
-		Title:       "3.3) Wait Worker",
-		Kind:        tui.StepSpinner,
-		IsDone:      true,  // Set by server
-		AutoAdvance: false, // TODO bypassed for now via ENTER key
+		IsDone:      true, // Set by server
+		AutoAdvance: false,
+		Body:        "Press enter when you see all servers below (min 4):\n",
+		OnEnter:     RunWaitForServersStep,
+		OnExit:      ExitWaitForServersStep,
 	}
 
 	clusterBootstrapStep := tui.Step{
@@ -241,6 +327,15 @@ func main() {
 		OnEnter:     RunPortalStepInBackground,
 	}
 
+	endStep := tui.Step{
+		Name:        "EndStep",
+		Title:       "Done",
+		Body:        "Stolos Setup has completed! Press Enter to exit the CLI.",
+		Kind:        tui.StepPlain,
+		IsDone:      false,
+		AutoAdvance: false,
+	}
+
 	// Skip all gcp steps if not enabled
 	tui.DisableStep(&gcpInfoStep, !gcpEnabled)
 	tui.DisableStep(&gcpAuthStep, !gcpEnabled)
@@ -258,19 +353,22 @@ func main() {
 		&githubAuthStep,
 		&githubRepoStep,
 		&githubAppStep,
+		&githubInstallAppStep,
 		&gcpInfoStep,
 		&gcpAuthStep,
 		&gcpSAStep,
 		&talosInfoStep,
 		&talosISOStep,
-		&waitControlPlaneStep,
-		&waitWorkerStep,
+		&waitforServersStep,
 		&clusterBootstrapStep,
 		&deployArgoStep,
 		&deployPortalStep,
+		&endStep,
 	}
 
-	p, model := tui.NewWizard(tui.Steps)
+	f, _ := os.OpenFile("./stolos.log", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	defer f.Close()
+	p, model := tui.NewWizard(tui.Steps, f)
 
 	// Setup the OAuth providers and get feature enablement state
 	oauthServer = SetupOAuthServer(model.Logger)
@@ -279,10 +377,6 @@ func main() {
 	}
 	if gitHubEnabled {
 		SetupGitHub()
-	}
-
-	if gitHubEnabled || gcpEnabled {
-		RunOAuthServerInBackround(model.Logger)
 	}
 
 	// Run will block.
@@ -337,7 +431,8 @@ func RunGCPSAStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 	go func() {
 		if gcp.GCPClientId != "" && gcp.GCPClientSecret != "" {
 			// Create GCP service account
-			_, err := gcp.CreateServiceAccountWithOAuth(
+			var err error
+			gcpConfig, err = gcp.CreateServiceAccountWithOAuth(
 				context.Background(),
 				bootstrapInfos.GCPInfo.GCPProjectID,
 				bootstrapInfos.GCPInfo.GCPRegion,
@@ -383,6 +478,7 @@ func RunGitHubRepoStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 }
 
 func RunGitHubAuthStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
+	RunOAuthServerInBackround(m.Logger)
 	go func() {
 		var err error
 		githubToken, err = oauthServer.Authenticate(context.Background(), "GitHub")
@@ -396,20 +492,148 @@ func RunGitHubAuthStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 	return nil
 }
 
-func RunStartMachineconfigServerStep(m *tui.Model, s *tui.Step) tea.Cmd {
-	m.Logger.Infof("Cluster: %s", bootstrapInfos.TalosInfo.ClusterName)
+func RunWaitForServersStep(model *tui.Model, step *tui.Step) tea.Cmd {
+
+	if doRestoreProgress {
+		model.Logger.Info("State file found, skip looking for machines") // TODO ... FOR NOW!!
+		step.IsDone = true
+		step.AutoAdvance = true
+		step.OnExit = nil
+		return nil
+	}
+
+	model.Logger.Infof("Cluster: %s", bootstrapInfos.TalosInfo.ClusterName)
 	addr := bootstrapInfos.TalosInfo.HTTPHostname + ":" + bootstrapInfos.TalosInfo.HTTPPort
-	StartMachineconfigServerInBackground(m, addr)
-	s.IsDone = true
+	model.Logger.Infof("Starting HTTP Receive Server on %s …", addr)
+	go func() {
+		for i := 0; i < 5; i++ {
+			err := talos.EventSink(bootstrapInfos, func(ctx context.Context, event events.Event) error {
+				ip := strings.Split(event.Node, ":")[0]
+				_, ok := saveState.MachinesDisks[ip]
+				if !ok {
+					saveState.MachinesDisks[ip] = ""
+					step.Body = step.Body + fmt.Sprintf("\nNode: %s", ip)
+					err := marshal.SaveStateToJSON(saveState)
+					if err != nil {
+						model.Logger.Errorf("Error saving state: %s", err)
+					}
+				}
+
+				return nil
+			})
+
+			if err != nil {
+				model.Logger.Errorf("Error with HTTP Receive Server, trying again...: %s", err)
+			} else {
+				model.Logger.Info("HTTP Receive Server stoped, restarting...")
+			}
+
+			time.Sleep(5 * time.Second)
+		}
+		model.Logger.Error("HTTP Server failed too many times")
+	}()
+
 	return nil
+}
+
+func ExitWaitForServersStep(model *tui.Model, step *tui.Step) {
+	i := 0
+	for k := range saveState.MachinesDisks {
+		var disks []*storage.Disk
+		// Insert start at the next step (after WaitForServer)
+		model.Steps = slices.Insert(model.Steps, model.CurrentStepIndex+i+1, &tui.Step{
+			Name:        fmt.Sprintf("ConfigureServer_%d", i),
+			Title:       fmt.Sprintf("4.%d) Configure server %d", i, i),
+			Kind:        tui.StepForm,
+			IsDone:      true, // Set by server
+			AutoAdvance: false,
+			OnEnter:     RunConfigureServers(k, &disks),
+			OnExit:      ExitConfigureServer(k, &disks),
+			Fields:      tui.CreateFieldsForStruct[state.ServerConfig](),
+		})
+		i++
+	}
+}
+
+func RunConfigureServers(serverIp string, disks *[]*storage.Disk) func(model *tui.Model, step *tui.Step) tea.Cmd {
+
+	return func(model *tui.Model, step *tui.Step) tea.Cmd {
+		var err error
+		*disks, err = talos.GetDisks(context.Background(), serverIp)
+
+		if err != nil {
+			model.Logger.Errorf("Error getting disks: %s", err)
+		}
+
+		stringWriter := &strings.Builder{}
+
+		stringWriter.WriteString(fmt.Sprintf("SERVER CONFIGURATION - %s:\n", serverIp))
+		stringWriter.WriteString("\n\n")
+
+		stringWriter.WriteString("Please select a role\n")
+		tableRoles := tablewriter.NewWriter(stringWriter)
+		tableRoles.SetHeader([]string{"Selection", "Role"})
+		tableRoles.AppendBulk([][]string{
+			{"1)", "control-plane"},
+			{"2)", "worker"},
+		})
+		tableRoles.Render()
+		step.Fields[0].Label = stringWriter.String()
+
+		stringWriter.Reset()
+		stringWriter.WriteString("Please select a disk\n")
+		tableDisks := tablewriter.NewWriter(stringWriter)
+		tableDisks.SetHeader([]string{"Selection", "Name", "Model", "UUID", "WWID", "Size"})
+		for i, disk := range *disks {
+			//jsonVal, _ := json.Marshal(disk)
+			//model.Logger.Infof("Disk %d: %s", i, string(jsonVal))
+			tableDisks.Append([]string{fmt.Sprintf("%d)", i+1), disk.DeviceName, disk.Model, disk.Uuid, disk.Wwid, strconv.FormatUint(disk.Size/_gigabyte, 10)})
+		}
+		tableDisks.Render()
+		step.Fields[1].Label = stringWriter.String()
+
+		return nil
+	}
+}
+
+func ExitConfigureServer(serverIp string, disks *[]*storage.Disk) func(model *tui.Model, step *tui.Step) {
+	return func(model *tui.Model, step *tui.Step) {
+
+		config, err := tui.RetrieveStructFromFields[state.ServerConfig](step.Fields)
+		if err != nil {
+			model.Logger.Errorf("Error retrieving server config: %s", err)
+		}
+
+		if config.InstallDisk < 1 || config.InstallDisk > len(*disks) {
+			model.Logger.Errorf("Invalid disk selection, skipping: %d", config.InstallDisk)
+			return
+		}
+
+		defDisks := *disks
+		saveState.MachinesDisks[serverIp] = defDisks[config.InstallDisk-1].BusPath
+
+		switch config.Role {
+		case 1:
+			saveState.MachinesCache.ControlPlanes[serverIp] = make([]byte, 0)
+			break
+		case 2:
+			saveState.MachinesCache.Workers[serverIp] = make([]byte, 0)
+			break
+		default:
+			model.Logger.Errorf("Invalid role: %d", config.Role)
+		}
+
+		err = marshal.SaveStateToJSON(saveState)
+		if err != nil {
+			model.Logger.Errorf("Error saving state: %s", err)
+		}
+	}
 }
 
 func RunTalosISOStep(m *tui.Model, s *tui.Step) tea.Cmd {
 	if doRestoreProgress {
-		m.Logger.Info("State file found, skipping to tui.Steps[5]")
-		addr := bootstrapInfos.TalosInfo.HTTPHostname + ":" + bootstrapInfos.TalosInfo.HTTPPort
-		StartMachineconfigServerInBackground(m, addr)
-		m.CurrentStepIndex = 5
+		m.Logger.Info("State file found, skipping ISO download")
+		s.IsDone = true
 		return nil
 	}
 
@@ -417,10 +641,11 @@ func RunTalosISOStep(m *tui.Model, s *tui.Step) tea.Cmd {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
-		talosConfigArg := fmt.Sprintf("talos.config=http://%s:%s/machineconfig?m=${mac}&u=${uuid}", bootstrapInfos.TalosInfo.HTTPHostname, bootstrapInfos.TalosInfo.HTTPPort)
-		kernelArgs := []string{talosConfigArg, bootstrapInfos.TalosInfo.TalosExtraArgs}
+		//talosConfigArg := fmt.Sprintf("talos.config=http://%s:%s/machineconfig?m=${mac}&u=${uuid}", bootstrapInfos.TalosInfo.HTTPHostname, bootstrapInfos.TalosInfo.HTTPPort)
+		sinkConf := fmt.Sprintf("talos.events.sink=%s:%s", bootstrapInfos.TalosInfo.HTTPHostname, bootstrapInfos.TalosInfo.HTTPPort)
+		kernelArgs := []string{sinkConf, bootstrapInfos.TalosInfo.TalosExtraArgs}
 
-		m.Logger.Infof("Generating image with kernelParam: %s", talosConfigArg)
+		m.Logger.Infof("Generating image with kernelParam: %s", sinkConf)
 
 		factory := talos.CreateFactoryClient()
 		sch := schematic.Schematic{
@@ -462,19 +687,26 @@ func RunTalosISOStep(m *tui.Model, s *tui.Step) tea.Cmd {
 func RunClusterBootstrapStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 	go func() {
 		m.Logger.Debug("RunClusterBootstrapStepInBackground")
+
+		m.Logger.Debug("Applying configs...")
+		err := talos.ApplyConfigsToNodes(&saveState, bootstrapInfos)
+		if err != nil {
+			m.Logger.Errorf("Failed to apply configs: %s", err)
+		}
+		m.Logger.Debug("Configs applied")
 		endpoint := state.ConfigBundle.ControlPlaneCfg.Cluster().Endpoint() //get machineconfig cluster endpoint
 		talosApiClient := talos.CreateMachineryClientFromTalosconfig(state.ConfigBundle.TalosConfig())
 		m.Logger.Infof("Executing bootstrap with clustername %s and endpoint %s....", bootstrapInfos.TalosInfo.ClusterName, endpoint)
-		err := talos.ExecuteBootstrap(talosApiClient)
+		err = talos.ExecuteBootstrap(talosApiClient)
 		if err != nil {
 			m.Logger.Errorf("Failed to execute bootstrap: %s", err)
 		}
 		m.Logger.Success("Bootstrap request Succeeded!")
-
 		m.Logger.Info("Waiting for Kubernetes installation to finish and API to be available...")
 
 		//RunDetailedClusterHealthCheck(talosApiClient, m.Logger)
-		talos.RunBasicClusterHealthCheck(err, talosApiClient, m.Logger)
+		time.Sleep(10 * time.Second)
+		talos.RunBasicClusterHealthCheck(talosApiClient, m.Logger)
 		m.Logger.Success("Cluster health check succeeded!")
 
 		kubeconfig, err = talosApiClient.Kubeconfig(context.Background())
@@ -525,7 +757,21 @@ func DeployArgoCD(loggerRef *tui.UILogger) {
 	}
 
 	loggerRef.Infof("Deploying ArgoCD...")
-	release, err := helm.HelmInstallArgo(helmClient)
+
+	//manifests.ArgoValuesYaml
+
+	tmpDir, err := os.MkdirTemp("", "helm-values-*")
+	if err != nil {
+		panic(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	valuesPath := filepath.Join(tmpDir, "values.yaml")
+	if err := os.WriteFile(valuesPath, manifests.ArgoValuesYaml, 0644); err != nil {
+		panic(err)
+	}
+
+	release, err := helm.HelmInstallArgo(helmClient, "stolos-argocd", "stolos-argocd", []string{valuesPath})
 	if err != nil {
 		loggerRef.Errorf("Failed to deploy ArgoCD: %s", err)
 		return
@@ -540,6 +786,16 @@ func CreateProviderSecrets(loggerRef *tui.UILogger) {
 		loggerRef.Errorf("Failed to create Kubernetes client: %s", err)
 	} else {
 		ctx := context.Background()
+
+		// Create namespace if it does not exists
+		_, err = k8sClient.CoreV1().Namespaces().Get(ctx, "stolos-system", metav1.GetOptions{})
+		if err != nil {
+			_, err = k8sClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "stolos-system",
+				},
+			}, metav1.CreateOptions{})
+		}
 
 		// Create GCP service account secret
 		if gcpConfig != nil {
@@ -561,17 +817,15 @@ func CreateProviderSecrets(loggerRef *tui.UILogger) {
 			} else {
 				loggerRef.Success("GitHub credentials secret created successfully")
 			}
+			repoUrl := "https://github.com/" + bootstrapInfos.GitHubInfo.RepoOwner + "/" + bootstrapInfos.GitHubInfo.RepoName
+			err = github.CreateOrUpdateArgoCDGitHubSecrets(ctx, k8sClient, "stolos-argocd", "stolos-github-repo", strconv.FormatInt(gitHubAppManifest.ID, 10), gitHubAppManifest.PEM, repoUrl, saveState.GitHubAppInstallResult.InstallationID)
+			if err != nil {
+				loggerRef.Errorf("Failed to create GitHub Argo Repo secret: %s", err)
+			} else {
+				loggerRef.Success("GitHub Repo credentials secret created successfully")
+			}
 		}
 	}
-}
-
-func StartMachineconfigServerInBackground(model *tui.Model, addr string) {
-	model.Logger.Infof("Starting HTTP Machineconfig Server on %s …", addr)
-	go func() {
-		if err := configserver.StartConfigServer(model, addr, doRestoreProgress, &saveState, bootstrapInfos); err != nil {
-			model.Logger.Errorf("Config server stopped: %v", err)
-		}
-	}()
 }
 
 // Utils

@@ -1,4 +1,4 @@
-package services
+package gcp
 
 import (
 	"context"
@@ -160,6 +160,24 @@ func (s *GCPService) UpdateServiceAccount(ctx context.Context, projectID, region
 	return &dbConfig, nil
 }
 
+// GetClient creates a GCP client from database config or falls back to env config
+// Uses the currently configured project ID and region
+func (s *GCPService) GetClient() (*gcp.Client, error) {
+	if s.IsConfiguredFromDatabase() {
+		config, err := s.GetCurrentConfigWithCredentials()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get database config: %w", err)
+		}
+		return s.getGCPClient(config.ProjectID, config.Region)
+	}
+
+	if s.IsConfiguredFromEnv() {
+		return s.getGCPClient(s.cfg.GCP.ProjectID, s.cfg.GCP.Region)
+	}
+
+	return nil, fmt.Errorf("GCP not configured in database or environment")
+}
+
 // getGCPClient creates a GCP client from database config or falls back to env config
 func (s *GCPService) getGCPClient(projectID, region string) (*gcp.Client, error) {
 	if s.IsConfiguredFromDatabase() {
@@ -207,6 +225,21 @@ func (s *GCPService) CreateTerraformBucket(ctx context.Context, projectID, regio
 	return bucketName, nil
 }
 
+// Provider interface
+func (s *GCPService) GetProviderName() string {
+	return "gcp"
+}
 
+func (s *GCPService) GetRegion() string {
+	if s.IsConfiguredFromDatabase() {
+		config, err := s.GetCurrentConfig()
+		if err == nil {
+			return config.Region
+		}
+	}
+	return s.cfg.GCP.Region
+}
 
-
+func (s *GCPService) IsConfigured() bool {
+	return s.IsConfiguredFromDatabase() || s.IsConfiguredFromEnv()
+}

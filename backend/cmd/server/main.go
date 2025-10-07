@@ -29,10 +29,9 @@ import (
 // @contact.url https://github.com/stolos-cloud/stolos
 // @contact.email support@stolos.cloud
 
-// @license.name Apache 2.0
-// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
+// @license.name TBD
+// @license.url http://TBD
 
-// @host localhost:8080
 // @BasePath /api/v1
 
 // @securityDefinitions.apikey BearerAuth
@@ -52,17 +51,15 @@ func main() {
 		log.Fatal("Failed to initialize database:", err)
 	}
 
-	// Initialize GCP if environment variables are set
-	gcpService := services.NewGCPService(db, cfg)
+	// Initialize providers
 	ctx := context.Background()
-	gcpConfig, err := gcpService.InitializeGCP(ctx)
-	if err != nil {
-		log.Fatal("Failed to initialize GCP:", err)
+	providerManager := services.NewProviderManager(db, cfg)
+	if err := providerManager.InitializeProviders(ctx); err != nil {
+		log.Fatal("Failed to initialize providers:", err)
 	}
-	if gcpConfig != nil {
-		log.Printf("GCP initialized successfully with project: %s", gcpConfig.ProjectID)
-	} else {
-		log.Println("GCP not configured. Skipping initialization")
+
+	if !providerManager.HasConfiguredProviders() {
+		log.Println("No cloud providers configured")
 	}
 
 	r := gin.Default()
@@ -74,10 +71,7 @@ func main() {
 		AllowCredentials: true,
 	}))
 
-	h, err := handlers.NewHandlers(db, cfg)
-	if err != nil {
-		log.Fatal("Failed to initialize handlers:", err)
-	}
+	h := handlers.NewHandlers(db, cfg, providerManager)
 
 	routes.SetupRoutes(r, h)
 

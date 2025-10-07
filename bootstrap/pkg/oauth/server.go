@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/pkg/browser"
+	"github.com/stolos-cloud/stolos-bootstrap/pkg/logger"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/oauth/providers"
 	"golang.org/x/oauth2"
 )
@@ -27,16 +28,10 @@ type Server struct {
 	channels      map[string]chan string
 	errorChannels map[string]chan error
 	mu            sync.RWMutex
-	logger        Logger
+	logger        logger.Logger
 }
 
-type Logger interface {
-	Infof(format string, args ...any)
-	Errorf(format string, args ...any)
-	Success(msg string)
-}
-
-func NewServer(port string, logger Logger) *Server {
+func NewServer(port string, logger logger.Logger) *Server {
 	return &Server{
 		port:          port,
 		providers:     make(map[string]Provider),
@@ -66,12 +61,13 @@ func (s *Server) Start(ctx context.Context) error {
 	s.mu.RUnlock()
 
 	s.server = &http.Server{
-		Addr:    ":" + s.port,
+		Addr:    "localhost:" + s.port,
 		Handler: mux,
 	}
 
 	go func() {
-		if err := s.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		err := s.server.ListenAndServe()
+		if err != nil {
 			s.logger.Errorf("Failed to start OAuth server: %v", err)
 		}
 	}()
@@ -231,6 +227,8 @@ func (s *Server) Authenticate(ctx context.Context, providerName string) (*oauth2
 	delete(s.channels, providerName)
 	delete(s.errorChannels, providerName)
 	s.mu.Unlock()
+
+	_ = s.server.Shutdown(context.Background())
 
 	return token, nil
 

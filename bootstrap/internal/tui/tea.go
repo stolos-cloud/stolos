@@ -4,6 +4,7 @@ package tui
 import (
 	"fmt"
 	"log"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -66,6 +67,7 @@ func NewTextField(label, placeholder string, optional bool) Field {
 // It uses Program.Send under the hood
 type UILogger struct {
 	send func(msg tea.Msg)
+	file *os.File
 }
 
 // Info Logs an info line (non-blocking).
@@ -83,15 +85,38 @@ func (l *UILogger) Successf(f string, a ...any) { l.Success(fmt.Sprintf(f, a...)
 
 // emit always spawns a goroutine so the caller can't ever block on the UI thread.
 func (l *UILogger) emit(m tea.Msg) {
-	go func() { l.send(m) }()
+	go func() {
+		l.send(m)
+		var level string
+		switch m.(logMsg).Level {
+		case LevelDebug:
+			level = "DEBUG"
+			break
+		case LevelInfo:
+			level = "INFO"
+			break
+		case LevelWarn:
+			level = "WARN"
+			break
+		case LevelError:
+			level = "ERROR"
+			break
+		case LevelSuccess:
+			level = "SUCCESS"
+			break
+
+		}
+		_, _ = l.file.WriteString(fmt.Sprintf("[%s] [%s] %s\n", m.(logMsg).At.Format("2006-01-02 15:04:05"), level, m.(logMsg).Text))
+		_ = l.file.Sync()
+	}()
 }
 
 // NewWizard constructs the Bubble Tea Program + UILogger from the provided Steps.
-func NewWizard(steps []*Step) (*tea.Program, *Model) {
+func NewWizard(steps []*Step, file *os.File) (*tea.Program, *Model) {
 	m := newModel(steps)
 	p := tea.NewProgram(&m, tea.WithAltScreen())
 	m.Program = p
-	l := &UILogger{send: p.Send}
+	l := &UILogger{send: p.Send, file: file}
 	m.Logger = l
 	return p, &m
 }
@@ -160,7 +185,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.getCurrentStep().OnExit != nil {
 			m.getCurrentStep().OnExit(m, m.getCurrentStep())
 		}
-		return m, m.enterStepCmd(m.CurrentStepIndex + 1)
+		return m, m.advanceCmd()
 	}
 
 	switch msg := msg.(type) {
@@ -330,7 +355,13 @@ func SkipToStep(model *Model, name string) {
 
 // Steps helper / processing
 
-func (m *Model) getCurrentStep() *Step { return m.Steps[m.CurrentStepIndex] }
+func (m *Model) getCurrentStep() *Step {
+	if m.CurrentStepIndex >= len(m.Steps) {
+		m.Logger.Errorf("Current step index out of range!!")
+		return m.Steps[len(m.Steps)]
+	}
+	return m.Steps[m.CurrentStepIndex]
+}
 
 func (m *Model) enterStepCmd(i int) tea.Cmd {
 	m.CurrentStepIndex = i
@@ -348,7 +379,7 @@ func (m *Model) enterStepCmd(i int) tea.Cmd {
 
 func (m *Model) advanceCmd() tea.Cmd {
 	// TODO : Execute OnExit
-	m.getCurrentStep()
+	// m.getCurrentStep() <=== WHY IS THAT THERE?
 	if m.CurrentStepIndex >= len(m.Steps)-1 {
 		return tea.Quit
 	}
@@ -417,7 +448,7 @@ func (m *Model) renderLogsPane() string {
 	}
 
 	// Keep only the last lines that fit into available Height
-	maxLines := max(m.Height - 10) // adaptive Height
+	maxLines := max(m.Height-10, 0) // adaptive Height
 	if len(allLines) > maxLines {
 		allLines = allLines[len(allLines)-maxLines:]
 	}

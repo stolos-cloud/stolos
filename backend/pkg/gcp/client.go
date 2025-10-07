@@ -186,3 +186,42 @@ func generateRandomString(length int) string {
 	}
 	return string(b)
 }
+
+func (c *Client) ListZonesInRegion(ctx context.Context) ([]string, error) {
+	zones, err := c.getZonesInRegion(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	zoneNames := make([]string, len(zones))
+	for i, zone := range zones {
+		zoneNames[i] = zone.Name
+	}
+	return zoneNames, nil
+}
+
+func (c *Client) ListMachineTypesInZone(ctx context.Context, zone string) ([]*compute.MachineType, error) {
+	resp, err := c.computeClient.MachineTypes.List(c.config.ProjectID, zone).Context(ctx).Do()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list machine types in zone %s: %w", zone, err)
+	}
+	return resp.Items, nil
+}
+
+func (c *Client) ListAllMachineTypesByZone(ctx context.Context) (map[string][]*compute.MachineType, error) {
+	zones, err := c.getZonesInRegion(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get zones: %w", err)
+	}
+
+	result := make(map[string][]*compute.MachineType)
+	for _, zone := range zones {
+		machineTypes, err := c.ListMachineTypesInZone(ctx, zone.Name)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list machine types in zone %s: %w", zone.Name, err)
+		}
+		result[zone.Name] = machineTypes
+	}
+
+	return result, nil
+}

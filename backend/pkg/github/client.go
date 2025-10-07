@@ -18,7 +18,7 @@ type Config struct {
 	InstallationID int64  `json:"installation_id"`
 	RepoOwner      string `json:"repo_owner"`
 	RepoName       string `json:"repo_name"`
-	GitOpsBranch   string `json:"gitops_branch"`
+	Branch   string `json:"branch"`
 }
 
 type Client struct {
@@ -90,7 +90,7 @@ func configFromEnv() (*Config, error) {
 		InstallationID: installationID,
 		RepoOwner:      repoOwner,
 		RepoName:       repoName,
-		GitOpsBranch:   gitOpsBranch,
+		Branch:   gitOpsBranch,
 	}, nil
 }
 
@@ -103,7 +103,7 @@ func (c *Client) GetConfig() *Config {
 }
 
 func (c *Client) GetRepoBranch() string {
-	return c.config.GitOpsBranch
+	return c.config.Branch
 }
 
 //  creates a new installation access token using GitHub App credentials
