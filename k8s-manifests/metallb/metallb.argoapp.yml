@@ -35,8 +35,7 @@ spec:
                 kind: IPAddressPool
                 name: public-ip
               patch: |-
-                - op: add
-                   path: /spec/addresses/-
+                - op: replace
                   path: /spec/addresses
                   value:
                     - {{ .lb_ip }}
