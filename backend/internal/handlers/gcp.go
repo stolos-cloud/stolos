@@ -258,7 +258,6 @@ func (h *GCPHandlers) DeleteInfra(c *gin.Context) {
 // @Success 200 {object} config.GCPResources
 // @Failure 500 {object} map[string]string
 // @Router /gcp/resources [get]
-// @Security BearerAuth
 func (h *GCPHandlers) GetGCPResources(c *gin.Context) {
 	resources, err := h.gcpResourcesService.GetResources()
 	if err != nil {

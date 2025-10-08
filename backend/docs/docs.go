@@ -488,11 +488,6 @@ const docTemplate = `{
         },
         "/gcp/resources": {
             "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "Get list of available zones and machine types for VM provisioning forms",
                 "consumes": [
                     "application/json"
