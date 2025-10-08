@@ -47,35 +47,3 @@ func ReadSplitConfigBundleFiles() (*bundle.Bundle, error) {
 
 	return bundle.NewBundle(configBundleOpts...)
 }
-
-//func SaveStateToJSON(saveState state.SaveState) error {
-//	jsonData, err := json.Marshal(saveState)
-//	if err != nil {
-//		return err
-//	}
-//	err = os.WriteFile("bootstrap-state.json", jsonData, 0644)
-//	if err != nil {
-//		return err
-//	}
-//	if state.ConfigBundle != nil {
-//		err = SaveSplitConfigBundleFiles(state.ConfigBundle)
-//		if err != nil {
-//			return err
-//		}
-//	}
-//	return nil
-//}
-
-//func ReadStateFromJSON() state.SaveState {
-//	var saveState state.SaveState
-//	stateFile, err := os.ReadFile("bootstrap-state.json")
-//	if err != nil {
-//		panic(err)
-//	}
-//	err = json.Unmarshal(stateFile, &saveState)
-//	if err != nil {
-//		panic(err)
-//	}
-//	state.ConfigBundle, err = ReadSplitConfigBundleFiles()
-//	return saveState
-//}
