@@ -11,7 +11,7 @@ spec:
         repoURL: https://github.com/Simon-Boyer/etsmtl-pfe-cloudnative.git
         revision: HEAD
         files:
-          - path: k8s-manifest/common.yml
+          - path: common.yml
   template:
     metadata:
       name: metallb
