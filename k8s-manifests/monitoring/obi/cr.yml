@@ -4,9 +4,9 @@ kind: ClusterRole
 metadata:
   name: obi
 rules:
-- apiGroups: [""]
-  resources: ["pods", "nodes", "namespaces"]
-  verbs: ["get", "list", "watch"]
-- apiGroups: ["apps"]
-  resources: ["deployments", "replicasets", "daemonsets", "statefulsets"]
-  verbs: ["get", "list", "watch"]
+  - apiGroups: ['apps']
+    resources: ['replicasets']
+    verbs: ['list', 'watch']
+  - apiGroups: ['']
+    resources: ['pods', 'services', 'nodes']
+    verbs: ['list', 'watch']
