@@ -24,7 +24,7 @@ spec:
       dnsPolicy: ClusterFirstWithHostNet
       containers:
       - name: obi
-        image: otel/ebpf-instrument:latest
+        image: otel/ebpf-instrument:main
         imagePullPolicy: IfNotPresent
         env:
         - name: OTEL_EBPF_CONFIG_PATH
