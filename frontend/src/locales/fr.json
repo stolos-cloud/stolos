@@ -10,6 +10,10 @@
             "en": "Anglais",
             "fr": "Français"
         },
+        "theme": {
+            "dark": "Mode sombre",
+            "light": "Mode clair"
+        },
         "logout": "Se Déconnecter"
     },
      "login": {
@@ -150,8 +154,13 @@
                 "title": "Configurer le fournisseur GCP"
             }
         },
+        "notifications": {
+            "updateSuccess": "Configuration du fournisseur de cloud mise à jour avec succès.",
+            "addSuccess": "Configuration du fournisseur de cloud ajoutée avec succès."
+        },
         "buttons": {
             "updateConfiguration": "Mettre à jour",
+            "addNewConfiguration": "Ajouter une configuration",
             "cancel": "Annuler"
         }
     },
@@ -166,6 +175,50 @@
     },
     "gitopsSynchronization": {
         "title": "GitOps Synchronisation"
+    },
+    "userManagement": {
+        "title": "Gestion des utilisateurs",
+        "subheading": "Gérer les utilisateurs et leurs rôles",
+        "table": {
+            "title": "Utilisateurs",
+            "loadingText": "Chargement des utilisateurs...",
+            "noDataText": "Aucun utilisateur trouvé.",
+            "itemsPerPageText": "Articles par page :",
+            "headers": {
+                "email": "Courriel",
+                "role": "Rôle",
+                "actions": "Actions"
+            }
+        },
+        "dialogs": {
+            "addUser":  {
+                "title": "Ajouter un nouvel utilisateur"
+            },
+            "editUser": {
+                "title": "Modifier l'utilisateur"
+            },
+            "deleteUser": {
+                "title": "Supprimer l'utilisateur",
+                "confirmationText": "Êtes-vous sûr de vouloir supprimer {email} ? Cette action ne peut pas être annulée."
+            }
+        },
+        "formfields": {
+            "email": "Courriel",
+            "password": "Mot de passe",
+            "confirmPassword": "Confirmer le mot de passe",
+            "role": "Rôle"
+        },
+        "notifications": {
+            "addSuccess": "Utilisateur {email} ajouté avec succès",
+            "updateSuccess": "Rôle de l'utilisateur {email} mis à jour avec succès",
+            "deleteSuccess": "Utilisateur {email} supprimé avec succès",
+            "addError": "Échec de l'ajout de l'utilisateur",
+            "updateError": "Échec de la mise à jour de l'utilisateur",
+            "deleteError": "Échec de la suppression de l'utilisateur"
+        },
+        "buttons": {
+            "addUser": "Ajouter un utilisateur"
+        }
     },
     "rules": {
         "validation": {
@@ -199,13 +252,15 @@
         "finish": "Terminer",
         "viewDetails": "Voir les détails",
         "refresh": "Rafraîchir",
-        "search": "Rechercher"
+        "search": "Rechercher",
+        "goHome": "Aller à l'accueil"
     },
     "errors": {
         "sessionExpired": "Votre session a expiré ou est invalide. Veuillez vous reconnecter.",
         "failedLogin": "Échec de la connexion. Veuillez vérifier vos identifiants et réessayer.",
         "failedFetchProfile": "Échec de la récupération du profil utilisateur. Veuillez réessayer.",
         "failedRefreshToken": "Échec du rafraîchissement du token. Veuillez vous reconnecter.",
+        "unexpected": "Une erreur inattendue est survenue. Veuillez réessayer plus tard.",
         "403": {
             "title": "403 - Interdit",
             "message": "Vous n'avez pas la permission d'accéder à cette page."

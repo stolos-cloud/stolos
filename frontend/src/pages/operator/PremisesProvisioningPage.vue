@@ -4,8 +4,7 @@
             :title="$t('provisioning.onPremises.title')"
             :subheading="$t('provisioning.onPremises.subheading')"
         />
-        <div class="mt-4">
-            <h3>{{ $t('provisioning.onPremises.table.title') }}</h3>
+        <v-sheet border rounded class="mt-4">
             <v-data-table-server
                 :headers="nodeHeaders"
                 :items="nodes"
@@ -15,10 +14,20 @@
                 :no-data-text="$t('provisioning.onPremises.table.noDataText')"
                 :items-per-page="10"
                 :items-per-page-text="$t('provisioning.onPremises.table.itemsPerPageText')"
-                class="elevation-8 mt-2"
+                class="elevation-8"
                 mobile-breakpoint="md"
                 disable-sort="true"
+                :hide-default-footer="nodes.length < 10"
             >
+                <!-- Slot for top -->
+                <template v-slot:top>
+                    <v-toolbar>
+                        <v-toolbar-title>
+                        {{ $t('provisioning.onPremises.table.title') }}
+                        </v-toolbar-title>
+                    </v-toolbar>
+                </template>
+
                 <!-- Slot for status -->
                 <template #item.status="{ item }">
                     <v-chip color="primary">
@@ -75,16 +84,16 @@
                     </div>
                 </template>
             </v-data-table-server>
-
-            <div class="d-flex justify-end">
-                <BaseButton :text="$t('provisioning.onPremises.buttons.provisionConnectedNodes')" color="primary" class="mt-2" :disabled="!canProvision" @click="provisionConnectedNodes" />
-            </div>
+        </v-sheet>
+        <div class="d-flex justify-end">
+            <BaseButton :text="$t('provisioning.onPremises.buttons.provisionConnectedNodes')" color="primary" class="mt-2" :disabled="!canProvision" @click="provisionConnectedNodes" />
         </div>
         <v-overlay class="d-flex align-center justify-center" v-model="overlay" persistent>
             <v-progress-circular
                 indeterminate
             ></v-progress-circular>
         </v-overlay>
+        <BaseNotification v-model="notification.visible" :text="notification.text" :type="notification.type" />
     </PortalLayout>
 </template>
 
@@ -102,6 +111,11 @@ const route = useRouter();
 const loading = ref(false);
 const overlay = ref(false);
 const nodes = ref([]);
+const notification = ref({
+  visible: false,
+  text: '',
+  type: 'info'
+});
 const roles = [
     { key: 'worker', title: 'Worker' },
     { key: 'control-plane', title: 'Control plane' },
@@ -169,7 +183,11 @@ function provisionConnectedNodes() {
 
     createNodesWithRoleAndLabels({ nodes: payloadNodes })
     .then(() => {
-        //TODO: create a notification reused everywhere
+        notification.value = {
+            visible: true,
+            text: t('provisioning.onPremises.notifications.provisionSuccess'),
+            type: 'success'
+        };
         route.push('/dashboard');
     })
     .catch(error => {

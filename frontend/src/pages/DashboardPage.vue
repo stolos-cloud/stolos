@@ -6,41 +6,48 @@
             :actions="actions"
         />
         <!-- Active connected nodes -->
-        <div class="mt-4">
-          <h3>{{ $t('dashboard.onPremises.table.title') }}</h3>
-          <v-card flat>
-            <template v-slot:text>
-                <v-text-field
-                  v-model="search"
-                  label="Search"
-                  prepend-inner-icon="mdi-magnify"
-                  variant="outlined"
-                  hide-details
-                  single-line
-                />
+        <v-sheet border rounded class="mt-4">
+          <v-data-table
+            :headers="nodeHeaders"
+            :items="nodes"
+            :items-length="nodes.length"
+            :search="search"
+            :loading="loading"
+            :loading-text="$t('dashboard.onPremises.table.loadingText')"
+            :no-data-text="$t('dashboard.onPremises.table.noDataText')"
+            :items-per-page="10"
+            :items-per-page-text="$t('dashboard.onPremises.table.itemsPerPageText')"
+            class="elevation-8"
+            mobile-breakpoint="md"
+            :hide-default-footer="nodes.length < 10"
+          >
+            <!-- Slot for top -->
+            <template v-slot:top>
+              <v-toolbar>
+                <v-toolbar-title>
+                  {{ $t('dashboard.onPremises.table.title') }}
+                </v-toolbar-title>
+              </v-toolbar>
+              <v-text-field
+                v-model="search"
+                label="Search"
+                prepend-inner-icon="mdi-magnify"
+                variant="outlined"
+                hide-details
+                single-line
+                dense
+                class="pa-3"
+              />
             </template>
-            <v-data-table
-                :headers="nodeHeaders"
-                :items="nodes"
-                :items-length="nodes.length"
-                :search="search"
-                :loading="loading"
-                :loading-text="$t('dashboard.onPremises.table.loadingText')"
-                :no-data-text="$t('dashboard.onPremises.table.noDataText')"
-                :items-per-page="10"
-                :items-per-page-text="$t('dashboard.onPremises.table.itemsPerPageText')"
-                class="elevation-8 mt-2"
-                mobile-breakpoint="md"
-              >
-              <!-- Slot for status -->
-              <template #item.status="{ item }">
-                  <v-chip color="success">
-                      {{ item.status }}
-                  </v-chip>
-              </template>
-            </v-data-table>
-          </v-card>
-        </div>
+
+            <!-- Slot for status -->
+            <template #item.status="{ item }">
+                <v-chip color="success">
+                    {{ item.status }}
+                </v-chip>
+            </template>
+          </v-data-table>
+        </v-sheet>
         <BaseDialog v-model="dialogDownloadISOOnPremise" :title="$t('dashboard.dialogs.downloadISOOnPremise.title')" width="600" closable>
           <v-form v-model="isValid">
             <BaseNotice type="info" :text="$t('dashboard.dialogs.downloadISOOnPremise.noticeText')" />
@@ -65,8 +72,10 @@ import { RadioGroup } from '@/models/RadioGroup.js';
 import { downloadISO, createSamplesNodes, getConnectedNodes } from '@/services/provisioning.service';
 import { computed, ref, reactive, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useStore } from 'vuex';
 
 const { t } = useI18n();
+const store = useStore();
 
 // State
 const dialogDownloadISOOnPremise = ref(false);
@@ -74,28 +83,6 @@ const isValid = ref(false);
 const search = ref('');
 const loading = ref(false);
 const nodes = ref([]);
-
-const isoRadioButtons = reactive(new RadioGroup({
-  label: "ISO choice",
-  precision: "Choose the architecture of the ISO you want to download",
-  options: [
-    {
-      label: "ARM",
-      value: 'arm',
-    },
-    {
-      label: "AMD",
-      value: 'amd',
-    }
-  ],
-  required: true,
-  rules: [(v) => !!v || t('dashboard.dialogs.downloadISOOnPremise.radioOptions.required') ]
-}));
-
-//mounted
-onMounted(() => {
-    fetchConnectedNodesActive();
-});
 
 // Computed
 const actions = computed(() => [
@@ -107,9 +94,24 @@ const actions = computed(() => [
 ]);
 const nodeHeaders = computed(() => [
   { title: t('dashboard.onPremises.table.headers.nodename'), value: 'name' },
-  { title: t('dashboard.onPremises.table.headers.status'), value: 'status' },
-  { title: t('dashboard.onPremises.table.headers.role'), value: 'role' }
+  { title: t('dashboard.onPremises.table.headers.role'), value: 'role' },
+  { title: t('dashboard.onPremises.table.headers.status'), value: 'status', align: "center" }
 ]);
+const listISOTypes = computed(() => store.getters['referenceLists/getIsoTypes']);
+
+// Reactives
+const isoRadioButtons = reactive(new RadioGroup({
+  label: "ISO choice",
+  precision: "Choose the architecture of the ISO you want to download",
+  options: listISOTypes.value,
+  required: true,
+  rules: [(v) => !!v || t('dashboard.dialogs.downloadISOOnPremise.radioOptions.required')]
+}));
+
+//mounted
+onMounted(() => {
+    fetchConnectedNodesActive();
+});
 
 // Methods
 function cancelDownloadISO() {

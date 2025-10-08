@@ -10,6 +10,10 @@
             "en": "English",
             "fr": "French"
         },
+        "theme": {
+            "dark": "Dark mode",
+            "light": "Light mode"
+        }, 
         "logout": "Logout"
     },
     "login": {
@@ -122,7 +126,7 @@
         }
     },
     "cloudProvider": {
-        "title": "Cloud Provider",
+        "title": "Cloud provider",
         "subheading": "Manage your cloud provider configuration",
         "table": {
             "title": "GCP provider configuration",
@@ -149,8 +153,13 @@
                 "title": "Configure GCP provider"
             }
         },
+        "notifications": {
+            "updateSuccess": "Cloud provider configuration updated successfully.",
+            "addSuccess": "Cloud provider configuration added successfully."
+        },
         "buttons": {
             "updateConfiguration": "Update",
+            "addNewConfiguration": "Add configuration",
             "cancel": "Cancel"
         }
     },
@@ -165,6 +174,50 @@
     },
     "gitopsSynchronization": {
         "title": "GitOps Synchronization"
+    },
+    "userManagement": {
+        "title": "User management",
+        "subheading": "Manage users and their roles",
+        "table": {
+            "title": "Users",
+            "loadingText": "Loading users...",
+            "noDataText": "No users found.",
+            "itemsPerPageText": "Items per page :",
+            "headers": {
+                "email": "Email",
+                "role": "Role",
+                "actions": "Actions"
+            }
+        },
+        "dialogs": {
+            "addUser":  {
+                "title": "Add user"
+            },
+            "editUser": {
+                "title": "Edit user"
+            },
+            "deleteUser": {
+                "title": "Delete user",
+                "confirmationText": "Are you sure you want to delete {email} ? This action cannot be undone."
+            }
+        },
+        "formfields": {
+            "email": "Email",
+            "password": "Password",
+            "confirmPassword": "Confirm Password",
+            "role": "Role"
+        },
+        "notifications": {
+            "addSuccess": "User {email} added successfully",
+            "updateSuccess": "User {email} role updated successfully",
+            "deleteSuccess": "User {email} deleted successfully",
+            "addError": "Failed to add user",
+            "updateError": "Failed to update user",
+            "deleteError": "Failed to delete user"
+        },
+        "buttons": {
+            "addUser": "Add user"
+        }
     },
     "rules": {
         "validation": {
@@ -198,20 +251,22 @@
         "finish": "Finish",
         "viewDetails": "View Details",
         "refresh": "Refresh",
-        "search": "Search"
+        "search": "Search",
+        "goHome": "Go to home"
     },
     "errors": {
         "sessionExpired": "Your session has expired or is invalid. Please log in again.",
         "failedLogin": "Login failed. Please check your credentials and try again.",
         "failedFetchProfile": "Failed to fetch user profile. Please try again.",
         "failedRefreshToken": "Failed to refresh token. Please log in again.",
+        "unexpected": "An unexpected error occurred. Please try again later.",
         "403": {
             "title": "403 - Forbidden",
-            "message": "You do not have permission to access this page."
+            "description": "You do not have permission to access this page."
         },
         "404": {
             "title": "404 - Not Found",
-            "message": "The page you are looking for does not exist."
+            "description": "The page you are looking for does not exist."
         }
     }
 }
