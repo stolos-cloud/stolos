@@ -81,7 +81,7 @@ func (s *Server) Start(ctx context.Context) error {
 }
 
 func (s *Server) Stop(ctx context.Context) error {
-	if s.server != nil {
+	if s != nil && s.server != nil {
 		return s.server.Shutdown(ctx)
 	}
 	return nil
@@ -241,9 +241,9 @@ func (s *Server) Authenticate(ctx context.Context, providerName string) (*oauth2
 }
 
 func NewGitHubProvider(clientID, clientSecret string) Provider {
-	return NewGitHubProvider(clientID, clientSecret)
+	return providers.NewGitHubProvider(clientID, clientSecret)
 }
 
 func NewGCPProvider(clientID, clientSecret string) Provider {
-	return NewGCPProvider(clientID, clientSecret)
+	return providers.NewGCPProvider(clientID, clientSecret)
 }

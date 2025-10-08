@@ -14,10 +14,12 @@ type BootstrapInfo struct {
 }
 
 type SaveState struct {
-	ClusterEndpoint string              `json:"ClusterEndpoint"`
-	BootstrapInfo   BootstrapInfo       `json:"BootstrapInfo"`
-	MachinesCache   talos.Machines      `json:"MachinesCache"`
-	MachinesDisks   talos.MachinesDisks `json:"MachinesDisks"`
+	ClusterEndpoint        string                          `json:"ClusterEndpoint"`
+	BootstrapInfo          BootstrapInfo                   `json:"BootstrapInfo"`
+	MachinesCache          talos.Machines                  `json:"MachinesCache"`
+	MachinesDisks          talos.MachinesDisks             `json:"MachinesDisks"`
+	GitHubApp              github.AppManifest              `json:"GitHubApp"`
+	GitHubAppInstallResult github.AppInstallCallbackResult `json:"GitHubAppInstallResult"`
 }
 
 var ConfigBundle *bundle.Bundle

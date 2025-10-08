@@ -671,9 +671,13 @@ func CreateFieldsForStruct[T any]() []Field {
 }
 
 func RetrieveStructFromFields[T any](fields []Field) (*T, error) {
-	result := reflect.New(reflect.TypeFor[T]())
+	objType := reflect.TypeFor[T]()
+	result := reflect.New(objType)
 	numFields := result.Elem().Type().NumField()
 	for i := 0; i < numFields; i++ {
+		if (objType.Field(i).Tag.Get("field_label")) == "" {
+			continue
+		}
 		value := strings.TrimSpace(fields[i].Input.Value())
 		val := reflect.ValueOf(value)
 		structField := result.Elem().Field(i)

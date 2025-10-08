@@ -44,7 +44,6 @@ var kubeconfig []byte
 var saveState SaveState
 var gcpConfig *gcp.GCPConfig
 var githubConfig *github.Config
-var oauthServer *oauth.Server
 var githubToken *oauth2.Token
 var gcpToken *oauth2.Token
 var gcpEnabled = gcp.GCPClientId != "" && gcp.GCPClientSecret != ""
@@ -122,7 +121,7 @@ func main() {
 		OnEnter:     RunGitHubAuthStepInBackground,
 		OnExit: func(m *tui.Model, s *tui.Step) {
 			// TODO CHECK GH AUTH
-			oauthServer.Stop(context.Background())
+			oauth.CurrentServer.Stop(context.Background())
 		},
 	}
 
@@ -241,7 +240,7 @@ func main() {
 			}
 			RunOAuthServerInBackround(m.Logger)
 			go func() {
-				gcpToken, err = oauthServer.Authenticate(context.Background(), "GCP")
+				gcpToken, err = oauth.CurrentServer.Authenticate(context.Background(), "GCP")
 				if err != nil {
 					m.Logger.Errorf("Failed to authenticate with GCP: %v", err)
 					s.IsDone = true // TODO handle fail
@@ -252,7 +251,7 @@ func main() {
 		},
 		OnExit: func(m *tui.Model, s *tui.Step) {
 			// TODO CHECK GH AUTH
-			oauthServer.Stop(context.Background())
+			oauth.CurrentServer.Stop(context.Background())
 		},
 	}
 
@@ -356,6 +355,7 @@ func main() {
 	tui.DisableStep(&githubAuthStep, !gitHubEnabled)
 	tui.DisableStep(&githubRepoStep, !gitHubEnabled)
 	tui.DisableStep(&githubAppStep, !gitHubEnabled)
+	tui.DisableStep(&githubInstallAppStep, !gitHubEnabled)
 
 	// Attn. sa fait des copies ici !
 	tui.Steps = []*tui.Step{
@@ -378,8 +378,9 @@ func main() {
 
 	f, _ := os.OpenFile("./stolos.log", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	defer f.Close()
-	p, _ := tui.NewWizard(tui.Steps, f)
+	p, model := tui.NewWizard(tui.Steps, f)
 
+	oauth.CreateServerIfNotExists("9999", model.Logger)
 	if gcpEnabled {
 		SetupGCP()
 	}
@@ -397,8 +398,9 @@ func main() {
 func RunOAuthServerInBackround(logger *tui.UILogger) {
 	go func() {
 		ctx := context.Background()
-		defer oauthServer.Stop(ctx)
-		if err := oauthServer.Start(ctx); err != nil {
+		//defer oauthServer.Stop(ctx)
+		oauth.CreateServerIfNotExists("9999", logger)
+		if err := oauth.CurrentServer.Start(ctx); err != nil {
 			logger.Errorf("skipping, oauth server start failed: %v", err)
 			tui.Steps[1].IsDone = true
 			return
@@ -408,22 +410,17 @@ func RunOAuthServerInBackround(logger *tui.UILogger) {
 	}()
 }
 
-func SetupOAuthServer(logger *tui.UILogger) {
-	// Setup OAuth server
-	oauth.CreateServerIfNotExists("9999", logger)
-}
-
 func SetupGitHub() {
 	if github.GithubClientId != "" && github.GithubClientSecret != "" {
 		githubProvider := oauth.NewGitHubProvider(github.GithubClientId, github.GithubClientSecret)
-		oauthServer.RegisterProvider(githubProvider)
+		oauth.CurrentServer.RegisterProvider(githubProvider)
 	}
 }
 
 func SetupGCP() {
 	if gcp.GCPClientId != "" && gcp.GCPClientSecret != "" {
 		gcpProvider := oauth.NewGCPProvider(gcp.GCPClientId, gcp.GCPClientSecret)
-		oauthServer.RegisterProvider(gcpProvider)
+		oauth.CurrentServer.RegisterProvider(gcpProvider)
 	}
 }
 
@@ -488,7 +485,7 @@ func RunGitHubAuthStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 	RunOAuthServerInBackround(m.Logger)
 	go func() {
 		var err error
-		githubToken, err = oauthServer.Authenticate(context.Background(), "GitHub")
+		githubToken, err = oauth.CurrentServer.Authenticate(context.Background(), "GitHub")
 		if err != nil {
 			m.Logger.Errorf("skipping, oauth server authenticate failed: %v", err)
 			s.IsDone = true
