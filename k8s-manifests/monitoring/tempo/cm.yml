@@ -8,7 +8,6 @@ data:
   tempo.yaml: |
     target: all
     multitenancy_enabled: false
-    max_bytes_per_trace: 1000000
     usage_report:
       reporting_enabled: false
     compactor:
@@ -91,6 +90,8 @@ data:
     query_frontend: {}
     overrides:
       defaults:
+        global:
+          max_bytes_per_trace: 1000000
         metrics_generator:
           processors: [service-graphs, span-metrics, local-blocks]
           generate_native_histograms: both

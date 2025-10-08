@@ -28,7 +28,7 @@ func SetupRoutes(r *gin.Engine, h *handlers.Handlers) {
 		protected.Use(middleware.JWTAuthMiddleware(h.JWTService(), h.DB()))
 		{
 			setupISORoutes(protected, h)
-			setupGCPRoutes(protected, h)
+			setupGCPRoutes(api, protected, h)
 			setupTeamRoutes(protected, h)
 			setupUserRoutes(protected, h)
 		}
@@ -94,8 +94,12 @@ func setupUserRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
 	}
 }
 
-func setupGCPRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
-	gcp := api.Group("/gcp")
+func setupGCPRoutes(public *gin.RouterGroup, protected *gin.RouterGroup, h *handlers.Handlers) {
+
+	public.GET("/gcp/resources", h.GCPHandlers().GetGCPResources)
+
+	// Protected routes
+	gcp := protected.Group("/gcp")
 	{
 		// Checks if SA is configured
 		gcp.GET("/status", h.GCPHandlers().GetGCPStatus)
@@ -110,8 +114,6 @@ func setupGCPRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
 
 		gcp.POST("/instances", h.GCPHandlers().QueryGCPInstances)
 
-
-		gcp.GET("/resources", h.GCPHandlers().GetGCPResources)
 		gcp.POST("/resources/refresh", h.GCPHandlers().RefreshGCPResources)
 	}
 }

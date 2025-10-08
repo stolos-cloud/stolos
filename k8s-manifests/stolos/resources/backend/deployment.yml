@@ -41,7 +41,7 @@ spec:
               key: password
         envFrom:
         - secretRef:
-            name: stolos-backend-secret
+            name: gcp-service-account
         volumeMounts:
         - name: gitops-workspace
           mountPath: /root/gitops-workspace

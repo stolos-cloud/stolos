@@ -18,7 +18,7 @@ const (
 
 type User struct {
 	ID           uuid.UUID      `json:"id" gorm:"type:uuid;primary_key"`
-	Email        string         `json:"email" gorm:"not null;uniqueIndex"`
+	Email        string         `json:"email" gorm:"not null;uniqueIndex:idx_users_email,where:deleted_at IS NULL"`
 	PasswordHash string         `json:"-" gorm:"not null"`
 	Role         Role           `json:"role" gorm:"not null;default:'developer'"`
 	Teams        []Team         `json:"teams,omitempty" gorm:"many2many:user_teams;"`

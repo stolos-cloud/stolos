@@ -11,6 +11,7 @@ data:
     otel_metrics_export:
       endpoint: http://alloy:4317
       protocol: grpc
+      features: [network, application]
     otel_traces_export:
       endpoint: http://alloy:4317
       protocol: grpc
@@ -22,10 +23,10 @@ data:
         - /api/v1/*
         - /health
     discovery:
-      instrument:
-        - k8s_namespace: stolos
-          k8s_deployment_name: stolos-backend
-          open_ports: 8080
+      # instrument:
+      #   - k8s_namespace: stolos-system
+      #     k8s_deployment_name: stolos-backend
+      #     open_ports: 8080
       exclude_instrument:
         - exe_path: ".*alloy.*|.*otelcol.*|.*obi.*|.*tempo.*|.*loki.*|.*prometheus.*|.*mimir.*|.*grafana.*|.*jaeger.*"
     attributes:

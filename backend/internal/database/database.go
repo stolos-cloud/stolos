@@ -125,6 +125,10 @@ func runMigrations(db *gorm.DB) error {
 		}
 	}
 
+	if err := migrateUserEmailIndex(db); err != nil {
+		return fmt.Errorf("failed to migrate user email index: %w", err)
+	}
+
 	// auto-migrations
 	return db.AutoMigrate(
 		&models.Cluster{},
@@ -136,6 +140,18 @@ func runMigrations(db *gorm.DB) error {
 		&models.UserTeam{},
 		&models.Deployment{},
 	)
+}
+
+// drops the old email index so AutoMigrate can recreate it
+// as a partial index to allow email reuse after soft delete
+func migrateUserEmailIndex(db *gorm.DB) error {
+	if db.Dialector.Name() == "postgres" {
+		if err := db.Exec("DROP INDEX IF EXISTS idx_users_email").Error; err != nil {
+			return err
+		}
+		log.Println("Dropped old users email index")
+	}
+	return nil
 }
 
 func Seed(db *gorm.DB) error {

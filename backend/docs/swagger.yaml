@@ -524,8 +524,6 @@ paths:
             additionalProperties:
               type: string
             type: object
-      security:
-      - BearerAuth: []
       summary: Get available GCP resources
       tags:
       - gcp
