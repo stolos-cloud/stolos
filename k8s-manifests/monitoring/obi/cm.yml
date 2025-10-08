@@ -11,6 +11,7 @@ data:
     otel_metrics_export:
       endpoint: http://alloy:4317
       protocol: grpc
+      features: [network, application]
     otel_traces_export:
       endpoint: http://alloy:4317
       protocol: grpc
