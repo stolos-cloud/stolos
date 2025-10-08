@@ -191,35 +191,32 @@
         },
         "dialogs": {
             "addUser":  {
-                "title": "Add New User"
+                "title": "Add user"
             },
             "editUser": {
-                "title": "Edit User"
+                "title": "Edit user"
             },
             "deleteUser": {
-                "title": "Delete User",
-                "confirmationText": "Are you sure you want to delete this user? This action cannot be undone."
+                "title": "Delete user",
+                "confirmationText": "Are you sure you want to delete {email} ? This action cannot be undone."
             }
         },
         "formfields": {
-            "firstname": "First Name",
-            "lastname": "Last Name",
             "email": "Email",
             "password": "Password",
             "confirmPassword": "Confirm Password",
             "role": "Role"
         },
         "notifications": {
-            "addSuccess": "User added successfully.",
-            "editSuccess": "User updated successfully.",
-            "deleteSuccess": "User deleted successfully."
+            "addSuccess": "User {email} added successfully",
+            "updateSuccess": "User {email} role updated successfully",
+            "deleteSuccess": "User {email} deleted successfully",
+            "addError": "Failed to add user",
+            "updateError": "Failed to update user",
+            "deleteError": "Failed to delete user"
         },
         "buttons": {
-            "addUser": "Add user",
-            "editUser": "Edit",
-            "deleteUser": "Delete",
-            "save": "Save",
-            "cancel": "Cancel"
+            "addUser": "Add user"
         }
     },
     "rules": {
@@ -254,7 +251,8 @@
         "finish": "Finish",
         "viewDetails": "View Details",
         "refresh": "Refresh",
-        "search": "Search"
+        "search": "Search",
+        "goHome": "Go to home"
     },
     "errors": {
         "sessionExpired": "Your session has expired or is invalid. Please log in again.",
@@ -264,11 +262,11 @@
         "unexpected": "An unexpected error occurred. Please try again later.",
         "403": {
             "title": "403 - Forbidden",
-            "message": "You do not have permission to access this page."
+            "description": "You do not have permission to access this page."
         },
         "404": {
             "title": "404 - Not Found",
-            "message": "The page you are looking for does not exist."
+            "description": "The page you are looking for does not exist."
         }
     }
 }

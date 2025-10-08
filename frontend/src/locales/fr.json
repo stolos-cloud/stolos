@@ -199,7 +199,7 @@
             },
             "deleteUser": {
                 "title": "Supprimer l'utilisateur",
-                "confirmationText": "Êtes-vous sûr de vouloir supprimer cet utilisateur ? Cette action ne peut pas être annulée."
+                "confirmationText": "Êtes-vous sûr de vouloir supprimer {email} ? Cette action ne peut pas être annulée."
             }
         },
         "formfields": {
@@ -209,16 +209,15 @@
             "role": "Rôle"
         },
         "notifications": {
-            "addSuccess": "Utilisateur ajouté avec succès.",
-            "editSuccess": "Utilisateur mis à jour avec succès.",
-            "deleteSuccess": "Utilisateur supprimé avec succès."
+            "addSuccess": "Utilisateur {email} ajouté avec succès",
+            "updateSuccess": "Rôle de l'utilisateur {email} mis à jour avec succès",
+            "deleteSuccess": "Utilisateur {email} supprimé avec succès",
+            "addError": "Échec de l'ajout de l'utilisateur",
+            "updateError": "Échec de la mise à jour de l'utilisateur",
+            "deleteError": "Échec de la suppression de l'utilisateur"
         },
         "buttons": {
-            "addUser": "Ajouter un utilisateur",
-            "editUser": "Modifier",
-            "deleteUser": "Supprimer",
-            "save": "Enregistrer",
-            "cancel": "Annuler"
+            "addUser": "Ajouter un utilisateur"
         }
     },
     "rules": {
@@ -253,7 +252,8 @@
         "finish": "Terminer",
         "viewDetails": "Voir les détails",
         "refresh": "Rafraîchir",
-        "search": "Rechercher"
+        "search": "Rechercher",
+        "goHome": "Aller à l'accueil"
     },
     "errors": {
         "sessionExpired": "Votre session a expiré ou est invalide. Veuillez vous reconnecter.",

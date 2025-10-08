@@ -75,3 +75,13 @@ export async function configureGCPServiceAccountUpload({ region, serviceAccountF
         throw error;
     }
 }
+
+export async function getAvailableGCPResources(){
+    try {
+        const response = await api.get('/api/gcp/resources');
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching GCP resources:', error);
+        throw error;
+    }
+}

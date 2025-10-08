@@ -7,6 +7,8 @@ import CloudProviderPage from '@/pages/operator/CloudProviderPage.vue'
 import SecretsSecurityPage from '@/pages/operator/SecretsSecurityPage.vue'
 import TemplatesPage from '@/pages/operator/TemplatesPage.vue'
 import UserManagementPage from '@/pages/operator/UserManagementPage.vue'
+import Error403Page from '@/pages/errors/Error403Page.vue'
+import Error404Page from '@/pages/errors/Error404Page.vue'
 import i18n from '@/plugins/i18n'
 import { createRouter, createWebHistory } from 'vue-router/auto'
 import store from '@/store'
@@ -128,11 +130,13 @@ const routes = [
   {
     path: '/403',
     name: '403',
+    component: Error403Page,
     meta: { title: 'errors.403.title' }
   },
   {
     path: '/404',
     name: '404',
+    component: Error404Page,
     meta: { title: 'errors.404.title' }
   },
   {

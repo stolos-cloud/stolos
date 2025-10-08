@@ -24,7 +24,7 @@
                 <v-toolbar-title>
                   {{ $t('userManagement.table.title') }}
                 </v-toolbar-title>
-                <BaseButton icon="mdi-plus" size="small" :text="$t('userManagement.buttons.addUser')" @click="showDialogAddUser" />
+                <BaseButton icon="mdi-plus" size="small" :text="$t('userManagement.buttons.addUser')" @click="showAddUserDialog" />
               </v-toolbar>
               <v-text-field
                 v-model="search"
@@ -37,41 +37,40 @@
                 class="pa-3"
               />
             </template>
-            <template v-slot:item.role="{ item }">
+            <template #item.role="{ item }">
                 <div class="d-flex align-center">
                     <span>{{ item.role }}</span>
                     <v-icon
                         class="ml-2"
                         size="small"
                         icon="mdi-pencil"
-                        @click="editRole(item)"
+                        @click="showEditRoleDialog(item)"
                     />
                 </div>
             </template>
-            <template v-slot:item.actions="{ item }">
-              <!-- <v-icon color="medium-emphasis" icon="mdi-delete" size="small" @click="deleteUser(item)"></v-icon> -->
+            <template #item.actions="{ item }">
+              <v-icon color="medium-emphasis" icon="mdi-delete" size="small" @click="deleteUser(item)"></v-icon>
             </template>
           </v-data-table>
         </v-sheet>
-        <BaseDialog v-model="dialogEditUser" :title="$t('userManagement.dialogs.editUser.title')" width="600" closable>
+        <BaseDialog v-model="dialogEditUserRole" :title="$t('userManagement.dialogs.editUser.title')" width="600" closable>
           <v-form v-model="isValidEditUserForm">
-            <BaseTextfield :Textfield="formFields.email" />
-            <BaseTextfield :Textfield="formFields.role" />
+            <BaseSelect v-model="formFields.role.value" :Select="formFields.role" />
           </v-form>
           <template #actions>
-            <BaseButton size="small" variant="outlined" :text="$t('userManagement.buttons.cancel')" @click="cancelEditRole" />
-            <BaseButton size="small" :text="$t('userManagement.buttons.editUser')" :disabled="!isValidEditUserForm" @click="updateUserRole" />
+            <BaseButton size="small" variant="outlined" :text="$t('actionButtons.cancel')" @click="closeEditRoleDialog" />
+            <BaseButton size="small" :text="$t('actionButtons.edit')" :disabled="!isValidEditUserForm" @click="updateRole" />
           </template>
         </BaseDialog>
         <BaseDialog v-model="dialogAddUser" :title="$t('userManagement.dialogs.addUser.title')" width="600" closable>
           <v-form v-model="isValidAddUserForm">
             <BaseTextfield :Textfield="formFields.email" />
-            <BaseTextfield :Textfield="formFields.role" />
             <BaseTextfield :Textfield="formFields.password" />
+            <BaseSelect v-model="formFields.role.value" :Select="formFields.role" />
           </v-form>
           <template #actions>
-            <BaseButton size="small" variant="outlined" :text="$t('userManagement.buttons.cancel')" @click="cancelAddUser" />
-            <BaseButton size="small" :text="$t('userManagement.buttons.addUser')" :disabled="!isValidAddUserForm" @click="addUser" />
+            <BaseButton size="small" variant="outlined" :text="$t('actionButtons.cancel')" @click="closeAddUserDialog" />
+            <BaseButton size="small" :text="$t('actionButtons.add')" :disabled="!isValidAddUserForm" @click="addUser" />
           </template>
         </BaseDialog>
         <v-overlay class="d-flex align-center justify-center" v-model="overlay" persistent>
@@ -79,6 +78,7 @@
               indeterminate
             />
         </v-overlay>
+        <BaseConfirmDialog ref="confirmDialog" />
         <BaseNotification v-model="notification.visible" :text="notification.text" :type="notification.type" />
     </PortalLayout>
 </template>
@@ -87,15 +87,18 @@
 import PortalLayout from '@/components/layouts/PortalLayout.vue';
 import { FormValidationRules } from "@/composables/FormValidationRules.js";
 import { TextField } from "@/models/TextField.js";
+import { Select } from "@/models/Select.js";
 import { ref, reactive, onMounted, computed } from "vue";
 import { useI18n } from "vue-i18n";
-import { getUsers } from '@/services/users.service';
+import { useStore } from "vuex";
+import { getUsers, createNewUser, updateUserRole, deleteUserById } from '@/services/users.service';
 
 const { t } = useI18n();
+const store = useStore();
 const { emailRules, textfieldRules, passwordRules } = FormValidationRules();
 
 // State
-const dialogEditUser = ref(false);
+const dialogEditUserRole = ref(false);
 const dialogAddUser = ref(false);
 const isValidEditUserForm = ref(false);
 const isValidAddUserForm = ref(false);
@@ -103,11 +106,21 @@ const loading = ref(false);
 const overlay = ref(false);
 const users = ref([]);
 const search = ref('');
+const confirmDialog = ref(null);
+const userTemp = ref(null);
 const notification = ref({
   visible: false,
   text: '',
   type: 'info'
 });
+
+// Computed
+const userHeaders = computed(() => [
+  { title: t('userManagement.table.headers.email'), value: 'email'},
+  { title: t('userManagement.table.headers.role'), value: 'role' },
+  { title: t('userManagement.table.headers.actions'), value: 'actions', sortable: false, align: 'center' }
+]);
+const userRoles = computed(() => store.getters['referenceLists/getUserRoles']);
 
 // Form state
 const formFields = reactive({
@@ -123,9 +136,9 @@ const formFields = reactive({
     required: true,
     rules: passwordRules
   }),
-  role: new TextField({
+  role: new Select({
     label: t('userManagement.formfields.role'),
-    type: "text",
+    options: userRoles.value,
     required: true,
     rules: textfieldRules
   })
@@ -136,40 +149,112 @@ onMounted(() => {
   fetchUsers();
 });
 
-// Computed
-const userHeaders = computed(() => [
-  { title: t('userManagement.table.headers.email'), value: 'email'},
-  { title: t('userManagement.table.headers.role'), value: 'role' },
-  { title: t('userManagement.table.headers.actions'), value: 'actions', sortable: false, align: 'center' }
-]);
-
 //Methods
 function fetchUsers() {
   getUsers().then(response => {
-    users.value = response.users;
+    users.value = response.users.map(user => ({
+      ...user,
+      role: user.role.charAt(0).toUpperCase() + user.role.slice(1)
+    }));
   }).catch(error => {
     console.error("Error fetching users:", error);
   });
 }
 
-function editRole(item) {
+function showEditRoleDialog(item) {
   formFields.role.value = item.role;
-  dialogEditUser.value = true;
+  userTemp.value = item;
+  dialogEditUserRole.value = true;
 }
 
-function cancelEditRole() {
-    formFields.role.value = undefined;
-    dialogEditUser.value = false;
-}
-
-function showDialogAddUser() {
+function showAddUserDialog() {
   formFields.email.value = undefined;
   formFields.role.value = undefined;
   formFields.password.value = undefined;
   dialogAddUser.value = true;
 }
 
-function cancelAddUser() {
+function deleteUser(item) {
+    confirmDialog.value.open({
+        title: t('userManagement.dialogs.deleteUser.title'),
+        message: t('userManagement.dialogs.deleteUser.confirmationText', { email: item.email }),
+        confirmText: t('actionButtons.confirm'),
+        onConfirm: () => {
+            deleteUserConfirmed(item);
+        }
+    })
+}
+
+function addUser() {
+    if (!isValidAddUserForm.value) return;
+
+    overlay.value = true;
+    const userData = {
+        email: formFields.email.value,
+        role: formFields.role.value,
+        password: formFields.password.value
+    };
+
+    createNewUser(userData)
+    .then(() => {
+        showNotification(t('userManagement.notifications.addSuccess', { email: formFields.email.value }), 'success');
+        fetchUsers();
+    })
+    .catch((error) => {
+        console.error("Error adding user:", error);
+        showNotification(t('userManagement.notifications.addError'), 'error');
+    })
+    .finally(() => {
+        overlay.value = false;
+        closeAddUserDialog();
+    });
+}
+
+function updateRole() {
+    if (!isValidEditUserForm.value) return;
+
+    overlay.value = true;
+    const userToUpdate = userTemp.value;
+    
+    updateUserRole(userToUpdate.id, formFields.role.value)
+    .then(() => {
+        showNotification(t('userManagement.notifications.updateSuccess', { email: userToUpdate.email }), 'success');
+        fetchUsers();
+    })
+    .catch((error) => {
+        console.error("Error updating user role:", error);
+        showNotification(t('userManagement.notifications.updateError'), 'error');
+    })
+    .finally(() => {
+        overlay.value = false;
+        userTemp.value = null;
+        closeEditRoleDialog();
+    });
+}   
+
+function deleteUserConfirmed(item) {
+  overlay.value = true;
+
+  deleteUserById(item.id)
+  .then(() => {
+    showNotification(t('userManagement.notifications.deleteSuccess', { email: item.email }), 'success');
+    fetchUsers();
+  })
+  .catch((error) => {
+    console.error("Error deleting user:", error);
+    showNotification(t('userManagement.notifications.deleteError'), 'error');
+  })
+  .finally(() => {
+    overlay.value = false;
+  });
+}
+
+function closeEditRoleDialog() {
+    formFields.role.value = undefined;
+    dialogEditUserRole.value = false;
+}
+
+function closeAddUserDialog() {
     formFields.email.value = undefined;
     formFields.role.value = undefined;
     formFields.password.value = undefined;

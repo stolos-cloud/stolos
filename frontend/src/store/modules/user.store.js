@@ -13,16 +13,6 @@ export const user = {
         theme: StorageService.get('theme') || 'dark',
         language: StorageService.get('language') || 'en'
     },
-    getters: {
-        getEmail: (state) => state.email,
-        getRole: (state) => state.role,
-        getId: (state) => state.id,
-        getToken: (state) => state.token,
-        isAuthenticated: (state) => state.isAuthenticated,
-        getTeams: (state) => state.teams,
-        getTheme: (state) => state.theme,
-        getLanguage: (state) => state.language
-    },
     mutations: {
         SET_USER(state, { email, role, id, token, teams }) {
             state.email = email;
@@ -108,5 +98,15 @@ export const user = {
                 });
             });
         }
-    }
+    },
+    getters: {
+        getEmail: (state) => state.email,
+        getRole: (state) => state.role,
+        getId: (state) => state.id,
+        getToken: (state) => state.token,
+        isAuthenticated: (state) => state.isAuthenticated,
+        getTeams: (state) => state.teams,
+        getTheme: (state) => state.theme,
+        getLanguage: (state) => state.language
+    },
 };

@@ -72,8 +72,10 @@ import { RadioGroup } from '@/models/RadioGroup.js';
 import { downloadISO, createSamplesNodes, getConnectedNodes } from '@/services/provisioning.service';
 import { computed, ref, reactive, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useStore } from 'vuex';
 
 const { t } = useI18n();
+const store = useStore();
 
 // State
 const dialogDownloadISOOnPremise = ref(false);
@@ -81,28 +83,6 @@ const isValid = ref(false);
 const search = ref('');
 const loading = ref(false);
 const nodes = ref([]);
-
-const isoRadioButtons = reactive(new RadioGroup({
-  label: "ISO choice",
-  precision: "Choose the architecture of the ISO you want to download",
-  options: [
-    {
-      label: "ARM",
-      value: 'arm',
-    },
-    {
-      label: "AMD",
-      value: 'amd',
-    }
-  ],
-  required: true,
-  rules: [(v) => !!v || t('dashboard.dialogs.downloadISOOnPremise.radioOptions.required') ]
-}));
-
-//mounted
-onMounted(() => {
-    fetchConnectedNodesActive();
-});
 
 // Computed
 const actions = computed(() => [
@@ -117,6 +97,21 @@ const nodeHeaders = computed(() => [
   { title: t('dashboard.onPremises.table.headers.role'), value: 'role' },
   { title: t('dashboard.onPremises.table.headers.status'), value: 'status', align: "center" }
 ]);
+const listISOTypes = computed(() => store.getters['referenceLists/getIsoTypes']);
+
+// Reactives
+const isoRadioButtons = reactive(new RadioGroup({
+  label: "ISO choice",
+  precision: "Choose the architecture of the ISO you want to download",
+  options: listISOTypes.value,
+  required: true,
+  rules: [(v) => !!v || t('dashboard.dialogs.downloadISOOnPremise.radioOptions.required')]
+}));
+
+//mounted
+onMounted(() => {
+    fetchConnectedNodesActive();
+});
 
 // Methods
 function cancelDownloadISO() {
