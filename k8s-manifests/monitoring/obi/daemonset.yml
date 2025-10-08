@@ -31,6 +31,8 @@ spec:
           value: '/config/obi-config.yml'
         - name: OTEL_EBPF_KUBE_METADATA_ENABLE
           value: 'true'
+        - name: OTEL_EBPF_KUBE_CLUSTER_NAME
+          value: 'stolos-prod' # todo patch this
         - name: KUBE_NAMESPACE
           valueFrom:
             fieldRef:
