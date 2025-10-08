@@ -16,7 +16,7 @@ import (
 )
 
 type Client struct {
-	config        *gcpconfig.Config
+	config        *gcpconfig.GCPConfig
 	computeClient *compute.Service
 	storageClient *storage.Service
 }
@@ -30,7 +30,7 @@ func NewClientFromEnv() (*Client, error) {
 	return NewClientFromConfig(config)
 }
 
-func NewClientFromConfig(config *gcpconfig.Config) (*Client, error) {
+func NewClientFromConfig(config *gcpconfig.GCPConfig) (*Client, error) {
 	ctx := context.Background()
 	credentials, err := google.CredentialsFromJSON(ctx, []byte(config.ServiceAccountJSON), compute.CloudPlatformScope, storage.CloudPlatformScope)
 	if err != nil {
@@ -58,7 +58,7 @@ func NewClientFromConfig(config *gcpconfig.Config) (*Client, error) {
 	}, nil
 }
 
-func configFromEnv() (*gcpconfig.Config, error) {
+func configFromEnv() (*gcpconfig.GCPConfig, error) {
 	projectID := os.Getenv("GCP_PROJECT_ID")
 	if projectID == "" {
 		return nil, fmt.Errorf("GCP_PROJECT_ID environment variable is required")
@@ -90,7 +90,7 @@ func (c *Client) GetComputeService() *compute.Service {
 	return c.computeClient
 }
 
-func (c *Client) GetConfig() *gcpconfig.Config {
+func (c *Client) GetConfig() *gcpconfig.GCPConfig {
 	return c.config
 }
 

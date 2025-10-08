@@ -11,6 +11,7 @@ import (
 
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/logger"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/oauth"
+	"github.com/stolos-cloud/stolos-bootstrap/pkg/oauth/providers"
 
 	"golang.org/x/oauth2"
 	resourcemanager "google.golang.org/api/cloudresourcemanager/v1"
@@ -25,14 +26,14 @@ import (
 var GCPClientId string
 var GCPClientSecret string
 
-type Config struct {
-	ProjectID           string `json:"project_id"`
-	Region              string `json:"region"`
+type GCPConfig struct {
+	ProjectID           string `json:"project_id" field_label:"GCP Project ID" field_required:"true" field_default:"cedille-464122"`
+	Region              string `json:"region" field_label:"GCP Region" field_required:"true" field_default:"us-central1"`
 	ServiceAccountJSON  string `json:"service_account_json"`
 	ServiceAccountEmail string `json:"service_account_email"`
 }
 
-func NewConfig(projectID, region, serviceAccountJSON, serviceAccountEmail string) (*Config, error) {
+func NewConfig(projectID, region, serviceAccountJSON, serviceAccountEmail string) (*GCPConfig, error) {
 	// Basic validation - ensure it's valid JSON and contains project_id
 	var jsonData map[string]any
 	if err := json.Unmarshal([]byte(serviceAccountJSON), &jsonData); err != nil {
@@ -48,7 +49,7 @@ func NewConfig(projectID, region, serviceAccountJSON, serviceAccountEmail string
 		return nil, fmt.Errorf("service account JSON missing project_id field")
 	}
 
-	return &Config{
+	return &GCPConfig{
 		ProjectID:           projectID,
 		Region:              region,
 		ServiceAccountJSON:  serviceAccountJSON,
@@ -57,7 +58,7 @@ func NewConfig(projectID, region, serviceAccountJSON, serviceAccountEmail string
 }
 
 // ToSecret serializes
-func (c *Config) ToSecret(namespace, secretName string) *corev1.Secret {
+func (c *GCPConfig) ToSecret(namespace, secretName string) *corev1.Secret {
 	data := map[string][]byte{
 		"gcp_project_id":            []byte(c.ProjectID),
 		"gcp_region":                []byte(c.Region),
@@ -84,12 +85,12 @@ func (c *Config) ToSecret(namespace, secretName string) *corev1.Secret {
 }
 
 // FromSecret deserializes secret to GCP config
-func FromSecret(secret *corev1.Secret) (*Config, error) {
+func FromSecret(secret *corev1.Secret) (*GCPConfig, error) {
 	if secret.Data == nil {
 		return nil, fmt.Errorf("secret data is nil")
 	}
 
-	return &Config{
+	return &GCPConfig{
 		ProjectID:           string(secret.Data["gcp_project_id"]),
 		Region:              string(secret.Data["gcp_region"]),
 		ServiceAccountJSON:  string(secret.Data["gcp_service_account_json"]),
@@ -97,7 +98,7 @@ func FromSecret(secret *corev1.Secret) (*Config, error) {
 	}, nil
 }
 
-func (c *Config) CreateOrUpdateSecret(ctx context.Context, client kubernetes.Interface, namespace, secretName string) error {
+func (c *GCPConfig) CreateOrUpdateSecret(ctx context.Context, client kubernetes.Interface, namespace, secretName string) error {
 	secret := c.ToSecret(namespace, secretName)
 
 	existingSecret, err := client.CoreV1().Secrets(namespace).Get(ctx, secretName, metav1.GetOptions{})
@@ -114,7 +115,7 @@ func (c *Config) CreateOrUpdateSecret(ctx context.Context, client kubernetes.Int
 	return err
 }
 
-func GetSecretFromCluster(ctx context.Context, client kubernetes.Interface, namespace, secretName string) (*Config, error) {
+func GetSecretFromCluster(ctx context.Context, client kubernetes.Interface, namespace, secretName string) (*GCPConfig, error) {
 	secret, err := client.CoreV1().Secrets(namespace).Get(ctx, secretName, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get secret: %w", err)
@@ -123,7 +124,7 @@ func GetSecretFromCluster(ctx context.Context, client kubernetes.Interface, name
 	return FromSecret(secret)
 }
 
-func CreateServiceAccountWithOAuth(ctx context.Context, projectID, region string, token *oauth2.Token, serviceAccountName string) (*Config, error) {
+func CreateServiceAccountWithOAuth(ctx context.Context, projectID, region string, token *oauth2.Token, serviceAccountName string) (*GCPConfig, error) {
 	client := &http.Client{}
 	ctx = context.WithValue(ctx, oauth2.HTTPClient, client)
 
@@ -256,10 +257,10 @@ func assignServiceAccountRoles(rmService *resourcemanager.Service, projectID, se
 	return nil
 }
 
-func AuthenticateAndSetup(oauthServer *oauth.Server, clientID, clientSecret, projectID, region string, logger logger.Logger) (*Config, error) {
+func AuthenticateAndSetup(oauthServer *oauth.Server, clientID, clientSecret, projectID, region string, logger logger.Logger) (*GCPConfig, error) {
 	ctx := context.Background()
 
-	provider := oauth.NewGCPProvider(clientID, clientSecret)
+	provider := providers.NewGCPProvider(clientID, clientSecret)
 	oauthServer.RegisterProvider(provider)
 
 	token, err := oauthServer.Authenticate(ctx, "GCP")

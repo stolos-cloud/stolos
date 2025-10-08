@@ -13,6 +13,8 @@ import (
 	"golang.org/x/oauth2"
 )
 
+var CurrentServer *Server
+
 type Provider interface {
 	GetConfig() *oauth2.Config
 	GetName() string
@@ -31,15 +33,17 @@ type Server struct {
 	logger        logger.Logger
 }
 
-func NewServer(port string, logger logger.Logger) *Server {
-	return &Server{
-		port:          port,
-		providers:     make(map[string]Provider),
-		tokens:        make(map[string]*oauth2.Token),
-		errors:        make(map[string]error),
-		channels:      make(map[string]chan string),
-		errorChannels: make(map[string]chan error),
-		logger:        logger,
+func CreateServerIfNotExists(port string, logger logger.Logger) {
+	if CurrentServer == nil {
+		CurrentServer = &Server{
+			port:          port,
+			providers:     make(map[string]Provider),
+			tokens:        make(map[string]*oauth2.Token),
+			errors:        make(map[string]error),
+			channels:      make(map[string]chan string),
+			errorChannels: make(map[string]chan error),
+			logger:        logger,
+		}
 	}
 }
 
@@ -51,6 +55,7 @@ func (s *Server) RegisterProvider(provider Provider) {
 }
 
 func (s *Server) Start(ctx context.Context) error {
+
 	mux := http.NewServeMux()
 
 	// Register callback handlers for each provider
@@ -76,7 +81,7 @@ func (s *Server) Start(ctx context.Context) error {
 }
 
 func (s *Server) Stop(ctx context.Context) error {
-	if s.server != nil {
+	if s != nil && s.server != nil {
 		return s.server.Shutdown(ctx)
 	}
 	return nil

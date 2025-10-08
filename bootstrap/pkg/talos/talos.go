@@ -9,31 +9,22 @@ import (
 	"strings"
 	"time"
 
+	factoryClient "github.com/siderolabs/image-factory/pkg/client"
 	eventsapi "github.com/siderolabs/siderolink/api/events"
 	"github.com/siderolabs/siderolink/pkg/events"
-	"github.com/siderolabs/talos/pkg/machinery/api/storage"
-	"github.com/siderolabs/talos/pkg/machinery/config/configpatcher"
-	"github.com/siderolabs/talos/pkg/machinery/config/container"
-	"github.com/siderolabs/talos/pkg/machinery/config/encoder"
-	"github.com/siderolabs/talos/pkg/machinery/proto"
-	"github.com/stolos-cloud/stolos-bootstrap/pkg/marshal"
-
-	"github.com/cosi-project/runtime/pkg/safe"
-	factoryClient "github.com/siderolabs/image-factory/pkg/client"
-	"github.com/siderolabs/talos/cmd/talosctl/cmd/talos"
-	"github.com/siderolabs/talos/pkg/cluster"
-	"github.com/siderolabs/talos/pkg/cluster/check"
 	clusterapi "github.com/siderolabs/talos/pkg/machinery/api/cluster"
 	"github.com/siderolabs/talos/pkg/machinery/api/machine"
 	machineapi "github.com/siderolabs/talos/pkg/machinery/api/machine"
+	"github.com/siderolabs/talos/pkg/machinery/api/storage"
 	machineryClient "github.com/siderolabs/talos/pkg/machinery/client"
 	"github.com/siderolabs/talos/pkg/machinery/client/config"
 	"github.com/siderolabs/talos/pkg/machinery/config/bundle"
+	"github.com/siderolabs/talos/pkg/machinery/config/configpatcher"
+	"github.com/siderolabs/talos/pkg/machinery/config/container"
+	"github.com/siderolabs/talos/pkg/machinery/config/encoder"
 	"github.com/siderolabs/talos/pkg/machinery/config/types/v1alpha1"
-	clusterres "github.com/siderolabs/talos/pkg/machinery/resources/cluster"
+	"github.com/siderolabs/talos/pkg/machinery/proto"
 	"github.com/stolos-cloud/stolos-bootstrap/internal/logging"
-	"github.com/stolos-cloud/stolos-bootstrap/internal/tui"
-	"github.com/stolos-cloud/stolos-bootstrap/pkg/state"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -58,17 +49,17 @@ func (h *EventHandler) HandleEvent(ctx context.Context, event events.Event) erro
 	return h.HandleEventFunc(ctx, event)
 }
 
-func ApplyConfigsToNodes(saveState *state.SaveState, bootstrapInfos *state.BootstrapInfo) error {
+func ApplyConfigsToNodes(machineCache *Machines, machinesDisks MachinesDisks, talosInfos *TalosInfo, configBundle *bundle.Bundle) (*bundle.Bundle, error) {
 	var err error
 
 	// CONTROLPLANES
 	i := 1
-	for ip, conf := range saveState.MachinesCache.ControlPlanes {
+	for ip, conf := range machineCache.ControlPlanes {
 
-		if state.ConfigBundle == nil {
-			state.ConfigBundle, err = CreateMachineConfigBundle(ip, bootstrapInfos)
+		if configBundle == nil {
+			configBundle, err = CreateMachineConfigBundle(ip, talosInfos)
 			if err != nil {
-				return err
+				return configBundle, err
 			}
 		}
 
@@ -84,7 +75,7 @@ func ApplyConfigsToNodes(saveState *state.SaveState, bootstrapInfos *state.Boots
 				},
 				MachineInstall: &v1alpha1.InstallConfig{
 					InstallDiskSelector: &v1alpha1.InstallDiskSelector{
-						BusPath: saveState.MachinesDisks[ip],
+						BusPath: machinesDisks[ip],
 					},
 				},
 			},
@@ -92,11 +83,11 @@ func ApplyConfigsToNodes(saveState *state.SaveState, bootstrapInfos *state.Boots
 
 		ctr := container.NewV1Alpha1(cfg)
 		patch := configpatcher.NewStrategicMergePatch(ctr)
-		err = state.ConfigBundle.ApplyPatches([]configpatcher.Patch{patch}, true, false)
+		err = configBundle.ApplyPatches([]configpatcher.Patch{patch}, true, false)
 
-		machineConfigRendered, err := state.ConfigBundle.Serialize(encoder.CommentsDocs, machineconf.TypeControlPlane)
+		machineConfigRendered, err := configBundle.Serialize(encoder.CommentsDocs, machineconf.TypeControlPlane)
 		if err != nil {
-			return err
+			return configBundle, err
 		}
 
 		c, err := machineryClient.New(context.Background(), machineryClient.WithTLSConfig(&tls.Config{
@@ -104,7 +95,7 @@ func ApplyConfigsToNodes(saveState *state.SaveState, bootstrapInfos *state.Boots
 		}), machineryClient.WithEndpoints(ip))
 
 		if err != nil {
-			return err
+			return configBundle, err
 		}
 
 		_, err = c.ApplyConfiguration(context.Background(), &machineapi.ApplyConfigurationRequest{
@@ -114,14 +105,13 @@ func ApplyConfigsToNodes(saveState *state.SaveState, bootstrapInfos *state.Boots
 			TryModeTimeout: nil,
 		})
 
-		saveState.MachinesCache.ControlPlanes[ip] = machineConfigRendered
-		_ = marshal.SaveStateToJSON(*saveState)
+		machineCache.ControlPlanes[ip] = machineConfigRendered
 		i++
 	}
 
 	//WORKERS
 	i = 0
-	for ip, conf := range saveState.MachinesCache.Workers {
+	for ip, conf := range machineCache.Workers {
 		if len(conf) > 0 {
 			continue
 		}
@@ -134,7 +124,7 @@ func ApplyConfigsToNodes(saveState *state.SaveState, bootstrapInfos *state.Boots
 				},
 				MachineInstall: &v1alpha1.InstallConfig{
 					InstallDiskSelector: &v1alpha1.InstallDiskSelector{
-						BusPath: saveState.MachinesDisks[ip],
+						BusPath: machinesDisks[ip],
 					},
 				},
 			},
@@ -142,11 +132,11 @@ func ApplyConfigsToNodes(saveState *state.SaveState, bootstrapInfos *state.Boots
 
 		ctr := container.NewV1Alpha1(cfg)
 		patch := configpatcher.NewStrategicMergePatch(ctr)
-		err = state.ConfigBundle.ApplyPatches([]configpatcher.Patch{patch}, false, true)
+		err = configBundle.ApplyPatches([]configpatcher.Patch{patch}, false, true)
 
-		machineConfigRendered, err := state.ConfigBundle.Serialize(encoder.CommentsDocs, machineconf.TypeWorker)
+		machineConfigRendered, err := configBundle.Serialize(encoder.CommentsDocs, machineconf.TypeWorker)
 		if err != nil {
-			return err
+			return configBundle, err
 		}
 
 		c, err := machineryClient.New(context.Background(), machineryClient.WithTLSConfig(&tls.Config{
@@ -154,7 +144,7 @@ func ApplyConfigsToNodes(saveState *state.SaveState, bootstrapInfos *state.Boots
 		}), machineryClient.WithEndpoints(ip))
 
 		if err != nil {
-			return err
+			return configBundle, err
 		}
 
 		_, err = c.ApplyConfiguration(context.Background(), &machineapi.ApplyConfigurationRequest{
@@ -164,15 +154,14 @@ func ApplyConfigsToNodes(saveState *state.SaveState, bootstrapInfos *state.Boots
 			TryModeTimeout: nil,
 		})
 
-		saveState.MachinesCache.Workers[ip] = machineConfigRendered
-		_ = marshal.SaveStateToJSON(*saveState)
+		machineCache.Workers[ip] = machineConfigRendered
 		i++
 	}
 
-	return nil
+	return configBundle, nil
 }
 
-func EventSink(bootstrapInfos *state.BootstrapInfo, eventHandler func(ctx context.Context, event events.Event) error) error {
+func EventSink(talosInfos *TalosInfo, eventHandler func(ctx context.Context, event events.Event) error) error {
 	server := grpc.NewServer(
 		grpc.SharedWriteBuffer(true),
 	)
@@ -190,7 +179,7 @@ func EventSink(bootstrapInfos *state.BootstrapInfo, eventHandler func(ctx contex
 		&machineapi.PhaseEvent{},
 	})
 	eventsapi.RegisterEventSinkServiceServer(server, sink)
-	listener, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", fmt.Sprintf("%s:%s", bootstrapInfos.TalosInfo.HTTPHostname, bootstrapInfos.TalosInfo.HTTPPort))
+	listener, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", fmt.Sprintf("%s:%s", talosInfos.HTTPHostname, talosInfos.HTTPPort))
 	if err != nil {
 		return err
 	}
@@ -221,7 +210,7 @@ func CreateMachineryClientFromTalosconfig(talosConfig *config.Config) machineryC
 	return *machinery
 }
 
-func CreateMachineConfigBundle(controlPlaneIp string, bootstrapInfos *state.BootstrapInfo) (*bundle.Bundle, error) {
+func CreateMachineConfigBundle(controlPlaneIp string, talosInfos *TalosInfo) (*bundle.Bundle, error) {
 
 	var secretsBundle *secrets.Bundle
 
@@ -230,7 +219,7 @@ func CreateMachineConfigBundle(controlPlaneIp string, bootstrapInfos *state.Boot
 		generate.WithNetworkOptions(
 			v1alpha1.WithKubeSpan(),
 		),
-		generate.WithInstallImage(fmt.Sprintf("ghcr.io/siderolabs/installer:%s", bootstrapInfos.TalosInfo.TalosVersion)),
+		generate.WithInstallImage(fmt.Sprintf("ghcr.io/siderolabs/installer:%s", talosInfos.TalosVersion)),
 		// generate.WithAdditionalSubjectAltNames([]string{_____}),// TODO : Add the right SAN for external IP / DNS
 		generate.WithPersist(true),
 		generate.WithClusterDiscovery(true),
@@ -238,9 +227,9 @@ func CreateMachineConfigBundle(controlPlaneIp string, bootstrapInfos *state.Boot
 
 	configBundle, err := talosgen.GenerateConfigBundle(
 		genOptions,
-		bootstrapInfos.TalosInfo.ClusterName,
+		talosInfos.ClusterName,
 		fmt.Sprintf("https://%s:6443", controlPlaneIp),
-		bootstrapInfos.TalosInfo.KubernetesVersion,
+		talosInfos.KubernetesVersion,
 		[]string{},
 		[]string{},
 		[]string{})
@@ -249,7 +238,7 @@ func CreateMachineConfigBundle(controlPlaneIp string, bootstrapInfos *state.Boot
 		return nil, err
 	}
 
-	talosConfig := configBundle.TalosConfig().Contexts[bootstrapInfos.TalosInfo.ClusterName]
+	talosConfig := configBundle.TalosConfig().Contexts[talosInfos.ClusterName]
 	talosConfig.Endpoints = append(talosConfig.Endpoints, fmt.Sprintf("https://%s:50000", controlPlaneIp))
 
 	return configBundle, nil
@@ -282,7 +271,7 @@ func ExecuteBootstrap(talosApiClient machineryClient.Client) error {
 	return nil
 }
 
-func RunBasicClusterHealthCheck(talosApiClient machineryClient.Client, loggerRef *tui.UILogger) {
+func RunBasicClusterHealthCheck(talosApiClient machineryClient.Client, loggerRef *logging.Logger) {
 	healthCheckClient, err := talosApiClient.ClusterHealthCheck(context.Background(), 20*time.Minute, &clusterapi.ClusterInfo{})
 	if err != nil {
 		panic(err)
@@ -302,7 +291,7 @@ func RunBasicClusterHealthCheck(talosApiClient machineryClient.Client, loggerRef
 		}
 
 		if msg.GetMetadata().GetError() != "" {
-			loggerRef.Errorf("Cluster health check failed: %s", msg.GetMetadata().GetError())
+			(*loggerRef).Errorf("Cluster health check failed: %s", msg.GetMetadata().GetError())
 			panic(msg.GetMetadata().GetError())
 		}
 	}
@@ -322,55 +311,3 @@ func GetDisks(ctx context.Context, ip string) ([]*storage.Disk, error) {
 	disks := disksRes.GetMessages()[0].Disks
 	return disks, nil
 }
-
-// ======================
-// Reference: The following code is heavily based on `health.go` part of the talosctl command line utility.
-// https://github.com/siderolabs/talos/tree/main/cmd/talosctl/cmd/talos/health.go
-func RunDetailedClusterHealthCheck(talosApiClient machineryClient.Client, loggerRef *tui.UILogger) {
-	// Create ClientProvider
-	clientProvider := &cluster.ConfigClientProvider{
-		DefaultClient: &talosApiClient,
-	}
-
-	members, err := DiscoverClusterMembers()
-
-	// Create Info
-	clusterInfo, err := check.NewDiscoveredClusterInfo(members)
-
-	// Build ClusterInfo for check
-	checkClusterInfo := struct {
-		cluster.ClientProvider
-		cluster.K8sProvider
-		cluster.Info
-	}{
-		ClientProvider: clientProvider,
-		K8sProvider: &cluster.KubernetesClient{
-			ClientProvider: clientProvider,
-		},
-		Info: clusterInfo,
-	}
-
-	// Run Healthcheck and report to custom logger
-	err = check.Wait(context.Background(), &checkClusterInfo, append(check.DefaultClusterChecks(), check.ExtraClusterChecks()...), logging.UILoggerReporter(loggerRef))
-	if err != nil {
-		loggerRef.Info("Failure running health checks!")
-	}
-}
-
-func DiscoverClusterMembers() ([]*clusterres.Member, error) {
-	// Discover Cluster Members
-	var members []*clusterres.Member
-	err := talos.WithClientNoNodes(func(ctx context.Context, c *machineryClient.Client) error {
-		items, err := safe.StateListAll[*clusterres.Member](ctx, c.COSI)
-		if err != nil {
-			return err
-		}
-
-		items.ForEach(func(item *clusterres.Member) { members = append(members, item) })
-
-		return nil
-	})
-	return members, err
-}
-
-//======================
