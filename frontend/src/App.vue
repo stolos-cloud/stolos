@@ -16,7 +16,7 @@ const i18n = useI18n();
 const savedTheme = store.getters['user/getTheme']
 const savedLanguage = store.getters['user/getLanguage']
 
-theme.global.name.value = savedTheme
+theme.change(savedTheme);
 i18n.locale.value = savedLanguage
 
 onMounted(async () => {
