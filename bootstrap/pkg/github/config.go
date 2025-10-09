@@ -2,10 +2,16 @@ package github
 
 import (
 	"context"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"time"
 
+	"github.com/goccy/go-json"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/logger"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/oauth"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/oauth/providers"
@@ -20,20 +26,105 @@ import (
 )
 
 // set via ldflags
-var GithubClientId string
-var GithubClientSecret string
+var GithubOauthClientId string
+var GithubOauthClientSecret string
 
-type Client struct {
+type OauthClient struct {
 	*github.Client
 	token *oauth2.Token
 }
 
-func NewClient(token *oauth2.Token) *Client {
+// legacy method
+func NewOauthClient(token *oauth2.Token) *OauthClient {
 	client := github.NewClient(nil).WithAuthToken(token.AccessToken)
-	return &Client{
+	return &OauthClient{
 		Client: client,
 		token:  token,
 	}
+}
+
+// response from GitHub when generating an installation access token
+type GitHubAppAccessToken struct {
+	Token     string    `json:"token"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
+// Create installation access token given GitHub App installation
+func GenerateGitHubAccessToken(ctx context.Context, appID int64, privateKeyPEM string, installationID string) (string, error) {
+	// Generate JWT for app authentication
+	jwtToken, err := generateAppJWT(appID, privateKeyPEM)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate JWT: %w", err)
+	}
+
+	// Request installation access token
+	apiURL := fmt.Sprintf("https://api.github.com/app/installations/%s/access_tokens", installationID)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to build request: %w", err)
+	}
+
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("Authorization", "Bearer "+jwtToken)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("HTTP request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("read body failed: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusCreated {
+		return "", fmt.Errorf("unexpected status %d: body %s", resp.StatusCode, string(body))
+	}
+
+	var tokenResponse GitHubAppAccessToken
+	if err := json.Unmarshal(body, &tokenResponse); err != nil {
+		return "", fmt.Errorf("failed to unmarshal token response: %w", err)
+	}
+
+	return tokenResponse.Token, nil
+}
+
+// creates a JWT for authenticating as a GitHub App
+func generateAppJWT(appID int64, privateKeyPEM string) (string, error) {
+	block, _ := pem.Decode([]byte(privateKeyPEM))
+	if block == nil {
+		return "", fmt.Errorf("failed to parse PEM block containing private key")
+	}
+
+	key, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse private key: %w", err)
+	}
+
+	now := time.Now().UTC()
+	claims := jwt.RegisteredClaims{
+		Issuer:    fmt.Sprintf("%d", appID),
+		IssuedAt:  jwt.NewNumericDate(now),
+		ExpiresAt: jwt.NewNumericDate(now.Add(5 * time.Minute)), // must be <= 10m
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+	return token.SignedString(key)
+}
+
+// NewClientFromApp creates a GitHub client using GitHub App credentials
+func NewClientFromApp(ctx context.Context, appID int64, privateKeyPEM string, installationID string) (*OauthClient, error) {
+	installationToken, err := GenerateGitHubAccessToken(ctx, appID, privateKeyPEM, installationID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate installation token: %w", err)
+	}
+
+	client := github.NewClient(nil).WithAuthToken(installationToken)
+	return &OauthClient{
+		Client: client,
+		token:  nil, // No OAuth token for app-based auth
+	}, nil
 }
 
 // GitHubInfo contains repository setup information
@@ -46,12 +137,14 @@ type GitHubInfo struct {
 
 // Config contains GitHub credentials for backend usage
 type Config struct {
-	AccessToken string `json:"access_token"`
-	RepoOwner   string `json:"repo_owner"`
-	RepoName    string `json:"repo_name"`
+	RepoOwner      string `json:"repo_owner"`
+	RepoName       string `json:"repo_name"`
+	AppID          string `json:"app_id,omitempty"`
+	AppPEM         string `json:"app_pem,omitempty"`
+	InstallationID string `json:"installation_id,omitempty"`
 }
 
-func (client *Client) InitRepo(info *GitHubInfo, isPrivate bool) (*github.Repository, error) {
+func (client *OauthClient) InitRepo(info *GitHubInfo, isPrivate bool) (*github.Repository, error) {
 	templateRepoOwner := os.Getenv("GITHUB_TEMPLATE_REPO_OWNER")
 	templateRepoName := os.Getenv("GITHUB_TEMPLATE_REPO_NAME")
 	if templateRepoOwner == "" {
@@ -87,7 +180,7 @@ func (client *Client) InitRepo(info *GitHubInfo, isPrivate bool) (*github.Reposi
 }
 
 // createInitialConfig creates the initial common.yml configuration file
-func (c *Client) createInitialConfig(info *GitHubInfo) error {
+func (c *OauthClient) createInitialConfig(info *GitHubInfo) error {
 	commonConfig := struct {
 		BaseDomain string `yaml:"base_domain"`
 		LbIP       string `yaml:"lb_ip"`
@@ -134,12 +227,12 @@ func (c *Client) createInitialConfig(info *GitHubInfo) error {
 }
 
 // GetToken returns the OAuth token
-func (c *Client) GetToken() *oauth2.Token {
+func (c *OauthClient) GetToken() *oauth2.Token {
 	return c.token
 }
 
 // AuthenticateAndSetup performs OAuth authentication and repository initialization
-func AuthenticateAndSetup(oauthServer *oauth.Server, clientID, clientSecret string, info *GitHubInfo, logger logger.Logger) (*Client, error) {
+func AuthenticateAndSetup(oauthServer *oauth.Server, clientID, clientSecret string, info *GitHubInfo, logger logger.Logger) (*OauthClient, error) {
 	ctx := context.Background()
 
 	provider := providers.NewGitHubProvider(clientID, clientSecret)
@@ -150,7 +243,7 @@ func AuthenticateAndSetup(oauthServer *oauth.Server, clientID, clientSecret stri
 		return nil, fmt.Errorf("GitHub authentication failed: %w", err)
 	}
 
-	client := NewClient(token)
+	client := NewOauthClient(token)
 
 	_, err = client.InitRepo(info, false)
 	if err != nil {
@@ -161,21 +254,25 @@ func AuthenticateAndSetup(oauthServer *oauth.Server, clientID, clientSecret stri
 	return client, nil
 }
 
-// NewConfig creates a new GitHub configuration
-func NewConfig(token *oauth2.Token, repoOwner, repoName string) *Config {
+// creates a new GitHub configuration
+func NewGithubAppConfig(repoOwner, repoName, appID, appPEM, installationID string) *Config {
 	return &Config{
-		AccessToken: token.AccessToken,
-		RepoOwner:   repoOwner,
-		RepoName:    repoName,
+		RepoOwner:      repoOwner,
+		RepoName:       repoName,
+		AppID:          appID,
+		AppPEM:         appPEM,
+		InstallationID: installationID,
 	}
 }
 
 // ToSecret serializes GitHub config to Kubernetes secret
 func (c *Config) ToSecret(namespace, secretName string) *corev1.Secret {
 	data := map[string][]byte{
-		"github_access_token": []byte(c.AccessToken),
-		"github_repo_owner":   []byte(c.RepoOwner),
-		"github_repo_name":    []byte(c.RepoName),
+		"GITHUB_REPO_OWNER":            []byte(c.RepoOwner),
+		"GITHUB_REPO_NAME":             []byte(c.RepoName),
+		"GITHUB_APP_ID":                []byte(c.AppID),
+		"GITHUB_APP_PRIVATE_KEY":       []byte(c.AppPEM),
+		"GITHUB_APP_INSTALLATION_ID":   []byte(c.InstallationID),
 	}
 
 	return &corev1.Secret{
@@ -203,9 +300,11 @@ func FromSecret(secret *corev1.Secret) (*Config, error) {
 	}
 
 	return &Config{
-		AccessToken: string(secret.Data["github_access_token"]),
-		RepoOwner:   string(secret.Data["github_repo_owner"]),
-		RepoName:    string(secret.Data["github_repo_name"]),
+		RepoOwner:   string(secret.Data["GITHUB_REPO_OWNER"]),
+		RepoName:    string(secret.Data["GITHUB_REPO_NAME"]),
+		AppID:       string(secret.Data["GITHUB_APP_ID"]),
+		AppPEM:      string(secret.Data["GITHUB_APP_PRIVATE_KEY"]),
+		InstallationID: string(secret.Data["GITHUB_APP_INSTALLATION_ID"]),
 	}, nil
 }
 

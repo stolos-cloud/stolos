@@ -97,3 +97,37 @@ func (g *GCPResources) BeforeCreate(tx *gorm.DB) error {
 	}
 	return nil
 }
+
+type GitOpsConfig struct {
+	ID           uuid.UUID      `json:"id" gorm:"type:uuid;primary_key"`
+	RepoOwner    string         `json:"repo_owner" gorm:"not null"`
+	RepoName     string         `json:"repo_name" gorm:"not null"`
+	Branch       string         `json:"branch" gorm:"not null;default:'main'"`
+	WorkingDir   string         `json:"working_dir" gorm:"not null;default:'terraform'"`
+	Username     string         `json:"username" gorm:"not null;default:'Stolos Bot'"`
+	Email        string         `json:"email" gorm:"not null;default:'bot@stolos.cloud'"`
+	IsConfigured bool           `json:"is_configured" gorm:"default:false"`
+	CreatedAt    time.Time      `json:"created_at"`
+	UpdatedAt    time.Time      `json:"updated_at"`
+	DeletedAt    gorm.DeletedAt `json:"-" gorm:"index"`
+}
+
+func (g *GitOpsConfig) BeforeCreate(tx *gorm.DB) error {
+	if g.ID == (uuid.UUID{}) {
+		g.ID = uuid.New()
+	}
+	// Set defaults if not provided
+	if g.Branch == "" {
+		g.Branch = "main"
+	}
+	if g.WorkingDir == "" {
+		g.WorkingDir = "terraform"
+	}
+	if g.Username == "" {
+		g.Username = "Stolos Bot"
+	}
+	if g.Email == "" {
+		g.Email = "bot@stolos.cloud"
+	}
+	return nil
+}

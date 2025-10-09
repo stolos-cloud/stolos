@@ -576,6 +576,48 @@ paths:
       summary: Get GCP configuration status
       tags:
       - gcp
+  /gcp/terraform/force-unlock:
+    post:
+      consumes:
+      - application/json
+      description: 'Remove a stuck Terraform state lock. WARNING: Only use when certain
+        no operations are running'
+      parameters:
+      - description: Lock ID from the error message
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            lock_id:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Force unlock Terraform state
+      tags:
+      - gcp
   /iso/generate:
     post:
       consumes:

@@ -27,7 +27,6 @@ type DatabaseConfig struct {
 }
 
 type GitOpsConfig struct {
-	RepoURL    string `mapstructure:"repo_url"`
 	Branch     string `mapstructure:"branch"`
 	WorkingDir string `mapstructure:"working_dir"`
 	RepoOwner  string `mapstructure:"repo_owner"`
@@ -110,13 +109,25 @@ func Load() (*Config, error) {
 			config.GitHub.AppID = appID
 		}
 	}
-	if ghPrivateKey := os.Getenv("GITHUB_PRIVATE_KEY"); ghPrivateKey != "" {
+	if ghPrivateKey := os.Getenv("GITHUB_APP_PRIVATE_KEY"); ghPrivateKey != "" {
 		config.GitHub.PrivateKey = ghPrivateKey
 	}
 	if ghInstallationID := os.Getenv("GITHUB_INSTALLATION_ID"); ghInstallationID != "" {
 		if installationID, err := strconv.ParseInt(ghInstallationID, 10, 64); err == nil {
 			config.GitHub.InstallationID = installationID
 		}
+	}
+
+	if ghRepoOwner := os.Getenv("GITHUB_REPO_OWNER"); ghRepoOwner != "" {
+		config.GitOps.RepoOwner = ghRepoOwner
+	}
+	if ghRepoName := os.Getenv("GITHUB_REPO_NAME"); ghRepoName != "" {
+		config.GitOps.RepoName = ghRepoName
+	}
+	if ghBranch := os.Getenv("GITHUB_BRANCH"); ghBranch != "" {
+		config.GitOps.Branch = ghBranch
+	} else {
+		config.GitOps.Branch = "main"
 	}
 
 	// JWT Config
