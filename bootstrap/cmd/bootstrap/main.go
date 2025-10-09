@@ -29,6 +29,7 @@ import (
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/k8s"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/marshal"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/oauth"
+	"github.com/stolos-cloud/stolos-bootstrap/pkg/platform"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/talos"
 	"golang.org/x/oauth2"
 	corev1 "k8s.io/api/core/v1"
@@ -861,6 +862,16 @@ func CreateProviderSecrets(loggerRef *tui.UILogger) {
 				loggerRef.Errorf("Failed to create namespace stolos-system: %s", err)
 				return
 			}
+		}
+
+		// Create platform configuration secret
+		loggerRef.Info("Creating platform configuration secret...")
+		platformConfig := platform.NewPlatformConfig(bootstrapInfos.GitHubInfo.BaseDomain)
+		err = platformConfig.CreateOrUpdateSecret(ctx, k8sClient, "stolos-system", "stolos-system-config")
+		if err != nil {
+			loggerRef.Errorf("Failed to create platform config secret: %s", err)
+		} else {
+			loggerRef.Success("Platform configuration secret created successfully")
 		}
 
 		// Create GCP service account secret

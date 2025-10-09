@@ -69,7 +69,7 @@ import BaseDialog from '@/components/base/BaseDialog.vue';
 import BaseNotice from '@/components/base/BaseNotice.vue';
 import BaseRadioButtons from '@/components/base/BaseRadioButtons.vue';
 import { RadioGroup } from '@/models/RadioGroup.js';
-import { downloadISO, createSamplesNodes, getConnectedNodes } from '@/services/provisioning.service';
+import { generateISO, getConnectedNodes } from '@/services/provisioning.service';
 import { computed, ref, reactive, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useStore } from 'vuex';
@@ -122,28 +122,20 @@ function cancelDownloadISO() {
 function confirmDownloadISO() {
     if (!isValid.value) return;
 
-    createSamplesNodes();
-    downloadISO({ iso: isoRadioButtons.value })
-    .then(({ data, headers }) => {
-      let filename = "fallback.iso";
-      const blob = new Blob([data], { type: headers['content-type'] });
-      const url = URL.createObjectURL(blob);
-      const contentDisposition = headers["content-disposition"];
-
-      if (contentDisposition) {
-        const match = contentDisposition.match(/filename="?(.+)"?/);
-        if (match && match[1]) filename = match[1];
-      }
-
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+    generateISO({
+        architecture: isoRadioButtons.value
+    })
+    .then(({ download_url, filename }) => {
+        const link = document.createElement('a');
+        link.href = download_url;
+        link.download = filename;
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     })
     .catch(error => {
-        console.error("Error downloading ISO:", error);
+        console.error("Error generating ISO:", error);
     })
     .finally(() => {
         isoRadioButtons.value = undefined;
@@ -155,7 +147,7 @@ function fetchConnectedNodesActive() {
     loading.value = true;
 
     getConnectedNodes({status: "active"})
-    .then(response => {        
+    .then(response => {
         nodes.value = response
             .filter(node => node.provider?.toLowerCase() === "onprem")
             .map(node => ({

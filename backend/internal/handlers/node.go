@@ -8,18 +8,21 @@ import (
 	"github.com/stolos-cloud/stolos/backend/internal/config"
 	"github.com/stolos-cloud/stolos/backend/internal/models"
 	"github.com/stolos-cloud/stolos/backend/internal/services"
+	talosservices "github.com/stolos-cloud/stolos/backend/internal/services/talos"
 	"gorm.io/gorm"
 )
 
 type NodeHandlers struct {
-	db          *gorm.DB
-	nodeService *services.NodeService
+	db           *gorm.DB
+	nodeService  *services.NodeService
+	talosService *talosservices.TalosService
 }
 
 func NewNodeHandlers(db *gorm.DB, cfg *config.Config, providerManager *services.ProviderManager) *NodeHandlers {
 	return &NodeHandlers{
-		db:          db,
-		nodeService: services.NewNodeService(db, cfg, providerManager),
+		db:           db,
+		nodeService:  services.NewNodeService(db, cfg, providerManager),
+		talosService: talosservices.NewTalosService(db, cfg),
 	}
 }
 
@@ -58,9 +61,9 @@ func (h *NodeHandlers) GetNode(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Get node - TODO"})
 }
 
-// UpdateNodeConfig godoc
-// @Summary Update node configuration
-// @Description Update a single node's role and labels
+// UpdateActiveNodeConfig godoc
+// @Summary Update active node configuration
+// @Description Update a single active node's role and labels
 // @Tags nodes
 // @Accept json
 // @Produce json
@@ -70,7 +73,7 @@ func (h *NodeHandlers) GetNode(c *gin.Context) {
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /nodes/{id}/config [put]
-func (h *NodeHandlers) UpdateNodeConfig(c *gin.Context) {
+func (h *NodeHandlers) UpdateActiveNodeConfig(c *gin.Context) {
 	var req struct {
 		Role   string   `json:"role" binding:"required"`
 		Labels []string `json:"labels"`
@@ -88,7 +91,7 @@ func (h *NodeHandlers) UpdateNodeConfig(c *gin.Context) {
 		return
 	}
 
-	node, err := h.nodeService.UpdateNodeConfig(nodeID, req.Role, req.Labels)
+	node, err := h.nodeService.UpdateActiveNodeConfig(nodeID, req.Role, req.Labels)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -97,18 +100,18 @@ func (h *NodeHandlers) UpdateNodeConfig(c *gin.Context) {
 	c.JSON(http.StatusOK, node)
 }
 
-// UpdateNodesConfig godoc
-// @Summary Update multiple nodes configuration
-// @Description Update multiple nodes' role and labels in a single request
+// UpdateActiveNodesConfig godoc
+// @Summary Update multiple nodes labels
+// @Description Update labels for multiple nodes (for active nodes only, does not change role)
 // @Tags nodes
 // @Accept json
 // @Produce json
-// @Param request body object{nodes=[]services.NodeConfigUpdate} true "Array of node configurations"
+// @Param request body object{nodes=[]services.NodeConfigUpdate} true "Array of node label updates"
 // @Success 200 {object} map[string]interface{} "Returns updated count and nodes array"
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /nodes/config [put]
-func (h *NodeHandlers) UpdateNodesConfig(c *gin.Context) {
+func (h *NodeHandlers) UpdateActiveNodesConfig(c *gin.Context) {
 	var req struct {
 		Nodes []services.NodeConfigUpdate `json:"nodes" binding:"required"`
 	}
@@ -118,7 +121,13 @@ func (h *NodeHandlers) UpdateNodesConfig(c *gin.Context) {
 		return
 	}
 
-	nodes, err := h.nodeService.UpdateNodesConfig(req.Nodes)
+	// TODO: After updating labels in DB, also update Talos node config
+	// This requires:
+	// 1. Getting current Talos config bundle
+	// 2. Applying label patches to node configs
+	// 3. Re-applying configs to nodes via Talos API
+
+	nodes, err := h.nodeService.UpdateActiveNodesConfig(req.Nodes)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -146,4 +155,41 @@ func (h *NodeHandlers) CreateSampleNodes(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Sample nodes created"})
+}
+
+// ProvisionNodes godoc
+// @Summary Provision multiple on-prem nodes
+// @Description Apply Talos configuration to multiple pending nodes and add them to the cluster
+// @Tags nodes
+// @Accept json
+// @Produce json
+// @Param request body models.NodeProvisionRequest true "Array of nodes to provision with role and labels"
+// @Success 200 {object} map[string]interface{} "Returns provisioned count and nodes array"
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /nodes/provision [post]
+// @Security BearerAuth
+func (h *NodeHandlers) ProvisionNodes(c *gin.Context) {
+	var req models.NodeProvisionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body", "details": err.Error()})
+		return
+	}
+
+	if len(req.Nodes) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "At least one node must be provided"})
+		return
+	}
+
+	nodes, err := h.nodeService.ProvisionNodes(req.Nodes)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":     "Nodes provisioned successfully",
+		"provisioned": len(nodes),
+		"nodes":       nodes,
+	})
 }

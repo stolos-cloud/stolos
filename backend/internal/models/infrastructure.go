@@ -116,7 +116,7 @@ func (g *GitOpsConfig) BeforeCreate(tx *gorm.DB) error {
 	if g.ID == (uuid.UUID{}) {
 		g.ID = uuid.New()
 	}
-	// Set defaults if not provided
+	// Set defaults
 	if g.Branch == "" {
 		g.Branch = "main"
 	}
@@ -130,4 +130,30 @@ func (g *GitOpsConfig) BeforeCreate(tx *gorm.DB) error {
 		g.Email = "bot@stolos.cloud"
 	}
 	return nil
+}
+
+type ISORequest struct {
+	Architecture    string   `json:"architecture"`
+	TalosVersion    string   `json:"talos_version"`
+	ExtraKernelArgs []string `json:"extra_kernel_args,omitempty"`
+	OverlayImage    string   `json:"overlay_image,omitempty"`
+	OverlayName     string   `json:"overlay_name,omitempty"`
+}
+
+type ISOResponse struct {
+	DownloadURL  string `json:"download_url"`
+	Filename     string `json:"filename"`
+	SchematicID  string `json:"schematic_id"`
+	TalosVersion string `json:"talos_version"`
+	Architecture string `json:"architecture"`
+}
+
+type NodeProvisionRequest struct {
+	Nodes []NodeProvisionConfig `json:"nodes" binding:"required"`
+}
+
+type NodeProvisionConfig struct {
+	NodeID uuid.UUID `json:"node_id" binding:"required" example:"550e8400-e29b-41d4-a716-446655440000"`
+	Role   string    `json:"role" binding:"required" example:"worker"`
+	Labels []string  `json:"labels" example:"zone=us-east,type=compute"`
 }

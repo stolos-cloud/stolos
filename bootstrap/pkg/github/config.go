@@ -12,10 +12,10 @@ import (
 
 	"github.com/goccy/go-json"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/stolos-cloud/stolos-bootstrap/pkg/k8s"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/logger"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/oauth"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/oauth/providers"
-	"k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/goccy/go-yaml"
 	"github.com/google/go-github/v74/github"
@@ -311,19 +311,7 @@ func FromSecret(secret *corev1.Secret) (*Config, error) {
 // CreateOrUpdateSecret creates or updates the GitHub config secret in Kubernetes
 func (c *Config) CreateOrUpdateSecret(ctx context.Context, client kubernetes.Interface, namespace, secretName string) error {
 	secret := c.ToSecret(namespace, secretName)
-
-	existingSecret, err := client.CoreV1().Secrets(namespace).Get(ctx, secretName, metav1.GetOptions{})
-	if err != nil {
-		// Secret doesn't exist, create it
-		_, err = client.CoreV1().Secrets(namespace).Create(ctx, secret, metav1.CreateOptions{})
-		return err
-	}
-
-	// Secret exists, update it
-	existingSecret.Data = secret.Data
-	existingSecret.Labels = secret.Labels
-	_, err = client.CoreV1().Secrets(namespace).Update(ctx, existingSecret, metav1.UpdateOptions{})
-	return err
+	return k8s.CreateOrUpdateSecret(ctx, client, secret, true)
 }
 
 // CreateOrUpdateArgoCDGitHubSecrets ensures both ArgoCD repository and notifications secrets exist and are up-to-date.
@@ -357,7 +345,7 @@ func CreateOrUpdateArgoCDGitHubSecrets(
 		},
 	}
 
-	if err := createOrUpdateSecret(ctx, client, repoSecret); err != nil {
+	if err := k8s.CreateOrUpdateSecret(ctx, client, repoSecret, false); err != nil {
 		return fmt.Errorf("failed to apply ArgoCD repo secret: %w", err)
 	}
 
@@ -385,22 +373,4 @@ func CreateOrUpdateArgoCDGitHubSecrets(
 	//}
 
 	return nil
-}
-
-// createOrUpdateSecret performs a create or update operation for a Kubernetes Secret. // TODO use this helper everywhere and remove duplications
-func createOrUpdateSecret(ctx context.Context, client kubernetes.Interface, secret *corev1.Secret) error {
-	existing, err := client.CoreV1().Secrets(secret.Namespace).Get(ctx, secret.Name, metav1.GetOptions{})
-	if errors.IsNotFound(err) {
-		_, err = client.CoreV1().Secrets(secret.Namespace).Create(ctx, secret, metav1.CreateOptions{})
-		return err
-	}
-	if err != nil {
-		return err
-	}
-
-	// Update existing secret
-	existing.StringData = secret.StringData
-	existing.Labels = secret.Labels
-	_, err = client.CoreV1().Secrets(secret.Namespace).Update(ctx, existing, metav1.UpdateOptions{})
-	return err
 }

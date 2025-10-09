@@ -16,6 +16,7 @@ import (
 	"github.com/stolos-cloud/stolos/backend/internal/handlers"
 	"github.com/stolos-cloud/stolos/backend/internal/routes"
 	"github.com/stolos-cloud/stolos/backend/internal/services"
+	talosservices "github.com/stolos-cloud/stolos/backend/internal/services/talos"
 
 	_ "github.com/stolos-cloud/stolos/backend/docs"
 	swaggerFiles "github.com/swaggo/files"
@@ -70,6 +71,10 @@ func main() {
 	if !providerManager.HasConfiguredProviders() {
 		log.Println("No cloud providers configured")
 	}
+
+	// Start Talos event sink for on-prem node discovery
+	talosService := talosservices.NewTalosService(db, cfg)
+	talosService.StartEventSink()
 
 	r := gin.Default()
 

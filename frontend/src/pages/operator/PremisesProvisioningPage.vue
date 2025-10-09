@@ -100,7 +100,7 @@
 <script setup>
 import PortalLayout from '@/components/layouts/PortalLayout.vue';
 import BaseLabelBar from '@/components/base/BaseLabelBar.vue';
-import { getConnectedNodes, createNodesWithRoleAndLabels } from '@/services/provisioning.service';
+import { getConnectedNodes, provisionNodes } from '@/services/provisioning.service';
 import { onMounted, ref, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
@@ -176,12 +176,12 @@ function provisionConnectedNodes() {
     overlay.value = true;
 
     const payloadNodes = nodes.value.map(node => ({
-        id: node.id,
+        node_id: node.id,
         role: node.role,
         labels: node.labels,
     }));
 
-    createNodesWithRoleAndLabels({ nodes: payloadNodes })
+    provisionNodes({ nodes: payloadNodes })
     .then(() => {
         notification.value = {
             visible: true,
@@ -195,7 +195,7 @@ function provisionConnectedNodes() {
     })
     .finally(() => {
         overlay.value = false;
-    });    
+    });
 }
 </script>
 
