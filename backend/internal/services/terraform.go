@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"text/template"
-[	"time"
+	"time"
 
 	"github.com/google/go-github/v74/github"
 	"github.com/hashicorp/terraform-exec/tfexec"
