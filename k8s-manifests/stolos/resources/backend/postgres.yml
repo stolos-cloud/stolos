@@ -12,7 +12,6 @@ spec:
       owner: stolos
   storage:
     size: 2Gi
-    storageClass: nfs-csi
   postgresql:
     parameters:
       wal_compression: "on"
