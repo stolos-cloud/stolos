@@ -112,6 +112,8 @@ func setupGCPRoutes(public *gin.RouterGroup, protected *gin.RouterGroup, h *hand
 		gcp.POST("/init-infra", h.GCPHandlers().InitInfra)
 		gcp.POST("/delete-infra", h.GCPHandlers().DeleteInfra)
 
+		gcp.POST("/terraform/force-unlock", h.GCPHandlers().ForceUnlockTerraformState)
+
 		gcp.POST("/instances", h.GCPHandlers().QueryGCPInstances)
 
 		gcp.POST("/resources/refresh", h.GCPHandlers().RefreshGCPResources)

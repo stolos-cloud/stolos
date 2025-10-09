@@ -135,6 +135,7 @@ func runMigrations(db *gorm.DB) error {
 		&models.Node{},
 		&models.GCPConfig{},
 		&models.GCPResources{},
+		&models.GitOpsConfig{},
 		&models.Team{},
 		&models.User{},
 		&models.UserTeam{},

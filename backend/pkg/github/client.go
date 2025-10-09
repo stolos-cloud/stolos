@@ -4,11 +4,9 @@ import (
 	"context"
 	"crypto/rsa"
 	"fmt"
-	"os"
-	"strconv"
 	"time"
 
-	"github.com/golang-jwt/jwt/v4"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/go-github/v74/github"
 )
 
@@ -26,10 +24,14 @@ type Client struct {
 	config *Config
 }
 
-func NewClientFromEnv() (*Client, error) {
-	config, err := configFromEnv()
-	if err != nil {
-		return nil, fmt.Errorf("failed to load config from env: %w", err)
+func NewClientFromConfig(appID, installationID int64, privateKey, repoOwner, repoName, branch string) (*Client, error) {
+	config := &Config{
+		AppID:          appID,
+		PrivateKey:     privateKey,
+		InstallationID: installationID,
+		RepoOwner:      repoOwner,
+		RepoName:       repoName,
+		Branch:         branch,
 	}
 
 	token, err := config.generateInstallationToken()
@@ -45,54 +47,6 @@ func NewClientFromEnv() (*Client, error) {
 	}, nil
 }
 
-func configFromEnv() (*Config, error) {
-	appIDStr := os.Getenv("GITHUB_APP_ID")
-	if appIDStr == "" {
-		return nil, fmt.Errorf("GITHUB_APP_ID environment variable is required")
-	}
-	appID, err := strconv.ParseInt(appIDStr, 10, 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid GITHUB_APP_ID: %w", err)
-	}
-
-	installationIDStr := os.Getenv("GITHUB_INSTALLATION_ID")
-	if installationIDStr == "" {
-		return nil, fmt.Errorf("GITHUB_INSTALLATION_ID environment variable is required")
-	}
-	installationID, err := strconv.ParseInt(installationIDStr, 10, 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid GITHUB_INSTALLATION_ID: %w", err)
-	}
-
-	privateKey := os.Getenv("GITHUB_PRIVATE_KEY")
-	if privateKey == "" {
-		return nil, fmt.Errorf("GITHUB_PRIVATE_KEY environment variable is required")
-	}
-
-	repoOwner := os.Getenv("GITOPS_REPO_OWNER")
-	if repoOwner == "" {
-		return nil, fmt.Errorf("GITOPS_REPO_OWNER environment variable is required")
-	}
-
-	repoName := os.Getenv("GITOPS_REPO_NAME")
-	if repoName == "" {
-		return nil, fmt.Errorf("GITOPS_REPO_NAME environment variable is required")
-	}
-
-	gitOpsBranch := os.Getenv("GITOPS_BRANCH")
-	if gitOpsBranch == "" {
-		gitOpsBranch = "main" // Default
-	}
-
-	return &Config{
-		AppID:          appID,
-		PrivateKey:     privateKey,
-		InstallationID: installationID,
-		RepoOwner:      repoOwner,
-		RepoName:       repoName,
-		Branch:   gitOpsBranch,
-	}, nil
-}
 
 func (c *Client) GetRepoInfo() (owner, name string) {
 	return c.config.RepoOwner, c.config.RepoName
@@ -128,10 +82,10 @@ func (c *Config) generateInstallationToken() (string, error) {
 
 func (c *Config) createJWTToken(privateKey *rsa.PrivateKey) (string, error) {
 	now := time.Now()
-	claims := jwt.MapClaims{
-		"iat": now.Unix(),
-		"exp": now.Add(10 * time.Minute).Unix(),
-		"iss": c.AppID,
+	claims := jwt.RegisteredClaims{
+		Issuer:    fmt.Sprintf("%d", c.AppID),
+		IssuedAt:  jwt.NewNumericDate(now),
+		ExpiresAt: jwt.NewNumericDate(now.Add(10 * time.Minute)),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)

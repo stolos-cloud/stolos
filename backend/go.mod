@@ -5,7 +5,7 @@ go 1.25
 require (
 	github.com/gin-contrib/cors v1.7.6
 	github.com/gin-gonic/gin v1.11.0
-	github.com/golang-jwt/jwt/v4 v4.5.2
+	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/google/go-github/v74 v74.0.0
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/terraform-exec v0.24.0
@@ -144,4 +144,5 @@ require (
 )
 
 replace github.com/stolos-cloud/stolos-bootstrap => ../bootstrap
+
 replace github.com/stolos-cloud/stolos/k8s_manifests => ../k8s-manifests

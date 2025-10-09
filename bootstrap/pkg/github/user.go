@@ -17,10 +17,9 @@ type User struct {
 }
 
 // GetGitHubUser queries the GitHub API to determine if a login is a User or Organization.
-// token is optional.
-func GetGitHubUser(ctx context.Context, login string, oauthToken oauth2.Token) (*User, error) {
+// oauthToken is optional. pass nil for unauthenticated requests.
+func GetGitHubUser(ctx context.Context, login string, oauthToken *oauth2.Token) (*User, error) {
 	url := fmt.Sprintf("https://api.github.com/users/%s", login)
-	token := oauthToken.AccessToken
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -28,8 +27,8 @@ func GetGitHubUser(ctx context.Context, login string, oauthToken oauth2.Token) (
 	}
 
 	req.Header.Set("Accept", "application/vnd.github+json")
-	if token != "" {
-		req.Header.Set("Authorization", "Bearer "+token)
+	if oauthToken != nil && oauthToken.AccessToken != "" {
+		req.Header.Set("Authorization", "Bearer "+oauthToken.AccessToken)
 	}
 
 	resp, err := http.DefaultClient.Do(req)

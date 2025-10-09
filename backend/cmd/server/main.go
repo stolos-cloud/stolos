@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"log"
 	"os"
 	"strings"
@@ -46,6 +48,13 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to load configuration:", err)
 	}
+
+	// Generate random if not provided
+	if cfg.JWT.SecretKey == "" {
+		log.Println("JWT_SECRET_KEY not set, generating random secret")
+		cfg.JWT.SecretKey = generateRandomSecret(32)
+	}
+
 	db, err := database.Initialize(cfg.Database)
 	if err != nil {
 		log.Fatal("Failed to initialize database:", err)
@@ -89,4 +98,12 @@ func main() {
 	if err := r.Run(port); err != nil {
 		log.Fatal("Failed to start server:", err)
 	}
+}
+
+func generateRandomSecret(length int) string {
+	bytes := make([]byte, length)
+	if _, err := rand.Read(bytes); err != nil {
+		log.Fatal("Failed to generate random secret:", err)
+	}
+	return hex.EncodeToString(bytes)
 }

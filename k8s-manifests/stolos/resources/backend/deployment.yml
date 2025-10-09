@@ -32,6 +32,10 @@ spec:
           value: stolos
         - name: DB_NAME
           value: stolos
+        - name: ADMIN_EMAIL
+          value: admin@example.com
+        - name: ADMIN_PASSWORD
+          value: Admin123!
         - name: DB_SSL_MODE
           value: disable
         - name: DB_PASSWORD

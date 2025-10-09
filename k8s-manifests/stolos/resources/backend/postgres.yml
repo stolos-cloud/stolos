@@ -10,11 +10,8 @@ spec:
     initdb:
       database: stolos
       owner: stolos
-      secret:
-        name: stolos-postgresql
   storage:
     size: 2Gi
-    storageClass: cephfs
   postgresql:
     parameters:
       wal_compression: "on"

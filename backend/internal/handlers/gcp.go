@@ -8,6 +8,7 @@ import (
 	"github.com/stolos-cloud/stolos/backend/internal/config"
 	"github.com/stolos-cloud/stolos/backend/internal/services"
 	gcpservices "github.com/stolos-cloud/stolos/backend/internal/services/gcp"
+	gitopsservices "github.com/stolos-cloud/stolos/backend/internal/services/gitops"
 	"gorm.io/gorm"
 )
 
@@ -21,11 +22,12 @@ type GCPHandlers struct {
 
 func NewGCPHandlers(db *gorm.DB, cfg *config.Config, providerManager *services.ProviderManager) *GCPHandlers {
 	gcpService := gcpservices.NewGCPService(db, cfg)
+	gitopsService := gitopsservices.NewGitOpsService(db, cfg)
 	return &GCPHandlers{
 		db:                  db,
 		gcpService:          gcpService,
 		nodeService:         services.NewNodeService(db, cfg, providerManager),
-		terraformService:    services.NewTerraformService(db, cfg, providerManager),
+		terraformService:    services.NewTerraformService(db, cfg, providerManager, gitopsService),
 		gcpResourcesService: gcpservices.NewGCPResourcesService(db, gcpService),
 	}
 }
@@ -297,5 +299,39 @@ func (h *GCPHandlers) RefreshGCPResources(c *gin.Context) {
 		"message":      "GCP resources refreshed successfully",
 		"last_updated": resources.LastUpdated,
 		"zones":        len(resources.Zones),
+	})
+}
+
+// ForceUnlockTerraformState godoc
+// @Summary Force unlock Terraform state
+// @Description Remove a stuck Terraform state lock. WARNING: Only use when certain no operations are running
+// @Tags gcp
+// @Accept json
+// @Produce json
+// @Param body body object{lock_id=string} true "Lock ID from the error message"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /gcp/terraform/force-unlock [post]
+// @Security BearerAuth
+func (h *GCPHandlers) ForceUnlockTerraformState(c *gin.Context) {
+	var req struct {
+		LockID string `json:"lock_id" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "lock_id is required"})
+		return
+	}
+
+	err := h.terraformService.ForceUnlockState(c.Request.Context(), "gcp", req.LockID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Terraform state lock removed successfully",
+		"lock_id": req.LockID,
 	})
 }

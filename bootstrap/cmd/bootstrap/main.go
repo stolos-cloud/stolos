@@ -47,7 +47,8 @@ var githubConfig *github.Config
 var githubToken *oauth2.Token
 var gcpToken *oauth2.Token
 var gcpEnabled = gcp.GCPClientId != "" && gcp.GCPClientSecret != ""
-var gitHubEnabled = github.GithubClientId != "" && github.GithubClientSecret != ""
+// var gitHubEnabled = github.GithubOauthClientId != "" && github.GithubOauthClientSecret != "" // legacy
+var gitHubEnabled = true
 var gitHubUser *github.User
 var gitHubAppManifestParams *github.AppManifestParams
 var gitHubAppManifest *github.AppManifest
@@ -127,30 +128,30 @@ func main() {
 
 	githubRepoStep := tui.Step{
 		Name:        "GitHubRepo",
-		Title:       "1.2) Create GitHub Repository",
+		Title:       "1.3) Create GitHub Repository",
 		Kind:        tui.StepSpinner,
 		IsDone:      false,
 		AutoAdvance: true,
-		OnEnter:     RunGitHubRepoStepInBackground,
+		OnEnter:     RunGitHubRepoStepWithApp,
 		//OnExit: //TODO validate,
 	}
 
 	githubAppStep := tui.Step{
-		// TODO: Implement GitHub App Manifest Flow
 		Name:        "GitHubApp",
-		Title:       "1.3) Create GitHub App",
+		Title:       "1.1) Create GitHub App",
 		Kind:        tui.StepSpinner,
 		IsDone:      false,
 		AutoAdvance: true,
 		OnEnter: func(m *tui.Model, s *tui.Step) tea.Cmd {
 			m.Logger.Infof("Starting GitHub App Manifest Flow...")
 			go func() {
+				ctx := context.Background()
 				listenAddr := "127.0.0.1:19999"
 				remoteBaseUrl := "https://api." + bootstrapInfos.GitHubInfo.BaseDomain //URL when deployed
 				webhookEndpoint := "/api/v1/github_webhook"                            //webhook endpoint
 				callbacksEndpoint := "/api/v1/github_callback"                         // additional install callback for deployed URL
 
-				gitHubUser, err = github.GetGitHubUser(context.Background(), bootstrapInfos.GitHubInfo.RepoOwner, *githubToken)
+				gitHubUser, err = github.GetGitHubUser(ctx, bootstrapInfos.GitHubInfo.RepoOwner, nil)
 
 				if err != nil {
 					m.Logger.Errorf("Failed to get GitHub User: %v", err)
@@ -163,19 +164,14 @@ func main() {
 				}
 
 				gitHubAppManifestParams = github.CreateGitHubManifestParameters(remoteBaseUrl, webhookEndpoint, callbacksEndpoint, listenAddr)
-				gitHubAppManifest, err = github.GitHubAppManifestFlow(context.Background(), listenAddr, m.Logger, gitHubAppManifestParams, *gitHubUser)
+				gitHubAppManifest, err = github.GitHubAppManifestFlow(ctx, listenAddr, m.Logger, gitHubAppManifestParams, *gitHubUser)
 				if err != nil {
 					m.Logger.Errorf("GitHub App Manifest Flow Error: %s", err.Error())
+					return
 				}
 
 				saveState.GitHubApp = *gitHubAppManifest
-				//err = marshal.SaveStateToJSON(saveState)
-				//if err != nil {
-				//	m.Logger.Errorf("Failed to save state: %s", err.Error())
-				//	return
-				//}
-
-				m.Logger.Successf("GitHub App was created successfuly! App name: %s, App ID: %d", gitHubAppManifest.Name, gitHubAppManifest.ID)
+				m.Logger.Successf("GitHub App created successfully! App name: %s, App ID: %d", gitHubAppManifest.Name, gitHubAppManifest.ID)
 				s.IsDone = true
 			}()
 			return nil
@@ -184,22 +180,24 @@ func main() {
 
 	githubInstallAppStep := tui.Step{
 		Name:        "GitHubInstallApp",
-		Title:       "1.3) Install GitHub App",
+		Title:       "1.2) Install GitHub App",
 		Kind:        tui.StepSpinner,
 		IsDone:      false,
 		AutoAdvance: true,
 		OnEnter: func(m *tui.Model, s *tui.Step) tea.Cmd {
-
-			m.Logger.Infof("Opening the github app install page...")
+			m.Logger.Infof("Opening the GitHub app install page...")
 
 			go func() {
+				ctx := context.Background()
 				listenAddr := "127.0.0.1:19999"
-				postInstallResult, err := github.GitHubAppInstallFlow(context.Background(), listenAddr, gitHubUser, gitHubAppManifest, m.Logger)
+				postInstallResult, err := github.GitHubAppInstallFlow(ctx, listenAddr, gitHubUser, gitHubAppManifest, m.Logger)
 				if err != nil {
 					m.Logger.Errorf("GitHub App Install Flow Error: %s", err.Error())
 					return
 				}
 				saveState.GitHubAppInstallResult = *postInstallResult
+				m.Logger.Successf("GitHub App installed successfully! Installation ID: %s", postInstallResult.InstallationID)
+
 				s.IsDone = true
 			}()
 
@@ -352,18 +350,18 @@ func main() {
 
 	// Skip all github steps if not enabled
 	tui.DisableStep(&githubInfoStep, !gitHubEnabled)
-	tui.DisableStep(&githubAuthStep, !gitHubEnabled)
-	tui.DisableStep(&githubRepoStep, !gitHubEnabled)
+	tui.DisableStep(&githubAuthStep, gitHubEnabled)
 	tui.DisableStep(&githubAppStep, !gitHubEnabled)
 	tui.DisableStep(&githubInstallAppStep, !gitHubEnabled)
+	tui.DisableStep(&githubRepoStep, !gitHubEnabled)
 
 	// Attn. sa fait des copies ici !
 	tui.Steps = []*tui.Step{
 		&githubInfoStep,
 		&githubAuthStep,
-		&githubRepoStep,
 		&githubAppStep,
 		&githubInstallAppStep,
+		&githubRepoStep,
 		&gcpInfoStep,
 		&gcpAuthStep,
 		&gcpSAStep,
@@ -384,9 +382,10 @@ func main() {
 	if gcpEnabled {
 		SetupGCP()
 	}
-	if gitHubEnabled {
-		SetupGitHub()
-	}
+	// legacy
+	// if gitHubEnabled {
+	// 	SetupGitHub()
+	// }
 
 	// Run will block.
 	if _, err := p.Run(); err != nil {
@@ -411,8 +410,8 @@ func RunOAuthServerInBackround(logger *tui.UILogger) {
 }
 
 func SetupGitHub() {
-	if github.GithubClientId != "" && github.GithubClientSecret != "" {
-		githubProvider := oauth.NewGitHubProvider(github.GithubClientId, github.GithubClientSecret)
+	if github.GithubOauthClientId != "" && github.GithubOauthClientSecret != "" {
+		githubProvider := oauth.NewGitHubProvider(github.GithubOauthClientId, github.GithubOauthClientSecret)
 		oauth.CurrentServer.RegisterProvider(githubProvider)
 	}
 }
@@ -457,10 +456,59 @@ func RunGCPSAStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 	return nil
 }
 
+func RunGitHubRepoStepWithApp(m *tui.Model, s *tui.Step) tea.Cmd {
+	m.Logger.Infof("Creating GitHub repository %s...", bootstrapInfos.GitHubInfo.RepoName)
+
+	go func() {
+		ctx := context.Background()
+
+		// Create GitHub client using app credentials
+		githubClient, err := github.NewClientFromApp(
+			ctx,
+			gitHubAppManifest.ID,
+			gitHubAppManifest.PEM,
+			saveState.GitHubAppInstallResult.InstallationID,
+		)
+		if err != nil {
+			m.Logger.Errorf("Failed to create GitHub client from app: %v", err)
+			return
+		}
+
+		// Initialize repository
+		githubBootstrapInfo := &github.GitHubInfo{
+			RepoName:       bootstrapInfos.GitHubInfo.RepoName,
+			RepoOwner:      bootstrapInfos.GitHubInfo.RepoOwner,
+			BaseDomain:     bootstrapInfos.GitHubInfo.BaseDomain,
+			LoadBalancerIP: bootstrapInfos.GitHubInfo.LoadBalancerIP,
+		}
+
+		_, err = githubClient.InitRepo(githubBootstrapInfo, false)
+		if err != nil {
+			m.Logger.Errorf("Failed to initialize repository: %v", err)
+			return
+		}
+
+		// Create GitHub config with app credentials
+		githubConfig = github.NewGithubAppConfig(
+			bootstrapInfos.GitHubInfo.RepoOwner,
+			bootstrapInfos.GitHubInfo.RepoName,
+			strconv.FormatInt(gitHubAppManifest.ID, 10),
+			gitHubAppManifest.PEM,
+			saveState.GitHubAppInstallResult.InstallationID,
+		)
+
+		m.Logger.Successf("Repository created: https://github.com/%s/%s.git", bootstrapInfos.GitHubInfo.RepoOwner, bootstrapInfos.GitHubInfo.RepoName)
+		s.IsDone = true
+	}()
+
+	return nil
+}
+
+// RunGitHubRepoStepInBackground is the legacy OAuth-based repo creation (kept for reference)
 func RunGitHubRepoStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 	m.Logger.Infof("Creating github repo %s...", bootstrapInfos.GitHubInfo.RepoName)
 	// Create GitHub client and initialize repository
-	githubClient := github.NewClient(githubToken)
+	githubClient := github.NewOauthClient(githubToken)
 	githubBootstrapInfo := &github.GitHubInfo{
 		RepoName:       bootstrapInfos.GitHubInfo.RepoName,
 		RepoOwner:      bootstrapInfos.GitHubInfo.RepoOwner,
@@ -473,8 +521,8 @@ func RunGitHubRepoStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 		m.Logger.Errorf("github init repo failed: %v", err)
 	}
 
-	// Create GitHub config for backend
-	githubConfig = github.NewConfig(githubToken, bootstrapInfos.GitHubInfo.RepoOwner, bootstrapInfos.GitHubInfo.RepoName)
+	// Create GitHub config for backend (app credentials will be added later)
+	githubConfig = github.NewGithubAppConfig(bootstrapInfos.GitHubInfo.RepoOwner, bootstrapInfos.GitHubInfo.RepoName, "", "", "")
 
 	m.Logger.Successf("Repo initialized! : https://github.com/%s/%s.git", bootstrapInfos.GitHubInfo.RepoOwner, bootstrapInfos.GitHubInfo.RepoName)
 	s.IsDone = true
@@ -809,12 +857,16 @@ func CreateProviderSecrets(loggerRef *tui.UILogger) {
 					Name: "stolos-system",
 				},
 			}, metav1.CreateOptions{})
+			if err != nil {
+				loggerRef.Errorf("Failed to create namespace stolos-system: %s", err)
+				return
+			}
 		}
 
 		// Create GCP service account secret
 		if gcpConfig != nil {
 			loggerRef.Info("Creating GCP service account secret...")
-			err = gcpConfig.CreateOrUpdateSecret(ctx, k8sClient, "stolos-system", "gcp-service-account")
+			err = gcpConfig.CreateOrUpdateSecret(ctx, k8sClient, "stolos-system", "stolos-system-config")
 			if err != nil {
 				loggerRef.Errorf("Failed to create GCP secret: %s", err)
 			} else {
@@ -825,7 +877,7 @@ func CreateProviderSecrets(loggerRef *tui.UILogger) {
 		// Create GitHub credentials secret
 		if githubConfig != nil {
 			loggerRef.Info("Creating GitHub credentials secret...")
-			err = githubConfig.CreateOrUpdateSecret(ctx, k8sClient, "stolos-system", "github-credentials")
+			err = githubConfig.CreateOrUpdateSecret(ctx, k8sClient, "stolos-system", "stolos-system-config")
 			if err != nil {
 				loggerRef.Errorf("Failed to create GitHub secret: %s", err)
 			} else {

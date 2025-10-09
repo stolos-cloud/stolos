@@ -60,10 +60,10 @@ func NewConfig(projectID, region, serviceAccountJSON, serviceAccountEmail string
 // ToSecret serializes
 func (c *GCPConfig) ToSecret(namespace, secretName string) *corev1.Secret {
 	data := map[string][]byte{
-		"gcp_project_id":            []byte(c.ProjectID),
-		"gcp_region":                []byte(c.Region),
-		"gcp_service_account_json":  []byte(c.ServiceAccountJSON),
-		"gcp_service_account_email": []byte(c.ServiceAccountEmail),
+		"GCP_PROJECT_ID":            []byte(c.ProjectID),
+		"GCP_REGION":                []byte(c.Region),
+		"GCP_SERVICE_ACCOUNT_JSON":  []byte(c.ServiceAccountJSON),
+		"GCP_SERVICE_ACCOUNT_EMAIL": []byte(c.ServiceAccountEmail),
 	}
 
 	return &corev1.Secret{
@@ -91,10 +91,10 @@ func FromSecret(secret *corev1.Secret) (*GCPConfig, error) {
 	}
 
 	return &GCPConfig{
-		ProjectID:           string(secret.Data["gcp_project_id"]),
-		Region:              string(secret.Data["gcp_region"]),
-		ServiceAccountJSON:  string(secret.Data["gcp_service_account_json"]),
-		ServiceAccountEmail: string(secret.Data["gcp_service_account_email"]),
+		ProjectID:           string(secret.Data["GCP_PROJECT_ID"]),
+		Region:              string(secret.Data["GCP_REGION"]),
+		ServiceAccountJSON:  string(secret.Data["GCP_SERVICE_ACCOUNT_JSON"]),
+		ServiceAccountEmail: string(secret.Data["GCP_SERVICE_ACCOUNT_EMAIL"]),
 	}, nil
 }
 

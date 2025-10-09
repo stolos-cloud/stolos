@@ -93,6 +93,7 @@ func CreateGitHubManifestParameters(remoteBaseUrl string, webhookEndpoint string
 			"workflow_dispatch",
 		},
 		DefaultPermissions: map[string]string{
+			"administration":        "write", // Required to create repositories from templates
 			"contents":              "write", // commits, file edits, wiki
 			"issues":                "write", // create/update issues
 			"organization_projects": "write", // project boards

@@ -7,10 +7,14 @@ import (
 	"os/exec"
 	"path/filepath"
 	"text/template"
+	"time"
 
+	"github.com/google/go-github/v74/github"
 	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/stolos-cloud/stolos/backend/internal/config"
 	gcpservices "github.com/stolos-cloud/stolos/backend/internal/services/gcp"
+	gitopsservices "github.com/stolos-cloud/stolos/backend/internal/services/gitops"
+	githubpkg "github.com/stolos-cloud/stolos/backend/pkg/github"
 	"gorm.io/gorm"
 )
 
@@ -18,6 +22,7 @@ type TerraformService struct {
 	db              *gorm.DB
 	cfg             *config.Config
 	providerManager *ProviderManager
+	gitopsService   *gitopsservices.GitOpsService
 }
 
 type NodeConfig struct {
@@ -27,17 +32,18 @@ type NodeConfig struct {
 	Architecture string
 }
 
-func NewTerraformService(db *gorm.DB, cfg *config.Config, providerManager *ProviderManager) *TerraformService {
+func NewTerraformService(db *gorm.DB, cfg *config.Config, providerManager *ProviderManager, gitopsService *gitopsservices.GitOpsService) *TerraformService {
 	return &TerraformService{
 		db:              db,
 		cfg:             cfg,
 		providerManager: providerManager,
+		gitopsService:   gitopsService,
 	}
 }
 
 // generates Terraform configuration for GCP node
 func (s *TerraformService) GenerateGCPNodeConfig(nodeConfig NodeConfig) (string, error) {
-	// TODO: Load template, execute with nodeConfig data, return generated .tf content
+	// TODO: Load template, execute with ]nodeConfig data, return generated .tf content
 	// from terraform-templates/gcp/node.tf.tmpl
 
 	return fmt.Sprintf("# Generated Terraform config for node: %s", nodeConfig.Name), nil
@@ -75,15 +81,14 @@ func (s *TerraformService) InitializeInfrastructure(ctx context.Context, provide
 		return fmt.Errorf("failed to apply infrastructure: %w", err)
 	}
 
-	// Mock: Commit terraform files to repository
-	if err := s.commitInfrastructureToRepo(workDir); err != nil {
+	// Commit terraform files to repository
+	if err := s.commitInfrastructureToRepo(workDir, providerName); err != nil {
 		return fmt.Errorf("failed to commit to repository: %w", err)
 	}
 
 	return nil
 }
 
-// holds the data for infrastructure template
 type InfrastructureTemplateData struct {
 	BucketName string
 	ProjectID  string
@@ -214,14 +219,133 @@ func (s *TerraformService) applyInfrastructure(ctx context.Context, tf *tfexec.T
 	return nil
 }
 
-func (s *TerraformService) commitInfrastructureToRepo(workDir string) error {
-	// Mock :
-	// 1. Create/update terraform files in the repository
-	// 2. Commit changes with appropriate message
-	// 3. Push to remote repository
+func (s *TerraformService) commitInfrastructureToRepo(workDir, providerName string) error {
+	ctx := context.Background()
 
-	fmt.Println("Mock: Committing infrastructure configuration to repository")
-	fmt.Printf("Mock: Terraform files would be committed from: %s\n", workDir)
+	// Get GitOps config from database or env
+	gitopsConfig, err := s.gitopsService.GetConfigOrDefault()
+	if err != nil {
+		return fmt.Errorf("failed to get GitOps config: %w", err)
+	}
+
+	// Initialize GitHub client from centralized config (not env vars directly)
+	ghClient, err := githubpkg.NewClientFromConfig(
+		s.cfg.GitHub.AppID,
+		s.cfg.GitHub.InstallationID,
+		s.cfg.GitHub.PrivateKey,
+		gitopsConfig.RepoOwner,
+		gitopsConfig.RepoName,
+		gitopsConfig.Branch,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create GitHub client: %w", err)
+	}
+
+	owner := gitopsConfig.RepoOwner
+	repo := gitopsConfig.RepoName
+	branch := gitopsConfig.Branch
+	// Combine working dir with provider subdirectory (e.g., "terraform/gcp")
+	baseWorkingDir := filepath.Join(gitopsConfig.WorkingDir, providerName)
+
+	// Get the latest commit SHA for the branch
+	ref, _, err := ghClient.Git.GetRef(ctx, owner, repo, "refs/heads/"+branch)
+	if err != nil {
+		return fmt.Errorf("failed to get branch ref: %w", err)
+	}
+	baseCommitSHA := ref.GetObject().GetSHA()
+
+	// Get the base tree SHA
+	baseCommit, _, err := ghClient.Git.GetCommit(ctx, owner, repo, baseCommitSHA)
+	if err != nil {
+		return fmt.Errorf("failed to get base commit: %w", err)
+	}
+	baseTreeSHA := baseCommit.GetTree().GetSHA()
+
+	// Read all .tf files from workDir and create tree entries
+	var treeEntries []*github.TreeEntry
+	err = filepath.Walk(workDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() || filepath.Ext(path) != ".tf" {
+			return nil
+		}
+
+		// Read file content
+		content, err := os.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("failed to read file %s: %w", path, err)
+		}
+
+		// Get relative path from workDir
+		relPath, err := filepath.Rel(workDir, path)
+		if err != nil {
+			return fmt.Errorf("failed to get relative path: %w", err)
+		}
+
+		// Create blob for file content
+		blob, _, err := ghClient.Git.CreateBlob(ctx, owner, repo, &github.Blob{
+			Content:  github.Ptr(string(content)),
+			Encoding: github.Ptr("utf-8"),
+		})
+		if err != nil {
+			return fmt.Errorf("failed to create blob for %s: %w", relPath, err)
+		}
+
+		// Add to tree with path in configured working directory
+		terraformPath := filepath.Join(baseWorkingDir, relPath)
+		treeEntries = append(treeEntries, &github.TreeEntry{
+			Path: github.Ptr(terraformPath),
+			Mode: github.Ptr("100644"),
+			Type: github.Ptr("blob"),
+			SHA:  blob.SHA,
+		})
+
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to process terraform files: %w", err)
+	}
+
+	if len(treeEntries) == 0 {
+		return fmt.Errorf("no .tf files found in %s", workDir)
+	}
+
+	// Create a new tree with the terraform files
+	tree, _, err := ghClient.Git.CreateTree(ctx, owner, repo, baseTreeSHA, treeEntries)
+	if err != nil {
+		return fmt.Errorf("failed to create tree: %w", err)
+	}
+
+	// Create commit with author from GitOps config
+	now := time.Now()
+	author := &github.CommitAuthor{
+		Name:  github.Ptr(gitopsConfig.Username),
+		Email: github.Ptr(gitopsConfig.Email),
+		Date:  &github.Timestamp{Time: now},
+	}
+
+	commit, _, err := ghClient.Git.CreateCommit(ctx, owner, repo, &github.Commit{
+		Message:   github.Ptr("Update infrastructure terraform configuration"),
+		Tree:      tree,
+		Parents:   []*github.Commit{{SHA: github.Ptr(baseCommitSHA)}},
+		Author:    author,
+		Committer: author,
+	}, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create commit: %w", err)
+	}
+
+	// Update branch reference to point to new commit
+	ref.Object.SHA = commit.SHA
+	_, _, err = ghClient.Git.UpdateRef(ctx, owner, repo, ref, false)
+	if err != nil {
+		return fmt.Errorf("failed to update branch ref: %w", err)
+	}
+
+	fmt.Printf("Committed terraform files to %s/%s (branch: %s)\n", owner, repo, branch)
+	fmt.Printf("  Working directory: %s\n", baseWorkingDir)
+	fmt.Printf("  Commit SHA: %s\n", commit.GetSHA())
 
 	return nil
 }
@@ -270,4 +394,33 @@ func (s *TerraformService) GetInfrastructureStatus(ctx context.Context) (map[str
 
 func loadTemplate(templatePath string) (*template.Template, error) {
 	return template.ParseFiles(templatePath)
+}
+
+// removes a stuck Terraform state lock
+func (s *TerraformService) ForceUnlockState(ctx context.Context, providerName, lockID string) error {
+	// Create a temporary directory for terraform operations
+	workDir, err := os.MkdirTemp("", "terraform-unlock-*")
+	if err != nil {
+		return fmt.Errorf("failed to create temp directory: %w", err)
+	}
+	defer os.RemoveAll(workDir)
+
+	// Generate infrastructure configuration (needed to connect to backend)
+	if err := s.generateInfrastructureConfig(workDir, providerName); err != nil {
+		return fmt.Errorf("failed to generate infrastructure config: %w", err)
+	}
+
+	// Initialize terraform (to get backend connection)
+	tf, err := s.initializeTerraform(workDir, providerName)
+	if err != nil {
+		return fmt.Errorf("failed to initialize terraform: %w", err)
+	}
+
+	// Force unlock with the provided lock ID
+	if err := tf.ForceUnlock(ctx, lockID); err != nil {
+		return fmt.Errorf("terraform force-unlock failed: %w", err)
+	}
+
+	fmt.Printf("State lock removed successfully (Lock ID: %s)\n", lockID)
+	return nil
 }
