@@ -4,7 +4,6 @@
             :title="$t('provisioning.cloud.title')"
             :subheading="$t('provisioning.cloud.subheading')"
         />
-        
         <v-overlay class="d-flex align-center justify-center" v-model="overlay" persistent>
             <v-progress-circular
                 indeterminate

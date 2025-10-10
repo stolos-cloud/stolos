@@ -16,7 +16,7 @@
                 :items-per-page-text="$t('provisioning.onPremises.table.itemsPerPageText')"
                 class="elevation-8"
                 mobile-breakpoint="md"
-                disable-sort="true"
+                disable-sort
                 :hide-default-footer="nodes.length < 10"
             >
                 <!-- Slot for top -->
