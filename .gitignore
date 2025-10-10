@@ -24,7 +24,6 @@ app.db
 *.log
 logs/
 
-.vscode/
 .idea/
 *.swp
 *.swo
