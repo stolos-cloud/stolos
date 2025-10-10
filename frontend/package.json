@@ -5,6 +5,7 @@
     "dev": "node --no-warnings ./node_modules/.bin/vite",
     "build": "vite build",
     "preview": "vite preview",
+    "format": "prettier --write \"src/**/*.js\"",
     "lint": "eslint . --ext .vue,.js,.jsx,.ts,.tsx --max-warnings=0",
     "lint:fix": "eslint . --ext .vue,.js,.jsx,.ts,.tsx --fix"
   },

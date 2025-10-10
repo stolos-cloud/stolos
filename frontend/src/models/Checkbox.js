@@ -30,7 +30,7 @@ export class Checkbox {
     setLabel(label) {
         this.label = label;
     }
-    
+
     setValue(value) {
         this.value = value;
     }

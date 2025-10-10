@@ -1,7 +1,7 @@
 export class TextField {
     constructor({ label, value, type, required, rules, disabled, minDate, maxDate, readonly }) {
         if (type === 'date' && !maxDate) {
-            maxDate = "2099-12-31";
+            maxDate = '2099-12-31';
         }
         this.label = label;
         this.value = value;
@@ -9,7 +9,7 @@ export class TextField {
         this.minDate = minDate;
         this.maxDate = maxDate;
         this.required = required;
-        this.readonly=readonly;
+        this.readonly = readonly;
         this.rules = rules;
         this.disabled = disabled;
     }
@@ -76,7 +76,7 @@ export class TextField {
 
     setMaxDate(maxDate) {
         this.maxDate = maxDate;
-    }  
+    }
 
     change(value) {
         this.value = value;

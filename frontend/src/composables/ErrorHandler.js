@@ -12,6 +12,6 @@ export function ErrorHandler() {
         }
     }
     return {
-        handleLoginError
+        handleLoginError,
     };
 }

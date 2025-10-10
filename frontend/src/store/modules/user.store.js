@@ -1,4 +1,9 @@
-import { login, logout, refreshToken, initAuthenticationExistingToken } from '@/services/auth.service';
+import {
+    login,
+    logout,
+    refreshToken,
+    initAuthenticationExistingToken,
+} from '@/services/auth.service';
 import { StorageService } from '@/services/storage.service';
 
 export const user = {
@@ -11,7 +16,7 @@ export const user = {
         teams: [],
         isAuthenticated: false,
         theme: StorageService.get('theme') || 'dark',
-        language: StorageService.get('language') || 'en'
+        language: StorageService.get('language') || 'en',
     },
     mutations: {
         SET_USER(state, { email, role, id, token, teams }) {
@@ -46,7 +51,7 @@ export const user = {
             state.token = null;
             state.teams = [];
             state.isAuthenticated = false;
-        }
+        },
     },
     actions: {
         setEmail({ commit }, email) {
@@ -65,20 +70,30 @@ export const user = {
             commit('SET_LANGUAGE', language);
         },
         async initAuth({ commit }) {
-            await initAuthenticationExistingToken()
-            .then((response) => {
-                if(response == null) {
+            await initAuthenticationExistingToken().then(response => {
+                if (response == null) {
                     commit('CLEAR_USER');
                     return;
                 }
                 const { token, user } = response;
-                commit('SET_USER', { email: user.email, role: user.role, id: user.id, teams: user.teams, token });
+                commit('SET_USER', {
+                    email: user.email,
+                    role: user.role,
+                    id: user.id,
+                    teams: user.teams,
+                    token,
+                });
             });
         },
         async loginUser({ commit }, { email, password }) {
-            await login(email, password)
-            .then(({ token, user }) => {
-                commit('SET_USER', { email: user.email, role: user.role, id: user.id, teams: user.teams, token });
+            await login(email, password).then(({ token, user }) => {
+                commit('SET_USER', {
+                    email: user.email,
+                    role: user.role,
+                    id: user.id,
+                    teams: user.teams,
+                    token,
+                });
             });
         },
         async logoutUser({ commit }) {
@@ -87,26 +102,25 @@ export const user = {
             });
         },
         async refreshTokenUser({ commit, state }) {
-            await refreshToken()
-            .then(({ token }) => {
+            await refreshToken().then(({ token }) => {
                 commit('SET_USER', {
                     email: state.email,
                     role: state.role,
                     id: state.id,
                     teams: state.teams,
-                    token
+                    token,
                 });
             });
-        }
+        },
     },
     getters: {
-        getEmail: (state) => state.email,
-        getRole: (state) => state.role,
-        getId: (state) => state.id,
-        getToken: (state) => state.token,
-        isAuthenticated: (state) => state.isAuthenticated,
-        getTeams: (state) => state.teams,
-        getTheme: (state) => state.theme,
-        getLanguage: (state) => state.language
+        getEmail: state => state.email,
+        getRole: state => state.role,
+        getId: state => state.id,
+        getToken: state => state.token,
+        isAuthenticated: state => state.isAuthenticated,
+        getTeams: state => state.teams,
+        getTheme: state => state.theme,
+        getLanguage: state => state.language,
     },
 };

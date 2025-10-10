@@ -6,7 +6,7 @@ export class Select {
         this.required = required;
         this.rules = rules;
     }
-    
+
     getLabel() {
         return this.label;
     }
@@ -25,7 +25,7 @@ export class Select {
 
     getRules() {
         return this.rules;
-    }   
+    }
     setLabel(label) {
         this.label = label;
     }
