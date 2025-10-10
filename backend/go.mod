@@ -8,6 +8,7 @@ require (
 	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/google/go-github/v74 v74.0.0
 	github.com/google/uuid v1.6.0
+	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674
 	github.com/hashicorp/terraform-exec v0.24.0
 	github.com/joho/godotenv v1.5.1
 	github.com/spf13/viper v1.20.1
@@ -144,4 +145,5 @@ require (
 )
 
 replace github.com/stolos-cloud/stolos-bootstrap => ../bootstrap
+
 replace github.com/stolos-cloud/stolos/k8s_manifests => ../k8s-manifests
