@@ -1,26 +1,23 @@
-import api from './api'
+import api from './api';
 
 /*-------------------------------------
     On-Premises Service Functions
 -------------------------------------*/
-export async function downloadISO(payload) {
+export async function generateISO(payload) {
     try {
-        const response = await api.post('/api/isos/generate', payload, {
-            responseType: 'blob',
-        });
-        return {
-            data: response.data,
-            headers: response.headers
-        }
+        const response = await api.post('/api/iso/generate', payload);
+        return response.data; // Returns { download_url }
     } catch (error) {
-        console.error('Error downloading ISO:', error);
+        console.error('Error generating ISO:', error);
         throw error;
     }
 }
 
-export async function getConnectedNodes({status}) {
+export async function getConnectedNodes({ status }) {
     try {
-        const response = await api.get('/api/nodes', { params: { status: status } });
+        const response = await api.get('/api/nodes', {
+            params: { status: status },
+        });
         return response.data;
     } catch (error) {
         console.error('Error fetching connected nodes:', error);
@@ -28,12 +25,22 @@ export async function getConnectedNodes({status}) {
     }
 }
 
-export async function createNodesWithRoleAndLabels({ nodes }) {
+export async function provisionNodes({ nodes }) {
+    try {
+        const response = await api.post('/api/nodes/provision', { nodes });
+        return response.data;
+    } catch (error) {
+        console.error('Error provisioning nodes:', error);
+        throw error;
+    }
+}
+
+export async function updateNodesLabels({ nodes }) {
     try {
         const response = await api.put('/api/nodes/config', { nodes });
         return response.data;
     } catch (error) {
-        console.error('Error creating connected nodes:', error);
+        console.error('Error updating node labels:', error);
         throw error;
     }
 }
@@ -48,7 +55,6 @@ export async function createSamplesNodes() {
         throw error;
     }
 }
-
 
 /*-------------------------------------
     Cloud Service Functions
@@ -76,7 +82,7 @@ export async function configureGCPServiceAccountUpload({ region, serviceAccountF
     }
 }
 
-export async function getAvailableGCPResources(){
+export async function getAvailableGCPResources() {
     try {
         const response = await api.get('/api/gcp/resources');
         return response.data;

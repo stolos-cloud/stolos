@@ -36,9 +36,9 @@ func SetupRoutes(r *gin.Engine, h *handlers.Handlers) {
 }
 
 func setupISORoutes(api *gin.RouterGroup, h *handlers.Handlers) {
-	isos := api.Group("/isos")
+	iso := api.Group("/iso")
 	{
-		isos.POST("/generate", h.ISOHandlers().GenerateISO)
+		iso.POST("/generate", h.ISOHandlers().GenerateISO)
 	}
 }
 
@@ -48,8 +48,9 @@ func setupNodeRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
 		nodes.GET("", h.NodeHandlers().ListNodes)
 		nodes.POST("", h.NodeHandlers().CreateNodes)
 		nodes.GET("/:id", h.NodeHandlers().GetNode)
-		nodes.PUT("/:id/config", h.NodeHandlers().UpdateNodeConfig)
-		nodes.PUT("/config", h.NodeHandlers().UpdateNodesConfig)
+		nodes.PUT("/:id/config", h.NodeHandlers().UpdateActiveNodeConfig)
+		nodes.PUT("/config", h.NodeHandlers().UpdateActiveNodesConfig)
+		nodes.POST("/provision", h.NodeHandlers().ProvisionNodes)
 		nodes.POST("/samples", h.NodeHandlers().CreateSampleNodes) // TODO: remove in production
 	}
 }

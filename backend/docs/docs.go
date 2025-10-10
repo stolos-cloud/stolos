@@ -666,7 +666,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Generate a custom ISO image for node provisioning",
+                "description": "Generate a custom Talos ISO image for on-prem node provisioning using the image factory",
                 "consumes": [
                     "application/json"
                 ],
@@ -676,10 +676,27 @@ const docTemplate = `{
                 "tags": [
                     "iso"
                 ],
-                "summary": "Generate a custom ISO",
+                "summary": "Generate a custom Talos ISO",
+                "parameters": [
+                    {
+                        "description": "ISO generation parameters",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.ISORequest"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.ISOResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -753,7 +770,7 @@ const docTemplate = `{
         },
         "/nodes/config": {
             "put": {
-                "description": "Update multiple nodes' role and labels in a single request",
+                "description": "Update labels for multiple nodes (for active nodes only, does not change role)",
                 "consumes": [
                     "application/json"
                 ],
@@ -763,10 +780,10 @@ const docTemplate = `{
                 "tags": [
                     "nodes"
                 ],
-                "summary": "Update multiple nodes configuration",
+                "summary": "Update multiple nodes labels",
                 "parameters": [
                     {
-                        "description": "Array of node configurations",
+                        "description": "Array of node label updates",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -786,6 +803,64 @@ const docTemplate = `{
                 "responses": {
                     "200": {
                         "description": "Returns updated count and nodes array",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/nodes/provision": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Apply Talos configuration to multiple pending nodes and add them to the cluster",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "nodes"
+                ],
+                "summary": "Provision multiple on-prem nodes",
+                "parameters": [
+                    {
+                        "description": "Array of nodes to provision with role and labels",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.NodeProvisionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Returns provisioned count and nodes array",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -849,7 +924,7 @@ const docTemplate = `{
         },
         "/nodes/{id}/config": {
             "put": {
-                "description": "Update a single node's role and labels",
+                "description": "Update a single active node's role and labels",
                 "consumes": [
                     "application/json"
                 ],
@@ -859,7 +934,7 @@ const docTemplate = `{
                 "tags": [
                     "nodes"
                 ],
-                "summary": "Update node configuration",
+                "summary": "Update active node configuration",
                 "parameters": [
                     {
                         "type": "string",
@@ -1923,6 +1998,49 @@ const docTemplate = `{
                 }
             }
         },
+        "models.ISORequest": {
+            "type": "object",
+            "properties": {
+                "architecture": {
+                    "type": "string"
+                },
+                "extra_kernel_args": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "overlay_image": {
+                    "type": "string"
+                },
+                "overlay_name": {
+                    "type": "string"
+                },
+                "talos_version": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.ISOResponse": {
+            "type": "object",
+            "properties": {
+                "architecture": {
+                    "type": "string"
+                },
+                "download_url": {
+                    "type": "string"
+                },
+                "filename": {
+                    "type": "string"
+                },
+                "schematic_id": {
+                    "type": "string"
+                },
+                "talos_version": {
+                    "type": "string"
+                }
+            }
+        },
         "models.Node": {
             "type": "object",
             "properties": {
@@ -1972,6 +2090,47 @@ const docTemplate = `{
                 }
             }
         },
+        "models.NodeProvisionConfig": {
+            "type": "object",
+            "required": [
+                "node_id",
+                "role"
+            ],
+            "properties": {
+                "labels": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "zone=us-east",
+                        "type=compute"
+                    ]
+                },
+                "node_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "role": {
+                    "type": "string",
+                    "example": "worker"
+                }
+            }
+        },
+        "models.NodeProvisionRequest": {
+            "type": "object",
+            "required": [
+                "nodes"
+            ],
+            "properties": {
+                "nodes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.NodeProvisionConfig"
+                    }
+                }
+            }
+        },
         "models.NodeStatus": {
             "type": "string",
             "enum": [
@@ -2017,9 +2176,6 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
-                },
-                "role": {
-                    "type": "string"
                 }
             }
         }

@@ -35,7 +35,7 @@ export class FileInput {
     setLabel(label) {
         this.label = label;
     }
-    
+
     setValue(value) {
         this.value = value;
     }

@@ -127,6 +127,34 @@ definitions:
       updated_at:
         type: string
     type: object
+  models.ISORequest:
+    properties:
+      architecture:
+        type: string
+      extra_kernel_args:
+        items:
+          type: string
+        type: array
+      overlay_image:
+        type: string
+      overlay_name:
+        type: string
+      talos_version:
+        type: string
+    type: object
+  models.ISOResponse:
+    properties:
+      architecture:
+        type: string
+      download_url:
+        type: string
+      filename:
+        type: string
+      schematic_id:
+        type: string
+      talos_version:
+        type: string
+    type: object
   models.Node:
     properties:
       architecture:
@@ -160,6 +188,34 @@ definitions:
         $ref: '#/definitions/models.NodeStatus'
       updated_at:
         type: string
+    type: object
+  models.NodeProvisionConfig:
+    properties:
+      labels:
+        example:
+        - zone=us-east
+        - type=compute
+        items:
+          type: string
+        type: array
+      node_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      role:
+        example: worker
+        type: string
+    required:
+    - node_id
+    - role
+    type: object
+  models.NodeProvisionRequest:
+    properties:
+      nodes:
+        items:
+          $ref: '#/definitions/models.NodeProvisionConfig'
+        type: array
+    required:
+    - nodes
     type: object
   models.NodeStatus:
     enum:
@@ -195,8 +251,6 @@ definitions:
         items:
           type: string
         type: array
-      role:
-        type: string
     type: object
 info:
   contact:
@@ -622,12 +676,24 @@ paths:
     post:
       consumes:
       - application/json
-      description: Generate a custom ISO image for node provisioning
+      description: Generate a custom Talos ISO image for on-prem node provisioning
+        using the image factory
+      parameters:
+      - description: ISO generation parameters
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.ISORequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
+          schema:
+            $ref: '#/definitions/models.ISOResponse'
+        "400":
+          description: Bad Request
           schema:
             additionalProperties:
               type: string
@@ -640,7 +706,7 @@ paths:
             type: object
       security:
       - BearerAuth: []
-      summary: Generate a custom ISO
+      summary: Generate a custom Talos ISO
       tags:
       - iso
   /nodes:
@@ -681,7 +747,7 @@ paths:
     put:
       consumes:
       - application/json
-      description: Update a single node's role and labels
+      description: Update a single active node's role and labels
       parameters:
       - description: Node ID (UUID)
         in: path
@@ -720,16 +786,17 @@ paths:
             additionalProperties:
               type: string
             type: object
-      summary: Update node configuration
+      summary: Update active node configuration
       tags:
       - nodes
   /nodes/config:
     put:
       consumes:
       - application/json
-      description: Update multiple nodes' role and labels in a single request
+      description: Update labels for multiple nodes (for active nodes only, does not
+        change role)
       parameters:
-      - description: Array of node configurations
+      - description: Array of node label updates
         in: body
         name: request
         required: true
@@ -760,7 +827,45 @@ paths:
             additionalProperties:
               type: string
             type: object
-      summary: Update multiple nodes configuration
+      summary: Update multiple nodes labels
+      tags:
+      - nodes
+  /nodes/provision:
+    post:
+      consumes:
+      - application/json
+      description: Apply Talos configuration to multiple pending nodes and add them
+        to the cluster
+      parameters:
+      - description: Array of nodes to provision with role and labels
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.NodeProvisionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Returns provisioned count and nodes array
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Provision multiple on-prem nodes
       tags:
       - nodes
   /nodes/samples:

@@ -85,10 +85,19 @@ func (s *NodeService) GetNode(id uuid.UUID) (*models.Node, error) {
 	return &node, nil
 }
 
-func (s *NodeService) UpdateNodeConfig(id uuid.UUID, role string, labels []string) (*models.Node, error) {
+// UpdateActiveNodeConfig updates role and labels for a single active node
+func (s *NodeService) UpdateActiveNodeConfig(id uuid.UUID, role string, labels []string) (*models.Node, error) {
 	var node models.Node
 	if err := s.db.First(&node, "id = ?", id).Error; err != nil {
-		return nil, err
+		if err == gorm.ErrRecordNotFound {
+			return nil, fmt.Errorf("node %s not found", id)
+		}
+		return nil, fmt.Errorf("failed to fetch node %s: %w", id, err)
+	}
+
+	// Only allow updating active nodes
+	if node.Status != models.StatusActive {
+		return nil, fmt.Errorf("node %s must be active to update config (current: %s)", id, node.Status)
 	}
 
 	node.Role = role
@@ -100,33 +109,121 @@ func (s *NodeService) UpdateNodeConfig(id uuid.UUID, role string, labels []strin
 		node.Labels = string(labelsJSON)
 	}
 
-	node.Status = models.StatusActive // todo this is just for sample testing
-
 	if err := s.db.Save(&node).Error; err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to update node %s: %w", id, err)
 	}
+
+	// TODO: Also update Talos node config
+	// 1. Get current Talos config bundle
+	// 2. Apply role/label patches to node config
+	// 3. Re-apply config to node via Talos API
 
 	return &node, nil
 }
 
 type NodeConfigUpdate struct {
 	ID     uuid.UUID `json:"id"`
-	Role   string    `json:"role"`
 	Labels []string  `json:"labels"`
 }
 
-func (s *NodeService) UpdateNodesConfig(updates []NodeConfigUpdate) ([]models.Node, error) {
+// UpdateActiveNodesConfig updates labels for multiple active nodes
+func (s *NodeService) UpdateActiveNodesConfig(updates []NodeConfigUpdate) ([]models.Node, error) {
 	var updatedNodes []models.Node
 
 	for _, update := range updates {
-		node, err := s.UpdateNodeConfig(update.ID, update.Role, update.Labels)
-		if err != nil {
+		var node models.Node
+		if err := s.db.First(&node, "id = ?", update.ID).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				return nil, fmt.Errorf("node %s not found", update.ID)
+			}
+			return nil, fmt.Errorf("failed to find node %s: %w", update.ID, err)
+		}
+
+		// Only allow updating active nodes
+		if node.Status != models.StatusActive {
+			return nil, fmt.Errorf("node %s must be active to update labels (current: %s)", update.ID, node.Status)
+		}
+
+		// Only update labels (do not change role or status)
+		if len(update.Labels) > 0 {
+			labelsJSON, err := json.Marshal(update.Labels)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal labels for node %s: %w", update.ID, err)
+			}
+			node.Labels = string(labelsJSON)
+		}
+
+		if err := s.db.Save(&node).Error; err != nil {
 			return nil, fmt.Errorf("failed to update node %s: %w", update.ID, err)
 		}
-		updatedNodes = append(updatedNodes, *node)
+
+		updatedNodes = append(updatedNodes, node)
 	}
 
+	//todo also update Talos node config
+	// 1. Get current Talos config bundle
+	// 2. Apply label patches to node configs
+	// 3. Re-apply configs to nodes via Talos API
+
 	return updatedNodes, nil
+}
+
+// ProvisionNodes provisions multiple on-prem nodes by updating their role and labels,
+// then changing their status from pending to active
+func (s *NodeService) ProvisionNodes(configs []models.NodeProvisionConfig) ([]models.Node, error) {
+	var provisionedNodes []models.Node
+
+	for _, config := range configs {
+		// Validate role
+		if config.Role != "worker" && config.Role != "control-plane" {
+			return nil, fmt.Errorf("invalid role '%s' for node %s. Must be 'worker' or 'control-plane'", config.Role, config.NodeID)
+		}
+
+		// Get node from database
+		var node models.Node
+		if err := s.db.Where("id = ? AND provider = ?", config.NodeID, "onprem").First(&node).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				return nil, fmt.Errorf("node %s not found or not an on-prem node", config.NodeID)
+			}
+			return nil, fmt.Errorf("failed to fetch node %s: %w", config.NodeID, err)
+		}
+
+		// Check if node is in pending status
+		if node.Status != models.StatusPending {
+			return nil, fmt.Errorf("node %s must be in pending status to provision (current: %s)", config.NodeID, node.Status)
+		}
+
+		// Update role and labels
+		node.Role = config.Role
+		if len(config.Labels) > 0 {
+			labelsJSON, err := json.Marshal(config.Labels)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal labels for node %s: %w", config.NodeID, err)
+			}
+			node.Labels = string(labelsJSON)
+		}
+
+		if err := s.db.Save(&node).Error; err != nil {
+			return nil, fmt.Errorf("failed to update node %s: %w", config.NodeID, err)
+		}
+
+		provisionedNodes = append(provisionedNodes, node)
+	}
+
+	// TODO: Apply Talos configuration to all nodes
+	// 1. Create/load Talos config
+	// 2. Apply configs to each node
+	// 3. Update node status to active after successful config application
+	//
+	// For now, update status to active as a placeholder
+	for i := range provisionedNodes {
+		provisionedNodes[i].Status = models.StatusActive
+		if err := s.db.Save(&provisionedNodes[i]).Error; err != nil {
+			return nil, fmt.Errorf("failed to update node %s status: %w", provisionedNodes[i].ID, err)
+		}
+	}
+
+	return provisionedNodes, nil
 }
 
 // ListNodes lists nodes with optional status filter, offset, and limit.

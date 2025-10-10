@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/stolos-cloud/stolos-bootstrap/pkg/k8s"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/logger"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/oauth"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/oauth/providers"
@@ -100,19 +101,7 @@ func FromSecret(secret *corev1.Secret) (*GCPConfig, error) {
 
 func (c *GCPConfig) CreateOrUpdateSecret(ctx context.Context, client kubernetes.Interface, namespace, secretName string) error {
 	secret := c.ToSecret(namespace, secretName)
-
-	existingSecret, err := client.CoreV1().Secrets(namespace).Get(ctx, secretName, metav1.GetOptions{})
-	if err != nil {
-		// Secret doesn't exist, create it
-		_, err = client.CoreV1().Secrets(namespace).Create(ctx, secret, metav1.CreateOptions{})
-		return err
-	}
-
-	// Secret exists, update it
-	existingSecret.Data = secret.Data
-	existingSecret.Labels = secret.Labels
-	_, err = client.CoreV1().Secrets(namespace).Update(ctx, existingSecret, metav1.UpdateOptions{})
-	return err
+	return k8s.CreateOrUpdateSecret(ctx, client, secret, true)
 }
 
 func GetSecretFromCluster(ctx context.Context, client kubernetes.Interface, namespace, secretName string) (*GCPConfig, error) {

@@ -3,18 +3,18 @@ export const referenceLists = {
     state: {
         roleUserTypes: [
             { label: 'Admin', value: 'admin' },
-            { label: 'Developer', value: 'developer' }
+            { label: 'Developer', value: 'developer' },
         ],
         roleProvisioningTypes: [
             { label: 'Worker', value: 'worker' },
-            { label: 'Control plane', value: 'control-plane' }
+            { label: 'Control plane', value: 'control-plane' },
         ],
         isoTypes: [
-            { label: 'AMD', value: 'amd' },
-            { label: 'ARM', value: 'arm' },
+            { label: 'AMD64', value: 'amd64' },
+            { label: 'ARM64', value: 'arm64' },
         ],
         cloudZones: [],
-        machinesTypesByZone: {}
+        machinesTypesByZone: {},
     },
     mutations: {
         SET_CLOUD_ZONES(state, zones) {
@@ -22,7 +22,7 @@ export const referenceLists = {
         },
         SET_MACHINE_TYPES_BY_ZONE(state, machineTypes) {
             state.machinesTypesByZone = machineTypes;
-        }
+        },
     },
     actions: {
         setCloudResources({ commit }, gcpResources) {
@@ -31,11 +31,10 @@ export const referenceLists = {
         },
     },
     getters: {
-        getUserRoles: (state) => state.roleUserTypes,
-        getProvisioningRoles: (state) => state.roleProvisioningTypes,
-        getIsoTypes: (state) => state.isoTypes,
-        getCloudZones: (state) => state.cloudZones,
-        getMachinesTypesByZone: (state) => (zone) => state.machinesTypesByZone[zone] || []
-
-    }
+        getUserRoles: state => state.roleUserTypes,
+        getProvisioningRoles: state => state.roleProvisioningTypes,
+        getIsoTypes: state => state.isoTypes,
+        getCloudZones: state => state.cloudZones,
+        getMachinesTypesByZone: state => zone => state.machinesTypesByZone[zone] || [],
+    },
 };

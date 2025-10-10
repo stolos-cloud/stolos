@@ -1,4 +1,3 @@
-
 export class RadioGroup {
     constructor({ label, precision, options, value, required, rules, disabled }) {
         this.label = label;
@@ -60,12 +59,12 @@ export class RadioGroup {
 
     setRules(rules) {
         this.rules = rules;
-    } 
+    }
 
     setDisabled(disabled) {
         this.disabled = disabled;
     }
-    
+
     change(value) {
         this.value = value;
     }

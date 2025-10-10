@@ -15,6 +15,7 @@ type Config struct {
 	GitHub         GitHubConfig      `mapstructure:"github"`
 	JWT            JWTConfig         `mapstructure:"jwt"`
 	GCPResources   GCPResources      `mapstructure:"gcp_resources"`
+	Talos          TalosConfig       `mapstructure:"talos"`
 }
 
 type DatabaseConfig struct {
@@ -64,6 +65,11 @@ type GCPMachineType struct {
 	Description string `mapstructure:"description" json:"description"`
 	GuestCpus   int64  `mapstructure:"guest_cpus" json:"guest_cpus"`
 	MemoryMb    int64  `mapstructure:"memory_mb" json:"memory_mb"`
+}
+
+type TalosConfig struct {
+	EventSinkHostname string `mapstructure:"event_sink_hostname"`
+	EventSinkPort     string `mapstructure:"event_sink_port"`
 }
 
 
@@ -146,6 +152,16 @@ func Load() (*Config, error) {
 	}
 	if config.JWT.ExpiryMinutes == 0 {
 		config.JWT.ExpiryMinutes = 1440 // default 24 hours
+	}
+
+	// Talos Event Sink Config
+	if talosHostname := os.Getenv("TALOS_EVENT_SINK_HOSTNAME"); talosHostname != "" {
+		config.Talos.EventSinkHostname = talosHostname
+	}
+	if talosPort := os.Getenv("TALOS_EVENT_SINK_PORT"); talosPort != "" {
+		config.Talos.EventSinkPort = talosPort
+	} else {
+		config.Talos.EventSinkPort = "8082"
 	}
 
 	return &config, nil
