@@ -48,6 +48,7 @@ var githubConfig *github.Config
 var githubToken *oauth2.Token
 var gcpToken *oauth2.Token
 var gcpEnabled = gcp.GCPClientId != "" && gcp.GCPClientSecret != ""
+
 // var gitHubEnabled = github.GithubOauthClientId != "" && github.GithubOauthClientSecret != "" // legacy
 var gitHubEnabled = true
 var gitHubUser *github.User
@@ -97,6 +98,35 @@ func main() {
 		bootstrapInfos = &BootstrapInfo{}
 	}
 
+	CreateSteps(err)
+
+	f, _ := os.OpenFile("./stolos.log", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	defer f.Close()
+	p, model := tui.NewWizard(tui.Steps, f)
+
+	oauth.CreateServerIfNotExists("9999", model.Logger)
+	if gcpEnabled {
+		SetupGCP()
+	}
+	// legacy
+	// if gitHubEnabled {
+	// 	SetupGitHub()
+	// }
+
+	if os.Args[1] == "--web" {
+		go func() {
+			web(model, p)
+		}()
+	}
+
+	// Run will block.
+	if _, err := p.Run(); err != nil {
+		fmt.Println("Error:", err)
+	}
+
+}
+
+func CreateSteps(err error) {
 	githubInfoStep := tui.Step{
 		Name:        "GitHubInfo",
 		Title:       "1) Enter GitHub Repository Information",
@@ -374,25 +404,6 @@ func main() {
 		&deployPortalStep,
 		&endStep,
 	}
-
-	f, _ := os.OpenFile("./stolos.log", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
-	defer f.Close()
-	p, model := tui.NewWizard(tui.Steps, f)
-
-	oauth.CreateServerIfNotExists("9999", model.Logger)
-	if gcpEnabled {
-		SetupGCP()
-	}
-	// legacy
-	// if gitHubEnabled {
-	// 	SetupGitHub()
-	// }
-
-	// Run will block.
-	if _, err := p.Run(); err != nil {
-		fmt.Println("Error:", err)
-	}
-
 }
 
 func RunOAuthServerInBackround(logger *tui.UILogger) {

@@ -71,11 +71,11 @@ type UILogger struct {
 }
 
 // Info Logs an info line (non-blocking).
-func (l *UILogger) Debug(s string)   { l.emit(logMsg{Level: LevelDebug, Text: s, At: time.Now()}) }
-func (l *UILogger) Info(s string)    { l.emit(logMsg{Level: LevelInfo, Text: s, At: time.Now()}) }
-func (l *UILogger) Warn(s string)    { l.emit(logMsg{Level: LevelWarn, Text: s, At: time.Now()}) }
-func (l *UILogger) Error(s string)   { l.emit(logMsg{Level: LevelError, Text: s, At: time.Now()}) }
-func (l *UILogger) Success(s string) { l.emit(logMsg{Level: LevelSuccess, Text: s, At: time.Now()}) }
+func (l *UILogger) Debug(s string)   { l.emit(LogMsg{Level: LevelDebug, Text: s, At: time.Now()}) }
+func (l *UILogger) Info(s string)    { l.emit(LogMsg{Level: LevelInfo, Text: s, At: time.Now()}) }
+func (l *UILogger) Warn(s string)    { l.emit(LogMsg{Level: LevelWarn, Text: s, At: time.Now()}) }
+func (l *UILogger) Error(s string)   { l.emit(LogMsg{Level: LevelError, Text: s, At: time.Now()}) }
+func (l *UILogger) Success(s string) { l.emit(LogMsg{Level: LevelSuccess, Text: s, At: time.Now()}) }
 
 func (l *UILogger) Debugf(f string, a ...any)   { l.Debug(fmt.Sprintf(f, a...)) }
 func (l *UILogger) Infof(f string, a ...any)    { l.Info(fmt.Sprintf(f, a...)) }
@@ -88,7 +88,7 @@ func (l *UILogger) emit(m tea.Msg) {
 	go func() {
 		l.send(m)
 		var level string
-		switch m.(logMsg).Level {
+		switch m.(LogMsg).Level {
 		case LevelDebug:
 			level = "DEBUG"
 			break
@@ -106,7 +106,7 @@ func (l *UILogger) emit(m tea.Msg) {
 			break
 
 		}
-		_, _ = l.file.WriteString(fmt.Sprintf("[%s] [%s] %s\n", m.(logMsg).At.Format("2006-01-02 15:04:05"), level, m.(logMsg).Text))
+		_, _ = l.file.WriteString(fmt.Sprintf("[%s] [%s] %s\n", m.(LogMsg).At.Format("2006-01-02 15:04:05"), level, m.(LogMsg).Text))
 		_ = l.file.Sync()
 	}()
 }
@@ -132,15 +132,15 @@ const (
 	LevelSuccess
 )
 
-type logMsg struct {
+type LogMsg struct {
 	Level LogLevel
 	Text  string
 	At    time.Time
 }
 
-type stepEnteredMsg struct{ idx int }
-type advanceMsg struct{}
-type tickMsg struct{}
+type StepEnteredMsg struct{ idx int }
+type AdvanceMsg struct{}
+type TickMsg struct{}
 
 // Model holds UI state.
 type Model struct {
@@ -151,7 +151,7 @@ type Model struct {
 	Height            int
 	Spinner           spinner.Model
 	FocusedFieldIndex int
-	Logs              []logMsg
+	Logs              []LogMsg
 	MaxLogs           int
 	Program           *tea.Program // Backref for internal Cmds that may need Send
 }
@@ -181,9 +181,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	// AutoAdvance when step IsDone
-	if m.getCurrentStep().AutoAdvance && m.getCurrentStep().IsDone {
-		if m.getCurrentStep().OnExit != nil {
-			m.getCurrentStep().OnExit(m, m.getCurrentStep())
+	if m.GetCurrentStep().AutoAdvance && m.GetCurrentStep().IsDone {
+		if m.GetCurrentStep().OnExit != nil {
+			m.GetCurrentStep().OnExit(m, m.GetCurrentStep())
 		}
 		return m, m.advanceCmd()
 	}
@@ -196,28 +196,28 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "enter":
-			if m.getCurrentStep().IsDone {
-				if m.getCurrentStep().OnExit != nil {
-					m.getCurrentStep().OnExit(m, m.getCurrentStep())
+			if m.GetCurrentStep().IsDone {
+				if m.GetCurrentStep().OnExit != nil {
+					m.GetCurrentStep().OnExit(m, m.GetCurrentStep())
 				}
 				return m, m.advanceCmd()
 			}
 			return m, nil
 
 		case "tab", "down":
-			if m.getCurrentStep().Kind == StepForm && len(m.getCurrentStep().Fields) > 0 {
+			if m.GetCurrentStep().Kind == StepForm && len(m.GetCurrentStep().Fields) > 0 {
 				m.Steps[m.CurrentStepIndex].Fields[m.FocusedFieldIndex].Input.Blur()
-				m.FocusedFieldIndex = (m.FocusedFieldIndex + 1) % len(m.getCurrentStep().Fields)
+				m.FocusedFieldIndex = (m.FocusedFieldIndex + 1) % len(m.GetCurrentStep().Fields)
 				m.Steps[m.CurrentStepIndex].Fields[m.FocusedFieldIndex].Input.Focus()
 			}
 			return m, nil
 
 		case "shift+tab", "up":
-			if m.getCurrentStep().Kind == StepForm && len(m.getCurrentStep().Fields) > 0 {
+			if m.GetCurrentStep().Kind == StepForm && len(m.GetCurrentStep().Fields) > 0 {
 				m.Steps[m.CurrentStepIndex].Fields[m.FocusedFieldIndex].Input.Blur()
 				m.FocusedFieldIndex--
 				if m.FocusedFieldIndex < 0 {
-					m.FocusedFieldIndex = len(m.getCurrentStep().Fields) - 1
+					m.FocusedFieldIndex = len(m.GetCurrentStep().Fields) - 1
 				}
 				m.Steps[m.CurrentStepIndex].Fields[m.FocusedFieldIndex].Input.Focus()
 			}
@@ -232,11 +232,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Spinner, cmd = m.Spinner.Update(msg)
 		return m, cmd
 
-	case logMsg:
+	case LogMsg:
 		m.appendLog(msg)
 		return m, nil
 
-	case stepEnteredMsg:
+	case StepEnteredMsg:
 		step := &m.Steps[msg.idx]
 
 		if (*step).isStarted {
@@ -255,8 +255,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, tea.Batch(cmds...)
 
-	case advanceMsg:
-		currentStep := m.getCurrentStep()
+	case AdvanceMsg:
+		currentStep := m.GetCurrentStep()
 		if currentStep.OnExit != nil {
 			currentStep.OnExit(m, currentStep)
 		}
@@ -264,7 +264,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	// If we're on a form step, keep updating focused input.
-	if m.getCurrentStep().Kind == StepForm {
+	if m.GetCurrentStep().Kind == StepForm {
 		return m.updateForm(msg)
 	}
 	return m, nil
@@ -280,18 +280,18 @@ func (m *Model) View() string {
 	b.WriteString("\n\n")
 
 	// Step title
-	title := lipgloss.NewStyle().Bold(true).Render(m.getCurrentStep().Title)
+	title := lipgloss.NewStyle().Bold(true).Render(m.GetCurrentStep().Title)
 	b.WriteString(title + "\n\n")
 
 	// Step body by kind
-	switch m.getCurrentStep().Kind {
+	switch m.GetCurrentStep().Kind {
 	case StepForm:
 		b.WriteString(m.renderForm())
 	case StepSpinner:
 		b.WriteString(m.renderSpinnerBody())
 	default:
 		// Plain
-		b.WriteString(m.wrap(m.getCurrentStep().Body, m.Width))
+		b.WriteString(m.wrap(m.GetCurrentStep().Body, m.Width))
 	}
 
 	// Logs
@@ -355,7 +355,7 @@ func SkipToStep(model *Model, name string) {
 
 // Steps helper / processing
 
-func (m *Model) getCurrentStep() *Step {
+func (m *Model) GetCurrentStep() *Step {
 	if m.CurrentStepIndex >= len(m.Steps) {
 		m.Logger.Errorf("Current step index out of range!!")
 		return m.Steps[len(m.Steps)]
@@ -365,32 +365,33 @@ func (m *Model) getCurrentStep() *Step {
 
 func (m *Model) enterStepCmd(i int) tea.Cmd {
 	m.CurrentStepIndex = i
-	if m.getCurrentStep().Kind == StepForm && len(m.getCurrentStep().Fields) > 0 {
-		for j := range m.getCurrentStep().Fields {
+	if m.GetCurrentStep().Kind == StepForm && len(m.GetCurrentStep().Fields) > 0 {
+		for j := range m.GetCurrentStep().Fields {
 			m.Steps[m.CurrentStepIndex].Fields[j].Input.Blur()
 		}
 		m.FocusedFieldIndex = 0
 		m.Steps[m.CurrentStepIndex].Fields[0].Input.Focus()
 	}
 	return func() tea.Msg {
-		return stepEnteredMsg{idx: i}
+		return StepEnteredMsg{idx: i}
 	}
 }
 
 func (m *Model) advanceCmd() tea.Cmd {
 	// TODO : Execute OnExit
-	// m.getCurrentStep() <=== WHY IS THAT THERE?
+	// m.GetCurrentStep() <=== WHY IS THAT THERE?
 	if m.CurrentStepIndex >= len(m.Steps)-1 {
 		return tea.Quit
 	}
 	next := m.CurrentStepIndex + 1
+	return m.enterStepCmd(next)
 	return m.enterStepCmd(next)
 }
 
 // Forms
 
 func (m *Model) updateForm(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if len(m.getCurrentStep().Fields) == 0 {
+	if len(m.GetCurrentStep().Fields) == 0 {
 		return m, nil
 	}
 	// Route to the focused input
@@ -402,11 +403,11 @@ func (m *Model) updateForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *Model) renderForm() string {
 	var out []string
-	for idx := range m.getCurrentStep().Fields {
-		f := m.getCurrentStep().Fields[idx]
+	for idx := range m.GetCurrentStep().Fields {
+		f := m.GetCurrentStep().Fields[idx]
 		label := lipgloss.NewStyle().Bold(true).Render(f.Label)
 		line := fmt.Sprintf("%s\n%s", label, f.Input.View())
-		if idx < len(m.getCurrentStep().Fields)-1 {
+		if idx < len(m.GetCurrentStep().Fields)-1 {
 			line += "\n"
 		}
 		out = append(out, line)
@@ -419,7 +420,7 @@ func (m *Model) renderForm() string {
 
 func (m *Model) renderSpinnerBody() string {
 	sp := m.Spinner.View()
-	body := m.getCurrentStep().Body
+	body := m.GetCurrentStep().Body
 	if body == "" {
 		body = "Working..."
 	}
@@ -428,7 +429,7 @@ func (m *Model) renderSpinnerBody() string {
 
 // Custom Logging
 
-func (m *Model) appendLog(l logMsg) {
+func (m *Model) appendLog(l LogMsg) {
 	m.Logs = append(m.Logs, l)
 	if len(m.Logs) > m.MaxLogs {
 		// Drop oldest
@@ -461,7 +462,7 @@ func (m *Model) renderLogsPane() string {
 	return box
 }
 
-func renderLogLine(l logMsg, width int) string {
+func renderLogLine(l LogMsg, width int) string {
 	ts := l.At.Format("15:04:05")
 	level := ""
 	switch l.Level {
