@@ -16,6 +16,7 @@ import (
 	"github.com/stolos-cloud/stolos/backend/internal/handlers"
 	"github.com/stolos-cloud/stolos/backend/internal/routes"
 	"github.com/stolos-cloud/stolos/backend/internal/services"
+	clusterservices "github.com/stolos-cloud/stolos/backend/internal/services/cluster"
 	talosservices "github.com/stolos-cloud/stolos/backend/internal/services/talos"
 
 	_ "github.com/stolos-cloud/stolos/backend/docs"
@@ -61,8 +62,16 @@ func main() {
 		log.Fatal("Failed to initialize database:", err)
 	}
 
-	// Initialize providers
+	// Initialize context
 	ctx := context.Background()
+
+	// discover the cluster the backend is running on
+	clusterDiscovery := clusterservices.NewDiscoveryService(db, cfg)
+	if err := clusterDiscovery.InitializeCluster(ctx); err != nil {
+		log.Fatal("Failed to initialize cluster:", err)
+	}
+
+	// Initialize providers
 	providerManager := services.NewProviderManager(db, cfg)
 	if err := providerManager.InitializeProviders(ctx); err != nil {
 		log.Fatal("Failed to initialize providers:", err)

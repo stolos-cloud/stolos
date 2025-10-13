@@ -131,8 +131,8 @@
         "subheading": "Gérez la configuration de votre fournisseur de cloud",
         "table": {
             "title": "Configuration du fournisseur GCP",
-            "loadingText": "Chargement des noeuds connectés...",
-            "noDataText": "Aucun noeud connecté trouvé.",
+            "loadingText": "Chargement de la configuration GCP...",
+            "noDataText": "Aucun fournisseur GCP configuré.",
             "itemsPerPageText": "Articles par page :",
             "headers": {
                 "projectId": "ID de projet",

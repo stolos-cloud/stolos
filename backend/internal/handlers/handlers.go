@@ -4,6 +4,7 @@ import (
 	"github.com/stolos-cloud/stolos/backend/internal/config"
 	"github.com/stolos-cloud/stolos/backend/internal/middleware"
 	"github.com/stolos-cloud/stolos/backend/internal/services"
+	wsservices "github.com/stolos-cloud/stolos/backend/internal/services/websocket"
 	"gorm.io/gorm"
 )
 
@@ -16,10 +17,15 @@ type Handlers struct {
 	gcpHandlers  *GCPHandlers
 	jwtService   *middleware.JWTService
 	db           *gorm.DB
+	wsManager    *wsservices.Manager
 }
 
 func NewHandlers(db *gorm.DB, cfg *config.Config, providerManager *services.ProviderManager) *Handlers {
 	jwtService := middleware.NewJWTService(cfg)
+
+	// Create WebSocket manager and start it
+	wsManager := wsservices.NewManager()
+	go wsManager.Run()
 
 	return &Handlers{
 		authHandlers: NewAuthHandlers(db, jwtService),
@@ -27,9 +33,10 @@ func NewHandlers(db *gorm.DB, cfg *config.Config, providerManager *services.Prov
 		userHandlers: NewUserHandlers(db),
 		isoHandlers:  NewISOHandlers(db, cfg),
 		nodeHandlers: NewNodeHandlers(db, cfg, providerManager),
-		gcpHandlers:  NewGCPHandlers(db, cfg, providerManager),
+		gcpHandlers:  NewGCPHandlers(db, cfg, providerManager, wsManager),
 		jwtService:   jwtService,
 		db:           db,
+		wsManager:    wsManager,
 	}
 }
 

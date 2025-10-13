@@ -22,6 +22,14 @@ type TalosService struct {
 	factoryClient *factoryClient.Client
 }
 
+// MachineConfigRequest represents parameters for generating machine configs
+type MachineConfigRequest struct {
+	ClusterName       string `json:"cluster_name"`
+	KubernetesVersion string `json:"kubernetes_version"`
+	TalosVersion      string `json:"talos_version"`
+	ControlPlaneIP    string `json:"control_plane_ip"`
+}
+
 func NewTalosService(db *gorm.DB, cfg *config.Config) *TalosService {
 	factory := talos.CreateFactoryClient()
 	return &TalosService{
@@ -95,14 +103,6 @@ func (s *TalosService) GenerateISO(req *models.ISORequest) (*models.ISOResponse,
 	}, nil
 }
 
-// MachineConfigRequest represents parameters for generating machine configs
-type MachineConfigRequest struct {
-	ClusterName       string `json:"cluster_name"`
-	KubernetesVersion string `json:"kubernetes_version"`
-	TalosVersion      string `json:"talos_version"`
-	ControlPlaneIP    string `json:"control_plane_ip"`
-}
-
 // GenerateMachineConfigBundle creates a new Talos config bundle
 func (s *TalosService) GenerateMachineConfigBundle(req *MachineConfigRequest) (*bundle.Bundle, error) {
 	talosInfo := &talos.TalosInfo{
@@ -132,6 +132,33 @@ func (s *TalosService) GetNodeDisks(ctx context.Context, nodeIP string) ([]strin
 	}
 
 	return diskPaths, nil
+}
+
+// GetGCPImageName returns the Talos image name for the specified architecture
+// Images are uploaded to the user's project and stored in GCPConfig
+func (s *TalosService) GetGCPImageName(architecture string) (string, error) {
+	// Get GCP config from database
+	var gcpConfig models.GCPConfig
+	if err := s.db.Where("is_configured = ?", true).First(&gcpConfig).Error; err != nil {
+		return "", fmt.Errorf("failed to get GCP config: %w", err)
+	}
+
+	// Get image name based on architecture
+	var image string
+	switch architecture {
+	case "amd64", "":
+		image = gcpConfig.TalosImageAMD64
+	case "arm64":
+		image = gcpConfig.TalosImageARM64
+	default:
+		return "", fmt.Errorf("unsupported architecture: %s", architecture)
+	}
+
+	if image == "" {
+		return "", fmt.Errorf("talos image not found for architecture %s - image upload may still be in progress", architecture)
+	}
+
+	return image, nil
 }
 
 // starts the Talos event sink gRPC server to receive events from booting nodes

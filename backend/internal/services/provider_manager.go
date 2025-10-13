@@ -4,9 +4,12 @@ import (
 	"context"
 	"log"
 
+	"github.com/google/uuid"
 	"github.com/stolos-cloud/stolos/backend/internal/config"
+	"github.com/stolos-cloud/stolos/backend/internal/models"
 	gcpservices "github.com/stolos-cloud/stolos/backend/internal/services/gcp"
 	gitopsservices "github.com/stolos-cloud/stolos/backend/internal/services/gitops"
+	talosservices "github.com/stolos-cloud/stolos/backend/internal/services/talos"
 	"gorm.io/gorm"
 )
 
@@ -60,11 +63,64 @@ func (pm *ProviderManager) initializeGCP(ctx context.Context) error {
 		if err := gcpResourcesService.LoadIntoConfig(pm.cfg); err != nil {
 			log.Printf("Warning: Failed to load GCP resources: %v", err)
 		}
+
+		// Initialize infrastructure async (VPC, subnet, etc.)
+		go pm.initializeGCPInfrastructure(ctx, gcpConfig.ID)
 	} else {
 		log.Println("GCP not configured. Skipping initialization")
 	}
 
 	return nil
+}
+
+// initializeGCPInfrastructure initializes GCP infrastructure (VPC, subnet) in the background
+func (pm *ProviderManager) initializeGCPInfrastructure(ctx context.Context, configID uuid.UUID) {
+	// Update status to initializing
+	pm.db.Model(&models.GCPConfig{}).
+		Where("id = ?", configID).
+		Update("infrastructure_status", "initializing")
+
+	log.Println("Starting GCP infrastructure initialization...")
+
+	// Get GCP config with credentials
+	var gcpConfig models.GCPConfig
+	if err := pm.db.Where("id = ?", configID).First(&gcpConfig).Error; err != nil {
+		log.Printf("Failed to get GCP config: %v", err)
+		pm.db.Model(&models.GCPConfig{}).
+			Where("id = ?", configID).
+			Update("infrastructure_status", "failed")
+		return
+	}
+
+	// Ensure Talos images are uploaded and registered
+	log.Println("Checking Talos GCP images...")
+	talosService := talosservices.NewTalosService(pm.db, pm.cfg)
+	if err := talosService.EnsureTalosGCPImages(ctx, &gcpConfig); err != nil {
+		log.Printf("Failed to initialize Talos images: %v", err)
+		pm.db.Model(&models.GCPConfig{}).
+			Where("id = ?", configID).
+			Update("infrastructure_status", "failed")
+		return
+	}
+
+	log.Println("Initializing GCP infrastructure (VPC, subnet)...")
+	gitopsService := gitopsservices.NewGitOpsService(pm.db, pm.cfg)
+	infrastructureService := NewInfrastructureService(pm.db, pm.cfg, pm, gitopsService)
+
+	if err := infrastructureService.InitializeInfrastructure(ctx, "gcp"); err != nil {
+		log.Printf("Failed to initialize GCP infrastructure: %v", err)
+		pm.db.Model(&models.GCPConfig{}).
+			Where("id = ?", configID).
+			Update("infrastructure_status", "failed")
+		return
+	}
+
+	// Update status to ready
+	pm.db.Model(&models.GCPConfig{}).
+		Where("id = ?", configID).
+		Update("infrastructure_status", "ready")
+
+	log.Println("GCP infrastructure initialized successfully")
 }
 
 func (pm *ProviderManager) GetProvider(name string) (Provider, bool) {

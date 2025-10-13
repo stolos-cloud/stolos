@@ -439,6 +439,92 @@
                 }
             }
         },
+        "/gcp/nodes/provision": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a provision request and return request_id for WebSocket connection",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "gcp"
+                ],
+                "summary": "Provision GCP nodes with Talos",
+                "parameters": [
+                    {
+                        "description": "Node provision request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.GCPNodeProvisionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/gcp/nodes/provision/{request_id}/stream": {
+            "get": {
+                "description": "Connect to this WebSocket endpoint to receive real-time logs and approval requests",
+                "tags": [
+                    "gcp"
+                ],
+                "summary": "WebSocket stream for GCP node provisioning",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Provision request ID",
+                        "name": "request_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "JWT token",
+                        "name": "token",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
         "/gcp/query-instances": {
             "post": {
                 "security": [
@@ -1974,6 +2060,10 @@
                 "id": {
                     "type": "string"
                 },
+                "infrastructure_status": {
+                    "description": "unconfigured, pending, initializing, ready, failed",
+                    "type": "string"
+                },
                 "is_configured": {
                     "type": "boolean"
                 },
@@ -1986,8 +2076,68 @@
                 "service_account_email": {
                     "type": "string"
                 },
+                "talos_image_amd64": {
+                    "type": "string"
+                },
+                "talos_image_arm64": {
+                    "type": "string"
+                },
+                "talos_version": {
+                    "type": "string"
+                },
                 "updated_at": {
                     "type": "string"
+                }
+            }
+        },
+        "models.GCPNodeProvisionRequest": {
+            "type": "object",
+            "required": [
+                "machine_type",
+                "name_prefix",
+                "number",
+                "role",
+                "zone"
+            ],
+            "properties": {
+                "disk_size_gb": {
+                    "type": "integer",
+                    "example": 100
+                },
+                "disk_type": {
+                    "type": "string",
+                    "example": "pd-standard"
+                },
+                "labels": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "zone=us-central1"
+                    ]
+                },
+                "machine_type": {
+                    "type": "string",
+                    "example": "n1-standard-2"
+                },
+                "name_prefix": {
+                    "type": "string",
+                    "example": "worker"
+                },
+                "number": {
+                    "type": "integer",
+                    "maximum": 20,
+                    "minimum": 1,
+                    "example": 5
+                },
+                "role": {
+                    "type": "string",
+                    "example": "worker"
+                },
+                "zone": {
+                    "type": "string",
+                    "example": "us-central1-a"
                 }
             }
         },

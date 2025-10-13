@@ -120,12 +120,18 @@ const isValidAddConfig = computed(() => nodesCloud.value.length === 0);
 
 //Methods
 function fetchGCPStatus() {
+  loading.value = true;
   getGCPStatus().then(response => {
-    if(response.configured) {      
-      nodesCloud.value = [response.config];
+    if(response.gcp?.configured) {
+      nodesCloud.value = [response.gcp];
+    } else {
+      nodesCloud.value = [];
     }
   }).catch(error => {
     console.error("Error fetching GCP status:", error);
+    nodesCloud.value = [];
+  }).finally(() => {
+    loading.value = false;
   });
 }
 
