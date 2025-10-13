@@ -2067,6 +2067,10 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
+                "infrastructure_status": {
+                    "description": "unconfigured, pending, initializing, ready, failed",
+                    "type": "string"
+                },
                 "is_configured": {
                     "type": "boolean"
                 },
@@ -2077,6 +2081,15 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "service_account_email": {
+                    "type": "string"
+                },
+                "talos_image_amd64": {
+                    "type": "string"
+                },
+                "talos_image_arm64": {
+                    "type": "string"
+                },
+                "talos_version": {
                     "type": "string"
                 },
                 "updated_at": {
