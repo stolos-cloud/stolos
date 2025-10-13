@@ -18,7 +18,7 @@ provider "google" {
 
 # VPC Network
 resource "google_compute_network" "main_vpc" {
-  name                    = "main-vpc"
+  name                    = "{{.ClusterName}}-vpc"
   auto_create_subnetworks = false
 }
 
@@ -26,7 +26,7 @@ resource "google_compute_network" "main_vpc" {
 # - On-prem pods: 10.244.0.0/16
 # - On-prem services: 10.96.0.0/12
 resource "google_compute_subnetwork" "main_subnet" {
-  name          = "main-subnet"
+  name          = "{{.ClusterName}}-subnet"
   ip_cidr_range = "172.16.0.0/20"
   region        = "{{.Region}}"
   network       = google_compute_network.main_vpc.id

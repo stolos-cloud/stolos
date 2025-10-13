@@ -130,8 +130,8 @@
         "subheading": "Manage your cloud provider configuration",
         "table": {
             "title": "GCP provider configuration",
-            "loadingText": "Loading connected nodes...",
-            "noDataText": "No connected nodes found.",
+            "loadingText": "Loading GCP configuration...",
+            "noDataText": "No GCP provider configured.",
             "itemsPerPageText": "Items per page :",
             "headers": {
                 "projectId": "Project ID",

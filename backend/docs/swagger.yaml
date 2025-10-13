@@ -127,6 +127,44 @@ definitions:
       updated_at:
         type: string
     type: object
+  models.GCPNodeProvisionRequest:
+    properties:
+      disk_size_gb:
+        example: 100
+        type: integer
+      disk_type:
+        example: pd-standard
+        type: string
+      labels:
+        example:
+        - zone=us-central1
+        items:
+          type: string
+        type: array
+      machine_type:
+        example: n1-standard-2
+        type: string
+      name_prefix:
+        example: worker
+        type: string
+      number:
+        example: 5
+        maximum: 20
+        minimum: 1
+        type: integer
+      role:
+        example: worker
+        type: string
+      zone:
+        example: us-central1-a
+        type: string
+    required:
+    - machine_type
+    - name_prefix
+    - number
+    - role
+    - zone
+    type: object
   models.ISORequest:
     properties:
       architecture:
@@ -532,6 +570,64 @@ paths:
       security:
       - BearerAuth: []
       summary: Initialize Terraform infrastructure
+      tags:
+      - gcp
+  /gcp/nodes/provision:
+    post:
+      consumes:
+      - application/json
+      description: Create a provision request and return request_id for WebSocket
+        connection
+      parameters:
+      - description: Node provision request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.GCPNodeProvisionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Provision GCP nodes with Talos
+      tags:
+      - gcp
+  /gcp/nodes/provision/{request_id}/stream:
+    get:
+      description: Connect to this WebSocket endpoint to receive real-time logs and
+        approval requests
+      parameters:
+      - description: Provision request ID
+        in: path
+        name: request_id
+        required: true
+        type: string
+      - description: JWT token
+        in: query
+        name: token
+        required: true
+        type: string
+      responses: {}
+      summary: WebSocket stream for GCP node provisioning
       tags:
       - gcp
   /gcp/query-instances:

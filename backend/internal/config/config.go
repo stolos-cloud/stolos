@@ -9,6 +9,7 @@ import (
 )
 
 type Config struct {
+	ClusterName    string            `mapstructure:"cluster_name"`
 	Database       DatabaseConfig    `mapstructure:"database"`
 	GitOps         GitOpsConfig      `mapstructure:"gitops"`
 	GCP            GCPConfig         `mapstructure:"gcp"`
@@ -81,6 +82,10 @@ func Load() (*Config, error) {
 	var config Config
 	if err := viper.Unmarshal(&config); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
+	}
+
+	if clusterName := os.Getenv("CLUSTER_NAME"); clusterName != "" {
+		config.ClusterName = clusterName
 	}
 
 	if dbHost := os.Getenv("DB_HOST"); dbHost != "" {

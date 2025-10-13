@@ -803,7 +803,7 @@ func RunArgoStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 func RunPortalStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 	go func() {
 		m.Logger.Debug("RunPortalStepInBackground")
-		CreateProviderSecrets(m.Logger)
+		CreateBackendSecrets(m.Logger)
 		s.IsDone = true
 	}()
 	return nil
@@ -842,8 +842,8 @@ func DeployArgoCD(loggerRef *tui.UILogger) {
 	loggerRef.Successf("Successfully Installed release %s in namespace %s ; Notes:%s\n", release.Name, release.Namespace, release.Info.Notes)
 }
 
-func CreateProviderSecrets(loggerRef *tui.UILogger) {
-	// Apply provider secrets
+func CreateBackendSecrets(loggerRef *tui.UILogger) {
+	// Apply backend secrets including providers configuration.
 	k8sClient, err := k8s.NewClientFromKubeconfig(kubeconfig)
 	if err != nil {
 		loggerRef.Errorf("Failed to create Kubernetes client: %s", err)
@@ -866,7 +866,7 @@ func CreateProviderSecrets(loggerRef *tui.UILogger) {
 
 		// Create platform configuration secret
 		loggerRef.Info("Creating platform configuration secret...")
-		platformConfig := platform.NewPlatformConfig(bootstrapInfos.GitHubInfo.BaseDomain)
+		platformConfig := platform.NewPlatformConfig(bootstrapInfos.TalosInfo.ClusterName, bootstrapInfos.GitHubInfo.BaseDomain)
 		err = platformConfig.CreateOrUpdateSecret(ctx, k8sClient, "stolos-system", "stolos-system-config")
 		if err != nil {
 			loggerRef.Errorf("Failed to create platform config secret: %s", err)

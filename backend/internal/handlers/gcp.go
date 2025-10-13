@@ -1,34 +1,61 @@
 package handlers
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"github.com/gorilla/websocket"
 	"github.com/stolos-cloud/stolos/backend/internal/config"
+	"github.com/stolos-cloud/stolos/backend/internal/models"
 	"github.com/stolos-cloud/stolos/backend/internal/services"
 	gcpservices "github.com/stolos-cloud/stolos/backend/internal/services/gcp"
 	gitopsservices "github.com/stolos-cloud/stolos/backend/internal/services/gitops"
+	talosservices "github.com/stolos-cloud/stolos/backend/internal/services/talos"
+	wsservices "github.com/stolos-cloud/stolos/backend/internal/services/websocket"
 	"gorm.io/gorm"
 )
 
-type GCPHandlers struct {
-	db                  *gorm.DB
-	gcpService          *gcpservices.GCPService
-	nodeService         *services.NodeService
-	terraformService    *services.TerraformService
-	gcpResourcesService *gcpservices.GCPResourcesService
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+	CheckOrigin: func(r *http.Request) bool {
+		return true // TODO: Configure allowed origins properly
+	},
 }
 
-func NewGCPHandlers(db *gorm.DB, cfg *config.Config, providerManager *services.ProviderManager) *GCPHandlers {
+type GCPHandlers struct {
+	db                    *gorm.DB
+	gcpService            *gcpservices.GCPService
+	gitopsService         *gitopsservices.GitOpsService
+	nodeService           *services.NodeService
+	infrastructureService *services.InfrastructureService
+	gcpResourcesService   *gcpservices.GCPResourcesService
+	provisioningService   *gcpservices.ProvisioningService
+	wsManager             *wsservices.Manager
+}
+
+func NewGCPHandlers(db *gorm.DB, cfg *config.Config, providerManager *services.ProviderManager, wsManager *wsservices.Manager) *GCPHandlers {
 	gcpService := gcpservices.NewGCPService(db, cfg)
 	gitopsService := gitopsservices.NewGitOpsService(db, cfg)
+	infrastructureService := services.NewInfrastructureService(db, cfg, providerManager, gitopsService)
+	talosService := talosservices.NewTalosService(db, cfg)
+
 	return &GCPHandlers{
-		db:                  db,
-		gcpService:          gcpService,
-		nodeService:         services.NewNodeService(db, cfg, providerManager),
-		terraformService:    services.NewTerraformService(db, cfg, providerManager, gitopsService),
-		gcpResourcesService: gcpservices.NewGCPResourcesService(db, gcpService),
+		db:                    db,
+		gcpService:            gcpService,
+		gitopsService:         gitopsService,
+		nodeService:           services.NewNodeService(db, cfg, providerManager),
+		infrastructureService: infrastructureService,
+		gcpResourcesService:   gcpservices.NewGCPResourcesService(db, gcpService),
+		provisioningService:   gcpservices.NewProvisioningService(db, cfg, talosService, gcpService),
+		wsManager:             wsManager,
 	}
 }
 
@@ -43,23 +70,75 @@ func NewGCPHandlers(db *gorm.DB, cfg *config.Config, providerManager *services.P
 // @Router /gcp/status [get]
 // @Security BearerAuth
 func (h *GCPHandlers) GetGCPStatus(c *gin.Context) {
-	config, err := h.gcpService.GetCurrentConfig()
-	if err != nil {
-		if err.Error() == "record not found" {
-			c.JSON(http.StatusOK, gin.H{
-				"configured": false,
-				"message":    "GCP not initialized",
-			})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
+	// Check GCP configuration
+	gcpConfig, err := h.gcpService.GetCurrentConfig()
+	gcpConfigured := err == nil && gcpConfig != nil
+
+	// Check GitOps configuration
+	gitopsConfig, err := h.gitopsService.GetCurrentConfig()
+	gitopsConfigured := err == nil && gitopsConfig != nil
+
+	// Build response structure
+	response := gin.H{
+		"gcp": gin.H{
+			"configured": gcpConfigured,
+		},
+		"gitops": gin.H{
+			"configured": gitopsConfigured,
+		},
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"configured": true,
-		"config":     config,
-	})
+	// Add GCP details if configured
+	if gcpConfigured {
+		// Check if Talos images are configured
+		talosImagesConfigured := gcpConfig.TalosImageAMD64 != ""
+
+		response["gcp"] = gin.H{
+			"configured":             true,
+			"project_id":             gcpConfig.ProjectID,
+			"region":                 gcpConfig.Region,
+			"bucket_name":            gcpConfig.BucketName,
+			"service_account_email":  gcpConfig.ServiceAccountEmail,
+			"infrastructure_status":  gcpConfig.InfrastructureStatus,
+			"talos_version":          gcpConfig.TalosVersion,
+			"talos_images_configured": talosImagesConfigured,
+		}
+
+		// Add Talos image details if configured
+		if talosImagesConfigured {
+			talosImages := gin.H{}
+			if gcpConfig.TalosImageAMD64 != "" {
+				talosImages["amd64"] = gcpConfig.TalosImageAMD64
+			}
+			if gcpConfig.TalosImageARM64 != "" {
+				talosImages["arm64"] = gcpConfig.TalosImageARM64
+			}
+			response["gcp"].(gin.H)["talos_images"] = talosImages
+		}
+
+		// Get infrastructure details if infrastructure is set up
+		if gcpConfig.InfrastructureStatus != "unconfigured" {
+			infraStatus, err := h.infrastructureService.GetInfrastructureStatus(c.Request.Context(), "gcp")
+			if err != nil {
+				log.Printf("Warning: Failed to get infrastructure status: %v", err)
+			} else {
+				response["infrastructure"] = infraStatus
+			}
+		}
+	}
+
+	// Add GitOps details if configured
+	if gitopsConfigured {
+		response["gitops"] = gin.H{
+			"configured":  true,
+			"repo_owner":  gitopsConfig.RepoOwner,
+			"repo_name":   gitopsConfig.RepoName,
+			"branch":      gitopsConfig.Branch,
+			"working_dir": gitopsConfig.WorkingDir,
+		}
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
 // ConfigureGCP godoc
@@ -222,7 +301,7 @@ func (h *GCPHandlers) QueryGCPInstances(c *gin.Context) {
 // @Router /gcp/init-infra [post]
 // @Security BearerAuth
 func (h *GCPHandlers) InitInfra(c *gin.Context) {
-	err := h.terraformService.InitializeInfrastructure(c.Request.Context(), "gcp")
+	err := h.infrastructureService.InitializeInfrastructure(c.Request.Context(), "gcp")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -242,7 +321,7 @@ func (h *GCPHandlers) InitInfra(c *gin.Context) {
 // @Router /gcp/delete-infra [post]
 // @Security BearerAuth
 func (h *GCPHandlers) DeleteInfra(c *gin.Context) {
-	err := h.terraformService.DestroyInfrastructure(c.Request.Context(), "gcp")
+	err := h.infrastructureService.DestroyInfrastructure(c.Request.Context(), "gcp")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -324,7 +403,7 @@ func (h *GCPHandlers) ForceUnlockTerraformState(c *gin.Context) {
 		return
 	}
 
-	err := h.terraformService.ForceUnlockState(c.Request.Context(), "gcp", req.LockID)
+	err := h.infrastructureService.ForceUnlockState(c.Request.Context(), "gcp", req.LockID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -334,4 +413,117 @@ func (h *GCPHandlers) ForceUnlockTerraformState(c *gin.Context) {
 		"message": "Terraform state lock removed successfully",
 		"lock_id": req.LockID,
 	})
+}
+
+// ProvisionGCPNodes godoc
+// @Summary Provision GCP nodes with Talos
+// @Description Create a provision request and return request_id for WebSocket connection
+// @Tags gcp
+// @Accept json
+// @Produce json
+// @Param request body models.GCPNodeProvisionRequest true "Node provision request"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /gcp/nodes/provision [post]
+// @Security BearerAuth
+func (h *GCPHandlers) ProvisionGCPNodes(c *gin.Context) {
+	var req models.GCPNodeProvisionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Validate role
+	if req.Role != "worker" && req.Role != "control-plane" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "role must be 'worker' or 'control-plane'"})
+		return
+	}
+
+	// Create provision request record
+	requestID := uuid.New()
+	requestJSON, _ := json.Marshal(req)
+
+	provisionRequest := models.ProvisionRequest{
+		ID:       requestID,
+		Provider: "gcp",
+		Status:   models.ProvisionStatusPending,
+		Request:  requestJSON,
+	}
+
+	if err := h.db.Create(&provisionRequest).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create provision request"})
+		return
+	}
+
+	// Return request ID for WebSocket connection
+	c.JSON(http.StatusOK, gin.H{
+		"request_id": requestID.String(),
+		"message":    "Provision request created. Connect to WebSocket to monitor progress.",
+	})
+
+	// TODO: Start provision process in background
+	// For now, just return the request_id
+}
+
+// ProvisionGCPNodesStream godoc
+// @Summary WebSocket stream for GCP node provisioning
+// @Description Connect to this WebSocket endpoint to receive real-time logs and approval requests
+// @Tags gcp
+// @Param request_id path string true "Provision request ID"
+// @Param token query string true "JWT token"
+// @Router /gcp/nodes/provision/{request_id}/stream [get]
+func (h *GCPHandlers) ProvisionGCPNodesStream(c *gin.Context) {
+	requestID := c.Param("request_id")
+
+	// Validate request ID
+	if _, err := uuid.Parse(requestID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request_id"})
+		return
+	}
+
+	// Check if provision request exists
+	var provisionRequest models.ProvisionRequest
+	if err := h.db.Where("id = ?", requestID).First(&provisionRequest).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "provision request not found"})
+		return
+	}
+
+	// Upgrade HTTP connection to WebSocket
+	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to upgrade to websocket"})
+		return
+	}
+
+	// Register WebSocket client
+	client := h.wsManager.RegisterClient(requestID, conn)
+
+	// Start provisioning in a goroutine
+	go func() {
+		// Give write pump time to start
+		time.Sleep(100 * time.Millisecond)
+
+		// Parse the provision request
+		var req models.GCPNodeProvisionRequest
+		if err := json.Unmarshal(provisionRequest.Request, &req); err != nil {
+			client.SendError(fmt.Sprintf("Failed to parse provision request: %v", err))
+			client.SendStatus("failed")
+			return
+		}
+
+		// Run the provisioning workflow with a background context
+		// We use context.Background() instead of c.Request.Context() because the HTTP context
+		// is canceled after the WebSocket upgrade completes
+		requestUUID, _ := uuid.Parse(requestID)
+		if err := h.provisioningService.ProvisionNodes(context.Background(), requestUUID, req, client); err != nil {
+			client.SendError(fmt.Sprintf("Provisioning failed: %v", err))
+			client.SendStatus("failed")
+
+			// Update provision request status
+			h.db.Model(&models.ProvisionRequest{}).
+				Where("id = ?", requestID).
+				Update("status", models.ProvisionStatusFailed)
+		}
+	}()
 }

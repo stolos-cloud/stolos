@@ -1,0 +1,20 @@
+# Shared Terraform configuration for all GCP nodes
+# All node .tf files in this directory share this backend state
+
+terraform {
+  required_providers {
+    google = {
+      source  = "hashicorp/google"
+      version = "~> 4.0"
+    }
+  }
+  backend "gcs" {
+    bucket = "{{.BucketName}}"
+    prefix = "nodes/state"
+  }
+}
+
+provider "google" {
+  project = "{{.ProjectID}}"
+  region  = "{{.Region}}"
+}
