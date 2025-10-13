@@ -3,8 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
-	"os"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -13,7 +13,7 @@ import (
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/talos"
 )
 
-// WebStep is a JSON-safe representation of tui.Step for the web API.
+// WebStep JSON version of Step , TODO - remove this duplication.
 type WebStep struct {
 	Name        string       `json:"name"`
 	Title       string       `json:"title"`
@@ -24,7 +24,7 @@ type WebStep struct {
 	Fields      []WebField   `json:"fields,omitempty"`
 }
 
-// WebField is a simplified version of tui.Field
+// WebField JSON version of Field , TODO - remove this duplication.
 type WebField struct {
 	Label       string `json:"label"`
 	Placeholder string `json:"placeholder,omitempty"`
@@ -46,11 +46,9 @@ func makeWebSteps(model *tui.Model) []WebStep {
 			wf = append(wf, WebField{
 				Label:    "Role",
 				Optional: false,
-				// Use Value to reflect current choice if already set
-				Value: "",
+				Value:    "",
 			})
 
-			// Disk dropdown — we don’t pre-fill here (frontend fetches live)
 			wf = append(wf, WebField{
 				Label:    "Install Disk",
 				Optional: false,
@@ -74,7 +72,7 @@ func makeWebSteps(model *tui.Model) []WebStep {
 				Label:       f.Label,
 				Placeholder: f.Placeholder,
 				Optional:    f.Optional,
-				Value:       f.Input.Value(), // safe string
+				Value:       f.Input.Value(),
 			})
 		}
 		out = append(out, WebStep{
@@ -90,23 +88,18 @@ func makeWebSteps(model *tui.Model) []WebStep {
 	return out
 }
 
-// web starts the HTTP API and static frontend server.
-// It takes a pre-initialized model (from tui.NewWizard or similar).
+// web start gin server (synchronous). needs tea.Program to read current TUI state.
 func web(model *tui.Model, program *tea.Program) {
-	// Optional log file for Gin and web logs
-	f, _ := os.OpenFile("./stolos.log", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
-	defer f.Close()
 
 	// Use existing model from caller
 	webModel := model
 
-	// Redirect Gin's access logs to the same file
-	gin.DefaultWriter = f
+	// Gin do not break TUI!
+	gin.SetMode(gin.ReleaseMode)
+	gin.DefaultWriter = io.Discard
+
 	r := gin.Default()
 
-	// ──────────────────────────────
-	// API ROUTES (prefix /api)
-	// ──────────────────────────────
 	api := r.Group("/api")
 
 	api.GET("/steps", func(c *gin.Context) {
@@ -206,9 +199,6 @@ func web(model *tui.Model, program *tea.Program) {
 		c.JSON(http.StatusOK, webModel.Logs)
 	})
 
-	// ──────────────────────────────
-	// STATIC FRONTEND (Vue/Vuetify SPA)
-	// ──────────────────────────────
 	r.Static("/assets", "./webui-dist/assets")
 
 	// All unmatched routes → index.html (SPA fallback)
@@ -216,9 +206,6 @@ func web(model *tui.Model, program *tea.Program) {
 		c.File("./webui-dist/index.html")
 	})
 
-	// ──────────────────────────────
-	// START SERVER
-	// ──────────────────────────────
 	if err := r.Run(":9123"); err != nil {
 		panic(err)
 	}

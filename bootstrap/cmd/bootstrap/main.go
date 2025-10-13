@@ -50,7 +50,7 @@ var gcpToken *oauth2.Token
 var gcpEnabled = gcp.GCPClientId != "" && gcp.GCPClientSecret != ""
 
 // var gitHubEnabled = github.GithubOauthClientId != "" && github.GithubOauthClientSecret != "" // legacy
-var gitHubEnabled = true
+var gitHubEnabled = false
 var gitHubUser *github.User
 var gitHubAppManifestParams *github.AppManifestParams
 var gitHubAppManifest *github.AppManifest
@@ -386,7 +386,6 @@ func CreateSteps(err error) {
 	tui.DisableStep(&githubInstallAppStep, !gitHubEnabled)
 	tui.DisableStep(&githubRepoStep, !gitHubEnabled)
 
-	// Attn. sa fait des copies ici !
 	tui.Steps = []*tui.Step{
 		&githubInfoStep,
 		&githubAuthStep,
@@ -573,6 +572,18 @@ func RunWaitForServersStep(model *tui.Model, step *tui.Step) tea.Cmd {
 		for i := 0; i < 5; i++ {
 			err := talos.EventSink(&bootstrapInfos.TalosInfo, func(ctx context.Context, event events.Event) error {
 				ip := strings.Split(event.Node, ":")[0]
+
+				var blacklist []string = []string{
+					"192.168.2.67",
+					"192.168.2.68",
+					"192.168.2.69",
+					"192.168.2.70",
+				}
+
+				if slices.Contains(blacklist, ip) {
+					return nil
+				}
+
 				_, ok := saveState.MachinesDisks[ip]
 				if !ok {
 					saveState.MachinesDisks[ip] = ""
@@ -606,7 +617,7 @@ func ExitWaitForServersStep(model *tui.Model, step *tui.Step) {
 		var disks []*storage.Disk
 		// Insert start at the next step (after WaitForServer)
 		model.Steps = slices.Insert(model.Steps, model.CurrentStepIndex+i+1, &tui.Step{
-			Name:        fmt.Sprintf("ConfigureServer_%d", i),
+			Name:        fmt.Sprintf("ConfigureServer_%s", k),
 			Title:       fmt.Sprintf("4.%d) Configure server %d", i, i),
 			Kind:        tui.StepForm,
 			IsDone:      true, // Set by server

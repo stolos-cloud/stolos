@@ -1,12 +1,9 @@
 <template>
-  <v-card class="mt-6 pa-2" outlined max-height="300" style="overflow:auto;">
-    <v-card-title class="text-subtitle-1">Logs</v-card-title>
-    <v-card-text>
+  <v-sheet class="mt-6 pa-2" outlined max-height="25vh" style="overflow:auto;">
       <pre style="white-space: pre-wrap; font-family: monospace;">
 {{ logs.join('\n') }}
       </pre>
-    </v-card-text>
-  </v-card>
+  </v-sheet>
 </template>
 
 <script setup>
