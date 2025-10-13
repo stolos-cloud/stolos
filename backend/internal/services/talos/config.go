@@ -164,7 +164,7 @@ func (s *TalosService) GetNodeDisks(ctx context.Context, client *machineryClient
 }
 
 // GetBootstrapCachedNodes reads cached machine definitions and builds Node models.
-func (s *TalosService) GetBootstrapCachedNodes() ([]*models.Node, error) {
+func (s *TalosService) GetBootstrapCachedNodes(clusterID uuid.UUID) ([]*models.Node, error) {
 	machinesJsonBytes, err := os.ReadFile(filepath.Join(s.cfg.TalosFolder, "machines.json"))
 	if err != nil {
 		return nil, err
@@ -178,29 +178,33 @@ func (s *TalosService) GetBootstrapCachedNodes() ([]*models.Node, error) {
 	var nodes []*models.Node
 
 	for ip := range machines.ControlPlanes {
-		node, err := s.CreateNodeFromIP(context.Background(), ip)
+		node, err := s.CreateNodeFromIP(context.Background(), ip, "controlplane")
 		if err != nil {
 			// fallback: still return minimal node with IP
 			node = &models.Node{
 				ID:        uuid.New(),
 				Role:      "controlplane",
 				IPAddress: ip,
-				Status:    "unreachable",
+				Status:    "active",
 			}
 		}
+		node.ClusterID = clusterID
+		node.Provider = "onprem"
 		nodes = append(nodes, node)
 	}
 
 	for ip := range machines.Workers {
-		node, err := s.CreateNodeFromIP(context.Background(), ip)
+		node, err := s.CreateNodeFromIP(context.Background(), ip, "worker")
 		if err != nil {
 			node = &models.Node{
 				ID:        uuid.New(),
 				Role:      "worker",
 				IPAddress: ip,
-				Status:    "unreachable",
+				Status:    "active",
 			}
 		}
+		node.ClusterID = clusterID
+		node.Provider = "onprem"
 		nodes = append(nodes, node)
 	}
 
@@ -208,9 +212,12 @@ func (s *TalosService) GetBootstrapCachedNodes() ([]*models.Node, error) {
 }
 
 // CreateNodeFromIP contacts a Talos node and fills in: Name, Architecture, MACAddress.
-func (s *TalosService) CreateNodeFromIP(ctx context.Context, nodeIP string) (*models.Node, error) {
+func (s *TalosService) CreateNodeFromIP(ctx context.Context, nodeIP string, role string) (*models.Node, error) {
 
 	var node models.Node
+
+	node.Role = role
+	node.Status = "active"
 
 	cli, err := s.GetMachineryClient(nodeIP)
 	if err != nil {

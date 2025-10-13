@@ -82,13 +82,15 @@ func (s *DiscoveryService) discoverNodes(ctx context.Context, clusterID uuid.UUI
 	// List initial nodes in the cluster
 	// Create node records in the database
 
-	nodes, err := s.ts.GetBootstrapCachedNodes()
+	nodes, err := s.ts.GetBootstrapCachedNodes(clusterID)
 
 	if err != nil {
 		return fmt.Errorf("failed to get bootstrap nodes: %w", err)
 	}
 
-	s.db.Save(&nodes)
+	if err := s.db.Save(&nodes).Error; err != nil {
+		log.Printf("Failed to save nodes: %v", err)
+	}
 
 	return nil
 }
