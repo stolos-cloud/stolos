@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stolos-cloud/stolos/backend/internal/config"
 	"github.com/stolos-cloud/stolos/backend/internal/models"
+	"github.com/stolos-cloud/stolos/backend/internal/services/talos"
 	"gorm.io/gorm"
 )
 
@@ -15,13 +16,15 @@ import (
 type DiscoveryService struct {
 	db  *gorm.DB
 	cfg *config.Config
+	ts  *talos.TalosService
 }
 
 // NewDiscoveryService creates a new cluster discovery service
-func NewDiscoveryService(db *gorm.DB, cfg *config.Config) *DiscoveryService {
+func NewDiscoveryService(db *gorm.DB, cfg *config.Config, ts *talos.TalosService) *DiscoveryService {
 	return &DiscoveryService{
 		db:  db,
 		cfg: cfg,
+		ts:  ts,
 	}
 }
 
@@ -71,7 +74,7 @@ func (s *DiscoveryService) InitializeCluster(ctx context.Context) error {
 
 // discoverNodes discovers existing nodes in the Talos cluster
 func (s *DiscoveryService) discoverNodes(ctx context.Context, clusterID uuid.UUID) error {
-	log.Println("Discovering existing cluster nodes...")
+	log.Println("Discovering existing cluster nodes from TALOS_FOLDER ...")
 
 	// TODO: Implement actual node discovery
 	// potentially
@@ -79,6 +82,13 @@ func (s *DiscoveryService) discoverNodes(ctx context.Context, clusterID uuid.UUI
 	// List initial nodes in the cluster
 	// Create node records in the database
 
-	log.Println("Node discovery not yet implemented")
+	nodes, err := s.ts.GetBootstrapCachedNodes()
+
+	if err != nil {
+		return fmt.Errorf("failed to get bootstrap nodes: %w", err)
+	}
+
+	s.db.Save(&nodes)
+
 	return nil
 }

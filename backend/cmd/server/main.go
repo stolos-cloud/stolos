@@ -11,6 +11,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	_ "github.com/stolos-cloud/stolos/backend/docs"
 	"github.com/stolos-cloud/stolos/backend/internal/config"
 	"github.com/stolos-cloud/stolos/backend/internal/database"
 	"github.com/stolos-cloud/stolos/backend/internal/handlers"
@@ -18,8 +19,6 @@ import (
 	"github.com/stolos-cloud/stolos/backend/internal/services"
 	clusterservices "github.com/stolos-cloud/stolos/backend/internal/services/cluster"
 	talosservices "github.com/stolos-cloud/stolos/backend/internal/services/talos"
-
-	_ "github.com/stolos-cloud/stolos/backend/docs"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
@@ -51,6 +50,10 @@ func main() {
 		log.Fatal("Failed to load configuration:", err)
 	}
 
+	// -- Load talos values
+
+	// ---
+
 	// Generate random if not provided
 	if cfg.JWT.SecretKey == "" {
 		log.Println("JWT_SECRET_KEY not set, generating random secret")
@@ -65,8 +68,12 @@ func main() {
 	// Initialize context
 	ctx := context.Background()
 
+	// Start Talos event sink for on-prem node discovery
+	talosService := talosservices.NewTalosService(db, cfg)
+	talosService.StartEventSink()
+
 	// discover the cluster the backend is running on
-	clusterDiscovery := clusterservices.NewDiscoveryService(db, cfg)
+	clusterDiscovery := clusterservices.NewDiscoveryService(db, cfg, talosService)
 	if err := clusterDiscovery.InitializeCluster(ctx); err != nil {
 		log.Fatal("Failed to initialize cluster:", err)
 	}
@@ -80,10 +87,6 @@ func main() {
 	if !providerManager.HasConfiguredProviders() {
 		log.Println("No cloud providers configured")
 	}
-
-	// Start Talos event sink for on-prem node discovery
-	talosService := talosservices.NewTalosService(db, cfg)
-	talosService.StartEventSink()
 
 	r := gin.Default()
 

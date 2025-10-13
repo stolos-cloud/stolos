@@ -5,15 +5,21 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"time"
 
+	machineryClient "github.com/siderolabs/talos/pkg/machinery/client"
+	"github.com/siderolabs/talos/pkg/machinery/client/config"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/k8s"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/talos"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
-type SecretData struct {
+type TalosSecretData struct {
 	MachinesCache  talos.Machines
 	BootstrapFiles map[string][]byte
 }
@@ -27,8 +33,8 @@ var secretFilePaths = []string{
 	"worker.yaml",
 }
 
-// NewBootstrapSecret reads files and prepares SecretData structure
-func NewBootstrapSecret(machines talos.Machines) (*SecretData, error) {
+// NewBootstrapSecret reads files and prepares TalosSecretData structure
+func NewBootstrapSecret(machines talos.Machines) (*TalosSecretData, error) {
 	files := make(map[string][]byte)
 
 	for _, path := range secretFilePaths {
@@ -39,14 +45,14 @@ func NewBootstrapSecret(machines talos.Machines) (*SecretData, error) {
 		files[path] = data
 	}
 
-	return &SecretData{
+	return &TalosSecretData{
 		MachinesCache:  machines,
 		BootstrapFiles: files,
 	}, nil
 }
 
-// ToSecret serializes SecretData to Kubernetes Secret
-func (s *SecretData) ToSecret(namespace, name string) (*corev1.Secret, error) {
+// ToSecret serializes TalosSecretData to Kubernetes Secret
+func (s *TalosSecretData) ToSecret(namespace, name string) (*corev1.Secret, error) {
 	machinesJSON, err := json.Marshal(s.MachinesCache)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal machines: %w", err)
@@ -80,8 +86,8 @@ func (s *SecretData) ToSecret(namespace, name string) (*corev1.Secret, error) {
 	return secret, nil
 }
 
-// FromSecret reconstructs SecretData from a Kubernetes Secret
-func FromSecret(secret *corev1.Secret) (*SecretData, error) {
+// FromSecret reconstructs TalosSecretData from a Kubernetes Secret
+func FromSecret(secret *corev1.Secret) (*TalosSecretData, error) {
 	if secret.Data == nil {
 		return nil, fmt.Errorf("secret data is nil")
 	}
@@ -103,14 +109,14 @@ func FromSecret(secret *corev1.Secret) (*SecretData, error) {
 		}
 	}
 
-	return &SecretData{
+	return &TalosSecretData{
 		MachinesCache:  machines,
 		BootstrapFiles: files,
 	}, nil
 }
 
 // CreateOrUpdateSecret creates or updates Kubernetes secret
-func (s *SecretData) CreateOrUpdateSecret(ctx context.Context, client kubernetes.Interface, namespace, secretName string) error {
+func (s *TalosSecretData) CreateOrUpdateSecret(ctx context.Context, client kubernetes.Interface, namespace, secretName string) error {
 	secret, err := s.ToSecret(namespace, secretName)
 	if err != nil {
 		return err
@@ -118,9 +124,8 @@ func (s *SecretData) CreateOrUpdateSecret(ctx context.Context, client kubernetes
 	return k8s.CreateOrUpdateSecret(ctx, client, secret, true)
 }
 
-// TODO : Helpers to read the Secret.
-/*// GetKubernetesClient creates a Kubernetes client from kubeconfig in Secret
-func (s *SecretData) GetKubernetesClient() (kubernetes.Interface, error) {
+// GetKubernetesClient creates a Kubernetes client from kubeconfig in Secret
+func (s *TalosSecretData) GetKubernetesClient() (kubernetes.Interface, error) {
 	kubeconfig, ok := s.BootstrapFiles["./kubeconfig.yaml"]
 	if !ok {
 		return nil, fmt.Errorf("kubeconfig.yaml not found in secret data")
@@ -140,49 +145,41 @@ func (s *SecretData) GetKubernetesClient() (kubernetes.Interface, error) {
 }
 
 // GetTalosClient creates a Talos client from talosconfig in Secret
-func (s *SecretData) GetTalosClient() (*talosclient.Client, error) {
+func (s *TalosSecretData) GetTalosClient() (*machineryClient.Client, error) {
 	cfgData, ok := s.BootstrapFiles["./talosconfig.yaml"]
 	if !ok {
 		return nil, fmt.Errorf("talosconfig.yaml not found in secret data")
 	}
 
-	cfg, err := talosconfig.FromBytes(cfgData)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	cfg, err := config.FromBytes(cfgData)
+
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse talos config: %w", err)
+		return nil, fmt.Errorf("failed reading talosconfig bytes: %w", err)
 	}
 
-	client, err := talosclient.New(cfg)
+	machinery, err := machineryClient.New(
+		ctx,
+		machineryClient.WithConfig(cfg),
+		machineryClient.WithGRPCDialOptions(
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+		),
+	)
+
 	if err != nil {
-		return nil, fmt.Errorf("failed to create talos client: %w", err)
+		return nil, fmt.Errorf("failed to create talos machinery client: %w", err)
 	}
 
-	return client, nil
+	return machinery, nil
 }
 
-// GetTalosConfigBundle builds a Talos ConfigBundle from init/controlplane/worker YAMLs
-func (s *SecretData) GetTalosConfigBundle(role string) (*talosmachine.Bundle, error) {
-	var fileKey string
-	switch role {
-	case "init":
-		fileKey = "./init.yaml"
-	case "controlplane":
-		fileKey = "./controlplane.yaml"
-	case "worker":
-		fileKey = "./worker.yaml"
-	default:
-		return nil, fmt.Errorf("invalid role: %s", role)
-	}
-
-	data, ok := s.BootstrapFiles[fileKey]
-	if !ok {
-		return nil, fmt.Errorf("%s not found in secret data", fileKey)
-	}
-
-	cfg, err := talosmachine.LoadConfigBundle(data)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load machine config bundle: %w", err)
-	}
-
-	return cfg, nil
-}
-*/
+//// TODO : GetTalosConfigBundle builds a Talos ConfigBundle from init/controlplane/worker YAMLs in the secret
+//func (s *TalosSecretData) GetTalosConfigBundle() (*bundle.Bundle, error) {
+//	configBundleOpts := []bundle.Option{
+//		bundle.WithExistingConfigs("./"),
+//	}
+//
+//	return bundle.NewBundle(configBundleOpts...)
+//}

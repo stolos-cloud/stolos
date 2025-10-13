@@ -194,7 +194,6 @@ func CreateMachineryClientFromTalosconfig(talosConfig *config.Config) machineryC
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	// TODO : Verify MachineryClient configuration
 	machinery, err := machineryClient.New(
 		ctx,
 		machineryClient.WithConfig(talosConfig),

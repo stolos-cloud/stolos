@@ -9,14 +9,15 @@ import (
 )
 
 type Config struct {
-	ClusterName    string            `mapstructure:"cluster_name"`
-	Database       DatabaseConfig    `mapstructure:"database"`
-	GitOps         GitOpsConfig      `mapstructure:"gitops"`
-	GCP            GCPConfig         `mapstructure:"gcp"`
-	GitHub         GitHubConfig      `mapstructure:"github"`
-	JWT            JWTConfig         `mapstructure:"jwt"`
-	GCPResources   GCPResources      `mapstructure:"gcp_resources"`
-	Talos          TalosConfig       `mapstructure:"talos"`
+	ClusterName  string         `mapstructure:"cluster_name"`
+	Database     DatabaseConfig `mapstructure:"database"`
+	GitOps       GitOpsConfig   `mapstructure:"gitops"`
+	GCP          GCPConfig      `mapstructure:"gcp"`
+	GitHub       GitHubConfig   `mapstructure:"github"`
+	JWT          JWTConfig      `mapstructure:"jwt"`
+	GCPResources GCPResources   `mapstructure:"gcp_resources"`
+	Talos        TalosConfig    `mapstructure:"talos"`
+	TalosFolder  string         `mapstructure:"talos_folder"`
 }
 
 type DatabaseConfig struct {
@@ -56,9 +57,9 @@ type JWTConfig struct {
 }
 
 type GCPResources struct {
-	LastUpdated        string                       `mapstructure:"last_updated" json:"last_updated"`
-	Zones              []string                     `mapstructure:"zones" json:"zones"`
-	MachineTypesByZone map[string][]GCPMachineType  `mapstructure:"machine_types_by_zone" json:"machine_types_by_zone"`
+	LastUpdated        string                      `mapstructure:"last_updated" json:"last_updated"`
+	Zones              []string                    `mapstructure:"zones" json:"zones"`
+	MachineTypesByZone map[string][]GCPMachineType `mapstructure:"machine_types_by_zone" json:"machine_types_by_zone"`
 }
 
 type GCPMachineType struct {
@@ -73,7 +74,6 @@ type TalosConfig struct {
 	EventSinkPort     string `mapstructure:"event_sink_port"`
 }
 
-
 func Load() (*Config, error) {
 	// setDefaults()
 
@@ -82,6 +82,10 @@ func Load() (*Config, error) {
 	var config Config
 	if err := viper.Unmarshal(&config); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
+	}
+
+	if talosFolder := os.Getenv("TALOS_FOLDER"); talosFolder != "" {
+		config.TalosFolder = talosFolder
 	}
 
 	if clusterName := os.Getenv("CLUSTER_NAME"); clusterName != "" {
