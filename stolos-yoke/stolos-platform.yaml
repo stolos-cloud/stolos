@@ -24,7 +24,7 @@ spec:
     version: release-1.33
   cnpg:
     deploy: true
-    namespace: cnpg-test
+    namespace: cnpg
     version: 0.26.0
     barmanVersion: v0.6.0
   certManager:
