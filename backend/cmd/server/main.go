@@ -68,15 +68,17 @@ func main() {
 	// Initialize context
 	ctx := context.Background()
 
-	// Start Talos event sink for on-prem node discovery
+	// Create talos service
 	talosService := talosservices.NewTalosService(db, cfg)
-	talosService.StartEventSink()
 
 	// discover the cluster the backend is running on
 	clusterDiscovery := clusterservices.NewDiscoveryService(db, cfg, talosService)
 	if err := clusterDiscovery.InitializeCluster(ctx); err != nil {
 		log.Fatal("Failed to initialize cluster:", err)
 	}
+
+	// Start EventSink after cluster init.
+	talosService.StartEventSink()
 
 	// Initialize providers
 	providerManager := services.NewProviderManager(db, cfg)

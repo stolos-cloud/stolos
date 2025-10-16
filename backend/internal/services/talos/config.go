@@ -1,16 +1,15 @@
 package talos
 
 import (
-	"bufio"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 	factoryClient "github.com/siderolabs/image-factory/pkg/client"
@@ -19,6 +18,7 @@ import (
 	machineryClient "github.com/siderolabs/talos/pkg/machinery/client"
 	machineryClientConfig "github.com/siderolabs/talos/pkg/machinery/client/config"
 	"github.com/siderolabs/talos/pkg/machinery/config/bundle"
+	netres "github.com/siderolabs/talos/pkg/machinery/resources/network"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/talos"
 	"github.com/stolos-cloud/stolos/backend/internal/config"
 	"github.com/stolos-cloud/stolos/backend/internal/models"
@@ -123,28 +123,31 @@ func (s *TalosService) GetMachineConfigBundle() (*bundle.Bundle, error) {
 
 // GetMachineryClient gets Talos machinery client from talosconfig in TALOS_FOLDER
 func (s *TalosService) GetMachineryClient(nodeIP string) (*machineryClient.Client, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
+	endpoint := net.JoinHostPort(nodeIP, "50000")
 	talosConfigBytes, _ := os.ReadFile(filepath.Join(s.cfg.TalosFolder, "talosconfig"))
-
 	talosconfig, err := machineryClientConfig.FromBytes(talosConfigBytes)
 
 	if err != nil {
 		return nil, err
 	}
 
-	machinery, err := machineryClient.New(
-		ctx,
-		machineryClient.WithConfig(talosconfig),
-		machineryClient.WithEndpoints(nodeIP),
-		// TODO : We may need credentials since we are no longer in maintenance mode for provisioned nodes.
-		//machineryClient.WithGRPCDialOptions(
-		//	grpc.WithTransportCredentials(insecure.NewCredentials()),
-		//),
+	return machineryClient.New(
+		context.Background(),
+		machineryClient.WithConfig(talosconfig), // talosconfig provides certs
+		machineryClient.WithEndpoints(endpoint),
 	)
 
-	return machinery, nil
+}
+
+func GetInsecureMachineryClient(nodeIP string) (*machineryClient.Client, error) {
+	endpoint := net.JoinHostPort(nodeIP, "50000")
+	tlsCfg := &tls.Config{}
+	tlsCfg.InsecureSkipVerify = true
+
+	return machineryClient.New(context.Background(),
+		machineryClient.WithEndpoints(endpoint),
+		machineryClient.WithTLSConfig(tlsCfg),
+	)
 }
 
 // GetNodeDisks retrieves disk information from a Talos node. NOTE: The node is set via the machinery client's endpoint!
@@ -178,7 +181,7 @@ func (s *TalosService) GetBootstrapCachedNodes(clusterID uuid.UUID) ([]*models.N
 	var nodes []*models.Node
 
 	for ip := range machines.ControlPlanes {
-		node, err := s.CreateNodeFromIP(context.Background(), ip, "controlplane")
+		node, err := s.CreateExistingNodeFromIP(context.Background(), ip, "controlplane")
 		if err != nil {
 			// fallback: still return minimal node with IP
 			node = &models.Node{
@@ -194,7 +197,7 @@ func (s *TalosService) GetBootstrapCachedNodes(clusterID uuid.UUID) ([]*models.N
 	}
 
 	for ip := range machines.Workers {
-		node, err := s.CreateNodeFromIP(context.Background(), ip, "worker")
+		node, err := s.CreateExistingNodeFromIP(context.Background(), ip, "worker")
 		if err != nil {
 			node = &models.Node{
 				ID:        uuid.New(),
@@ -211,8 +214,8 @@ func (s *TalosService) GetBootstrapCachedNodes(clusterID uuid.UUID) ([]*models.N
 	return nodes, nil
 }
 
-// CreateNodeFromIP contacts a Talos node and fills in: Name, Architecture, MACAddress.
-func (s *TalosService) CreateNodeFromIP(ctx context.Context, nodeIP string, role string) (*models.Node, error) {
+// CreateExistingNodeFromIP contacts an existing Talos node and fills in: Name, Architecture, MACAddress.
+func (s *TalosService) CreateExistingNodeFromIP(ctx context.Context, nodeIP string, role string) (*models.Node, error) {
 
 	var node models.Node
 
@@ -225,103 +228,20 @@ func (s *TalosService) CreateNodeFromIP(ctx context.Context, nodeIP string, role
 	}
 	defer cli.Close()
 
-	name, err := readFileTrim(ctx, cli, "/proc/sys/kernel/hostname")
-	if err == nil && name != "" {
-		node.Name = name
+	// Get hostname
+	hostname, err := GetTypedTalosResource[*netres.HostnameStatus](ctx, cli, netres.NamespaceName, netres.HostnameStatusType, "hostname")
+	if err != nil {
+		return nil, err
 	}
+	node.Name = hostname.TypedSpec().Hostname
 
-	verResp, err := cli.Version(ctx)
-	if err == nil && verResp != nil {
-		msgs := verResp.GetMessages()
-		if len(msgs) > 0 {
-			if v := msgs[0].GetVersion(); v != nil {
-				if arch := v.GetArch(); arch != "" {
-					node.Architecture = arch
-				}
-			}
-		}
-	} else if err != nil {
-		_ = err
-	}
+	// Get talos version
+	// version, err := GetTypedTalosResource[*runtime.Version](ctx, cli, runtime.NamespaceName, runtime.VersionType, "runtime")
+	// node.Architecture = version.TypedSpec().Version
 
-	iface, err := findFirstIfaceMacAddr(ctx, cli)
-	if err == nil && iface != "" {
-		mac, macErr := readFileTrim(ctx, cli, "/sys/class/net/"+iface+"/address")
-		if macErr == nil && mac != "" && mac != "00:00:00:00:00:00" {
-			node.MACAddress = strings.ToLower(mac)
-		}
-	}
+	node.MACAddress = GetMachineBestExternalMacCandidate(ctx, cli)
 
 	return &node, nil
-}
-
-// readFileTrim reads a file via Talos client.Read and returns trimmed string.
-func readFileTrim(ctx context.Context, cli *machineryClient.Client, path string) (string, error) {
-	rc, err := cli.Read(ctx, path)
-	if err != nil {
-		return "", err
-	}
-	defer rc.Close()
-	b, err := io.ReadAll(rc)
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimSpace(string(b)), nil
-}
-
-// findFirstIfaceMacAddr returns the first reasonable non-loopback interface name as seen in /proc/net/dev.
-func findFirstIfaceMacAddr(ctx context.Context, cli *machineryClient.Client) (string, error) {
-	rc, err := cli.Read(ctx, "/proc/net/dev")
-	if err != nil {
-		return "", err
-	}
-	defer rc.Close()
-
-	sc := bufio.NewScanner(rc)
-	skipPrefixes := []string{"lo", "bond", "br", "veth", "docker", "cni", "flannel", "kube", "wg", "tun", "tap"}
-
-	isVirtual := func(name string) bool {
-		for _, p := range skipPrefixes {
-			if strings.HasPrefix(name, p) {
-				return true
-			}
-		}
-		return false
-	}
-
-	for sc.Scan() {
-		line := sc.Text()
-		if !strings.Contains(line, ":") {
-			continue
-		}
-		parts := strings.SplitN(line, ":", 2)
-		if len(parts) != 2 {
-			continue
-		}
-		iface := strings.TrimSpace(parts[0])
-		if iface == "" || isVirtual(iface) {
-			continue
-		}
-
-		// Confirm it has a sane MAC address file and non-zero MAC.
-		mac, err := readFileTrim(ctx, cli, "/sys/class/net/"+iface+"/address")
-		if err != nil || mac == "" || mac == "00:00:00:00:00:00" {
-			continue
-		}
-
-		// Optional: prefer interfaces that are up; if operstate is readable and says "up", return immediately.
-		if oper, operErr := readFileTrim(ctx, cli, "/sys/class/net/"+iface+"/operstate"); operErr == nil && oper == "up" {
-			return iface, nil
-		}
-
-		// Fallback: first non-virtual with MAC.
-		return iface, nil
-	}
-
-	if err := sc.Err(); err != nil {
-		return "", err
-	}
-	return "", fmt.Errorf("no suitable interface found")
 }
 
 // GetGCPImageName returns the Talos image name for the specified architecture
