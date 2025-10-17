@@ -5,13 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 
+	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/google/uuid"
 	machineapi "github.com/siderolabs/talos/pkg/machinery/api/machine"
 	"github.com/siderolabs/talos/pkg/machinery/config/configpatcher"
-	"github.com/siderolabs/talos/pkg/machinery/config/container"
 	"github.com/siderolabs/talos/pkg/machinery/config/encoder"
 	machineconf "github.com/siderolabs/talos/pkg/machinery/config/machine"
-	"github.com/siderolabs/talos/pkg/machinery/config/types/v1alpha1"
 	"github.com/stolos-cloud/stolos/backend/internal/config"
 	"github.com/stolos-cloud/stolos/backend/internal/models"
 	gcpservices "github.com/stolos-cloud/stolos/backend/internal/services/gcp"
@@ -219,9 +218,6 @@ func (s *NodeService) ProvisionNodes(configs []models.NodeProvisionConfig) ([]mo
 		provisionedNodes = append(provisionedNodes, node)
 	}
 
-	var existingNodeCount int64
-	s.db.Where(&models.Node{Status: models.StatusActive}).Count(&existingNodeCount)
-
 	// TODO: Apply Talos configuration to all nodes
 	// 1. Create/load Talos config
 	// 2. Apply configs to each node
@@ -243,35 +239,39 @@ func (s *NodeService) ProvisionNodes(configs []models.NodeProvisionConfig) ([]mo
 			return nil, fmt.Errorf("failed to get machinery client for provisioning: %w", err)
 		}
 
-		cfg := &v1alpha1.Config{
-			ConfigVersion: "v1alpha1",
-			MachineConfig: &v1alpha1.MachineConfig{
-				MachineNetwork: &v1alpha1.NetworkConfig{
-					NetworkHostname: fmt.Sprintf("%s-%d", node.Role, i+int(existingNodeCount)),
-					NameServers: []string{
-						"192.168.2.5", // TODO : Remove
-						"8.8.8.8",
-					},
-				},
-				MachineInstall: &v1alpha1.InstallConfig{
-					InstallDiskSelector: &v1alpha1.InstallDiskSelector{
-						Name: "/dev/sda", //TODO : Fix via user dropdown list !
-					},
-				},
-			},
+		var existingNodeCount int64
+		s.db.Model(&models.Node{}).Where("status = 'active' AND role = ?", node.Role).Count(&existingNodeCount)
+
+		var machineconftype machineconf.Type
+		if node.Role == "control-plane" {
+			machineconftype = machineconf.TypeControlPlane
+		} else {
+			machineconftype = machineconf.TypeWorker
 		}
 
-		ctr := container.NewV1Alpha1(cfg)
-		patch := configpatcher.NewStrategicMergePatch(ctr)
-		err = configBundle.ApplyPatches([]configpatcher.Patch{patch}, node.Role == "controlplane", node.Role == "worker")
-
-		machineConfigRendered, err := configBundle.Serialize(encoder.CommentsDocs, machineconf.TypeControlPlane)
+		machineConfigRendered, err := configBundle.Serialize(encoder.CommentsDocs, machineconftype)
 		if err != nil {
 			return nil, fmt.Errorf("failed to build machine config configBundle for provisioning: %w", err)
 		}
 
+		// Build typed JSON Patch: remove diskSelector, add disk="/dev/sda"
+		patch := jsonpatch.Patch{
+			jsonpatch.Operation{
+				"op":   raw("remove"),
+				"path": raw("/machine/install/diskSelector"),
+			},
+			jsonpatch.Operation{
+				"op":    raw("add"),
+				"path":  raw("/machine/install/disk"),
+				"value": raw("/dev/sda"),
+			},
+		}
+
+		patched, err := configpatcher.JSON6902(machineConfigRendered, patch)
+
+		// TODO : deal with errors!
 		_, err = cli.ApplyConfiguration(context.Background(), &machineapi.ApplyConfigurationRequest{
-			Data:           machineConfigRendered,
+			Data:           patched,
 			Mode:           machineapi.ApplyConfigurationRequest_AUTO, // (1)
 			DryRun:         false,
 			TryModeTimeout: nil,
@@ -284,6 +284,12 @@ func (s *NodeService) ProvisionNodes(configs []models.NodeProvisionConfig) ([]mo
 	}
 
 	return provisionedNodes, nil
+}
+
+func raw(v any) *json.RawMessage {
+	b, _ := json.Marshal(v)
+	rm := json.RawMessage(b)
+	return &rm
 }
 
 // ListNodes lists nodes with optional status filter, offset, and limit.

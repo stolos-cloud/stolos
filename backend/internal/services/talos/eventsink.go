@@ -59,9 +59,9 @@ func (s *TalosService) StartEventSink() {
 				status, err := GetMachineStatus(cli)
 
 				if err != nil {
-					ignoredNodesCache = append(ignoredNodesCache, ip)
+					//ignoredNodesCache = append(ignoredNodesCache, ip)
 					log.Printf("Ignoring node %s: %v", ip, err)
-					return errors.Wrapf(err, "Error connecting to node %s, ingoring from now on", ip)
+					return errors.Wrapf(err, "Error connecting to node %s, skipping", ip)
 				}
 
 				mac := GetMachineBestExternalMacCandidate(ctx, cli)
