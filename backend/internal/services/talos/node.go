@@ -3,6 +3,7 @@ package talos
 import (
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"strings"
 	"time"
@@ -22,15 +23,6 @@ func BuildNodeModelFromResources(ctx context.Context, c *machineryClient.Client,
 		IPAddress: nodeIP,
 		Provider:  "onprem",
 		Status:    models.StatusPending,
-	}
-
-	status, err := GetMachineStatus(c)
-	if err != nil {
-		return nil, fmt.Errorf("cannot build node: %w", err)
-	}
-
-	if status.Stage == runtime.MachineStageRunning {
-		node.Status = models.StatusActive
 	}
 
 	node.MACAddress = GetMachineBestExternalMacCandidate(ctx, c)
@@ -148,4 +140,39 @@ func isVirtualIface(name string) bool {
 		}
 	}
 	return false
+}
+
+// DetectMachineArch tries to detect cpu arch via /proc/cpuinfo , returns goarch formatted string.
+func DetectMachineArch(ctx context.Context, cli *machineryClient.Client) (string, error) {
+	// set a timeout to avoid hangs
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	rc, err := cli.Read(ctx, "/proc/cpuinfo")
+	if err != nil {
+		return "", fmt.Errorf("read /proc/cpuinfo: %w", err)
+	}
+	defer rc.Close()
+
+	data, err := io.ReadAll(rc)
+	if err != nil {
+		return "", fmt.Errorf("readAll /proc/cpuinfo: %w", err)
+	}
+	text := strings.ToLower(string(data))
+
+	// fast checks
+	if strings.Contains(text, "aarch64") || strings.Contains(text, "armv8") {
+		return "arm64", nil
+	}
+	if strings.Contains(text, "x86_64") {
+		return "amd64", nil
+	}
+	if strings.Contains(text, "riscv64") || strings.Contains(text, "rv64") {
+		return "riscv64", nil
+	}
+	if strings.Contains(text, "armv7") || strings.Contains(text, "v7l") {
+		return "armv7", nil
+	}
+
+	return "Unknown", nil
 }

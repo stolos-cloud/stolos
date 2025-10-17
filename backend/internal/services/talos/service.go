@@ -5,25 +5,25 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/google/uuid"
 	factoryClient "github.com/siderolabs/image-factory/pkg/client"
 	"github.com/siderolabs/image-factory/pkg/schematic"
-	"github.com/siderolabs/siderolink/pkg/events"
 	machineryClient "github.com/siderolabs/talos/pkg/machinery/client"
 	machineryClientConfig "github.com/siderolabs/talos/pkg/machinery/client/config"
 	"github.com/siderolabs/talos/pkg/machinery/config/bundle"
 	netres "github.com/siderolabs/talos/pkg/machinery/resources/network"
+	"github.com/siderolabs/talos/pkg/machinery/resources/runtime"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/talos"
 	"github.com/stolos-cloud/stolos/backend/internal/config"
 	"github.com/stolos-cloud/stolos/backend/internal/models"
 	"gorm.io/gorm"
 )
+
+var ignoredNodesCache []string
 
 type TalosService struct {
 	db            *gorm.DB
@@ -139,7 +139,7 @@ func (s *TalosService) GetMachineryClient(nodeIP string) (*machineryClient.Clien
 
 }
 
-func GetInsecureMachineryClient(nodeIP string) (*machineryClient.Client, error) {
+func GetInsecureMachineryClient(ctx context.Context, nodeIP string) (*machineryClient.Client, error) {
 	endpoint := net.JoinHostPort(nodeIP, "50000")
 	tlsCfg := &tls.Config{}
 	tlsCfg.InsecureSkipVerify = true
@@ -220,13 +220,19 @@ func (s *TalosService) CreateExistingNodeFromIP(ctx context.Context, nodeIP stri
 	var node models.Node
 
 	node.Role = role
-	node.Status = "active"
 
-	cli, err := s.GetMachineryClient(nodeIP)
+	cli, err := s.GetMachineryClient(nodeIP) //Get authenticated client.
 	if err != nil {
 		return nil, fmt.Errorf("machinery client: %w", err)
 	}
 	defer cli.Close()
+
+	status, err := GetMachineStatus(cli)
+	if err == nil && status.Stage == runtime.MachineStageRunning {
+		node.Status = models.StatusActive
+	} else {
+		node.Status = models.StatusPending
+	}
 
 	// Get hostname
 	hostname, err := GetTypedTalosResource[*netres.HostnameStatus](ctx, cli, netres.NamespaceName, netres.HostnameStatusType, "hostname")
@@ -269,64 +275,4 @@ func (s *TalosService) GetGCPImageName(architecture string) (string, error) {
 	}
 
 	return image, nil
-}
-
-// starts the Talos event sink gRPC server to receive events from booting nodes
-func (s *TalosService) StartEventSink() {
-	// Skip if event sink hostname is not configured
-	if s.cfg.Talos.EventSinkHostname == "" {
-		log.Println("Talos event sink hostname not configured, skipping event sink startup")
-		return
-	}
-
-	log.Printf("Starting Talos event sink on %s:%s", s.cfg.Talos.EventSinkHostname, s.cfg.Talos.EventSinkPort)
-
-	// Prepare talosInfo struct for EventSink
-	talosInfo := &talos.TalosInfo{
-		HTTPHostname: s.cfg.Talos.EventSinkHostname,
-		HTTPPort:     s.cfg.Talos.EventSinkPort,
-	}
-
-	// Start EventSink
-	go func() {
-		err := talos.EventSink(talosInfo, func(ctx context.Context, event events.Event) error {
-			// Extract IP from event.Node
-			ip := strings.Split(event.Node, ":")[0]
-
-			// Check if node already exists
-			var existing models.Node
-			err := s.db.Where("ip_address = ? AND provider = ?", ip, "onprem").First(&existing).Error
-
-			if err == gorm.ErrRecordNotFound {
-				// Auto-register new node
-				node := models.Node{
-					Name:         fmt.Sprintf("node-%s", strings.ReplaceAll(ip, ".", "-")),
-					IPAddress:    ip,
-					Provider:     "onprem",
-					Status:       models.StatusPending,
-					Architecture: "amd64", // todo detect architecture
-				}
-
-				if err := s.db.Create(&node).Error; err != nil {
-					log.Printf("Failed to auto-register node %s: %v", ip, err)
-					return err
-				}
-
-				log.Printf("Auto-registered new on-prem node: %s (IP: %s)", node.Name, ip)
-			} else if err != nil {
-				log.Printf("Error checking node existence for IP %s: %v", ip, err)
-				return err
-			} else {
-				log.Printf("Node with IP %s already registered", ip)
-			}
-
-			return nil
-		})
-
-		if err != nil {
-			log.Printf("Talos event sink error: %v", err)
-		}
-	}()
-
-	log.Printf("Talos event sink started successfully")
 }
