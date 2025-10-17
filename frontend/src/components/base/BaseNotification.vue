@@ -5,7 +5,7 @@
     :color="snackbarColor"
     location="bottom right"
     class="rounded px-4 py-2"
-    elevation="2"
+    elevation="8"
   >
     <span>{{ text }}</span>
     <template v-slot:actions v-if="closable">

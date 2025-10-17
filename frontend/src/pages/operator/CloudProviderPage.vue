@@ -14,7 +14,6 @@
             :no-data-text="$t('cloudProvider.table.noDataText')"
             :items-per-page="10"
             :items-per-page-text="$t('cloudProvider.table.itemsPerPageText')"
-            class="elevation-8"
             mobile-breakpoint="md"
             :hide-default-footer="nodesCloud.length < 10"
           >

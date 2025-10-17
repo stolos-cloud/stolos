@@ -3,7 +3,6 @@
         <BaseLabelBar
             :title="$t('dashboard.title')"
             :subheading="$t('dashboard.subheading')"
-            :actions="actions"
         />
         <!-- Active connected nodes -->
         <v-sheet border rounded class="mt-4">
@@ -17,27 +16,24 @@
             :no-data-text="$t('dashboard.onPremises.table.noDataText')"
             :items-per-page="10"
             :items-per-page-text="$t('dashboard.onPremises.table.itemsPerPageText')"
-            class="elevation-8"
-            mobile-breakpoint="md"
             :hide-default-footer="nodes.length < 10"
+            mobile-breakpoint="md"
           >
             <!-- Slot for top -->
             <template v-slot:top>
-              <v-toolbar>
+              <v-toolbar flat>
                 <v-toolbar-title>
                   {{ $t('dashboard.onPremises.table.title') }}
                 </v-toolbar-title>
+                <BaseButton 
+                  icon="mdi-download"
+                  elevation="2"
+                  :tooltip="$t('dashboard.buttons.downloadISOOnPremise')"
+                  :text="$t('dashboard.buttons.downloadISOOnPremise')" 
+                  @click="showDownloadISODialog" 
+                />
               </v-toolbar>
-              <v-text-field
-                v-model="search"
-                label="Search"
-                prepend-inner-icon="mdi-magnify"
-                variant="outlined"
-                hide-details
-                single-line
-                dense
-                class="pa-3"
-              />
+              <v-text-field v-model="search" label="Search" prepend-inner-icon="mdi-magnify" variant="outlined" hide-details single-line dense class="pa-3"/>
             </template>
 
             <!-- Slot for status -->
@@ -85,13 +81,6 @@ const loading = ref(false);
 const nodes = ref([]);
 
 // Computed
-const actions = computed(() => [
-  {
-    text: t('dashboard.buttons.downloadISOOnPremise'),
-    color: 'primary',
-    onClick: () => dialogDownloadISOOnPremise.value = true
-  }
-]);
 const nodeHeaders = computed(() => [
   { title: t('dashboard.onPremises.table.headers.nodename'), value: 'name' },
   { title: t('dashboard.onPremises.table.headers.role'), value: 'role' },
@@ -114,6 +103,9 @@ onMounted(() => {
 });
 
 // Methods
+function showDownloadISODialog() {
+    dialogDownloadISOOnPremise.value = true;
+}
 function cancelDownloadISO() {
     isoRadioButtons.value = undefined;
     dialogDownloadISOOnPremise.value = false;

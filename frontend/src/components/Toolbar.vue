@@ -1,5 +1,5 @@
 <template>
-    <v-app-bar :height="props.toolbarHeight" app color="primary" dark :elevation="props.elevation">
+    <v-app-bar :height="props.toolbarHeight" app color="primary" dark :elevation="elevation">
       <v-btn icon @click="toggleSidebar">
         <v-icon>mdi-menu</v-icon>
       </v-btn>
@@ -20,7 +20,7 @@ const props = defineProps({
   },
   elevation: {
     type: Number,
-    default: 5,
+    default: 8,
   },
 });
 

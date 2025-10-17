@@ -14,10 +14,8 @@
                 :no-data-text="$t('provisioning.onPremises.table.noDataText')"
                 :items-per-page="10"
                 :items-per-page-text="$t('provisioning.onPremises.table.itemsPerPageText')"
-                class="elevation-8"
-                mobile-breakpoint="md"
-                disable-sort="true"
                 :hide-default-footer="nodes.length < 10"
+                mobile-breakpoint="md"
             >
                 <!-- Slot for top -->
                 <template v-slot:top>
@@ -25,6 +23,14 @@
                         <v-toolbar-title>
                         {{ $t('provisioning.onPremises.table.title') }}
                         </v-toolbar-title>
+                        <BaseButton 
+                            :text="$t('provisioning.onPremises.buttons.provisionConnectedNodes')" 
+                            :tooltip="$t('provisioning.onPremises.buttons.provisionConnectedNodes')"
+                            icon="mdi-server-plus"
+                            elevation="2" class="mt-2" 
+                            :disabled="!canProvision" 
+                            @click="provisionConnectedNodes" 
+                        />
                     </v-toolbar>
                 </template>
 
@@ -85,9 +91,6 @@
                 </template>
             </v-data-table-server>
         </v-sheet>
-        <div class="d-flex justify-end">
-            <BaseButton :text="$t('provisioning.onPremises.buttons.provisionConnectedNodes')" color="primary" class="mt-2" :disabled="!canProvision" @click="provisionConnectedNodes" />
-        </div>
         <v-overlay class="d-flex align-center justify-center" v-model="overlay" persistent>
             <v-progress-circular
                 indeterminate

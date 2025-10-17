@@ -1,8 +1,8 @@
 <template>
     <PortalLayout>
         <BaseLabelBar
-            :title="$t('userManagement.title')"
-            :subheading="$t('userManagement.subheading')"
+            :title="$t('administration.users.title')"
+            :subheading="$t('administration.users.subheading')"
         />
         <v-sheet border rounded class="mt-4">
           <v-data-table
@@ -11,31 +11,27 @@
             :items-length="users.length"
             :loading=loading
             :search="search"
-            :loading-text="$t('userManagement.table.loadingText')"
-            :no-data-text="$t('userManagement.table.noDataText')"
+            :loading-text="$t('administration.users.table.loadingText')"
+            :no-data-text="$t('administration.users.table.noDataText')"
             :items-per-page="10"
-            :items-per-page-text="$t('userManagement.table.itemsPerPageText')"
-            class="elevation-8"
-            mobile-breakpoint="md"
+            :items-per-page-text="$t('administration.users.table.itemsPerPageText')"
             :hide-default-footer="users.length < 10"
+            mobile-breakpoint="md"
           >
             <template v-slot:top>
               <v-toolbar flat>
                 <v-toolbar-title>
-                  {{ $t('userManagement.table.title') }}
+                  {{ $t('administration.users.table.title') }}
                 </v-toolbar-title>
-                <BaseButton icon="mdi-plus" size="small" :text="$t('userManagement.buttons.addUser')" @click="showAddUserDialog" />
+                <BaseButton 
+                  icon="mdi-plus" 
+                  elevation="2" 
+                  :tooltip="$t('administration.users.buttons.addUser')" 
+                  :text="$t('administration.users.buttons.addUser')" 
+                  @click="showAddUserDialog" 
+                />
               </v-toolbar>
-              <v-text-field
-                v-model="search"
-                label="Search"
-                prepend-inner-icon="mdi-magnify"
-                variant="outlined"
-                hide-details
-                single-line
-                dense
-                class="pa-3"
-              />
+              <v-text-field v-model="search" label="Search" prepend-inner-icon="mdi-magnify" variant="outlined" hide-details single-line dense class="pa-3"/>
             </template>
             <template #item.role="{ item }">
                 <div class="d-flex align-center">
@@ -49,11 +45,11 @@
                 </div>
             </template>
             <template #item.actions="{ item }">
-              <v-icon color="medium-emphasis" icon="mdi-delete" size="small" @click="deleteUser(item)"></v-icon>
+              <v-btn v-tooltip="{ text: $t('administration.users.buttons.deleteUser') }" icon="mdi-delete" size="small" variant="text" @click="deleteUser(item)" />
             </template>
           </v-data-table>
         </v-sheet>
-        <BaseDialog v-model="dialogEditUserRole" :title="$t('userManagement.dialogs.editUser.title')" width="600" closable>
+        <BaseDialog v-model="dialogEditUserRole" :title="$t('administration.users.dialogs.editUser.title')" width="600" closable>
           <v-form v-model="isValidEditUserForm">
             <BaseSelect v-model="formFields.role.value" :Select="formFields.role" />
           </v-form>
@@ -62,7 +58,7 @@
             <BaseButton size="small" :text="$t('actionButtons.edit')" :disabled="!isValidEditUserForm" @click="updateRole" />
           </template>
         </BaseDialog>
-        <BaseDialog v-model="dialogAddUser" :title="$t('userManagement.dialogs.addUser.title')" width="600" closable>
+        <BaseDialog v-model="dialogAddUser" :title="$t('administration.users.dialogs.addUser.title')" width="600" closable>
           <v-form v-model="isValidAddUserForm">
             <BaseTextfield :Textfield="formFields.email" />
             <BaseTextfield :Textfield="formFields.password" />
@@ -84,7 +80,6 @@
 </template>
 
 <script setup>
-import PortalLayout from '@/components/layouts/PortalLayout.vue';
 import { FormValidationRules } from "@/composables/FormValidationRules.js";
 import { TextField } from "@/models/TextField.js";
 import { Select } from "@/models/Select.js";
@@ -116,28 +111,28 @@ const notification = ref({
 
 // Computed
 const userHeaders = computed(() => [
-  { title: t('userManagement.table.headers.email'), value: 'email'},
-  { title: t('userManagement.table.headers.role'), value: 'role' },
-  { title: t('userManagement.table.headers.actions'), value: 'actions', sortable: false, align: 'center' }
+  { title: t('administration.users.table.headers.email'), value: 'email'},
+  { title: t('administration.users.table.headers.role'), value: 'role' },
+  { title: t('administration.users.table.headers.actions'), value: 'actions', sortable: false, align: 'center' }
 ]);
 const userRoles = computed(() => store.getters['referenceLists/getUserRoles']);
 
 // Form state
 const formFields = reactive({
   email: new TextField({
-    label: t('userManagement.formfields.email'),
+    label: t('administration.users.formfields.email'),
     type: "email",
     required: true,
     rules: emailRules
   }),
   password: new TextField({
-    label: t('userManagement.formfields.password'),
+    label: t('administration.users.formfields.password'),
     type: "password",
     required: true,
     rules: passwordRules
   }),
   role: new Select({
-    label: t('userManagement.formfields.role'),
+    label: t('administration.users.formfields.role'),
     options: userRoles.value,
     required: true,
     rules: textfieldRules
@@ -176,8 +171,8 @@ function showAddUserDialog() {
 
 function deleteUser(item) {
     confirmDialog.value.open({
-        title: t('userManagement.dialogs.deleteUser.title'),
-        message: t('userManagement.dialogs.deleteUser.confirmationText', { email: item.email }),
+        title: t('administration.users.dialogs.deleteUser.title'),
+        message: t('administration.users.dialogs.deleteUser.confirmationText', { email: item.email }),
         confirmText: t('actionButtons.confirm'),
         onConfirm: () => {
             deleteUserConfirmed(item);
@@ -197,16 +192,16 @@ function addUser() {
 
     createNewUser(userData)
     .then(() => {
-        showNotification(t('userManagement.notifications.addSuccess', { email: formFields.email.value }), 'success');
+        showNotification(t('administration.users.notifications.addSuccess', { email: formFields.email.value }), 'success');
         fetchUsers();
     })
     .catch((error) => {
         console.error("Error adding user:", error);
-        showNotification(t('userManagement.notifications.addError'), 'error');
+        showNotification(t('administration.users.notifications.addError'), 'error');
     })
     .finally(() => {
-        overlay.value = false;
         closeAddUserDialog();
+        overlay.value = false;
     });
 }
 
@@ -218,17 +213,17 @@ function updateRole() {
     
     updateUserRole(userToUpdate.id, formFields.role.value)
     .then(() => {
-        showNotification(t('userManagement.notifications.updateSuccess', { email: userToUpdate.email }), 'success');
+        showNotification(t('administration.users.notifications.updateSuccess', { email: userToUpdate.email }), 'success');
         fetchUsers();
     })
     .catch((error) => {
         console.error("Error updating user role:", error);
-        showNotification(t('userManagement.notifications.updateError'), 'error');
+        showNotification(t('administration.users.notifications.updateError'), 'error');
     })
     .finally(() => {
+        closeEditRoleDialog();
         overlay.value = false;
         userTemp.value = null;
-        closeEditRoleDialog();
     });
 }   
 
@@ -237,12 +232,12 @@ function deleteUserConfirmed(item) {
 
   deleteUserById(item.id)
   .then(() => {
-    showNotification(t('userManagement.notifications.deleteSuccess', { email: item.email }), 'success');
+    showNotification(t('administration.users.notifications.deleteSuccess', { email: item.email }), 'success');
     fetchUsers();
   })
   .catch((error) => {
     console.error("Error deleting user:", error);
-    showNotification(t('userManagement.notifications.deleteError'), 'error');
+    showNotification(t('administration.users.notifications.deleteError'), 'error');
   })
   .finally(() => {
     overlay.value = false;

@@ -1,8 +1,8 @@
 <template>
-    <v-dialog v-model="isOpen" :width="width" :persistent="persistent">
+    <v-dialog v-model="isOpen" :width="width" :persistent="persistent" content-class="elevation-">
         <v-card>
             <v-card-title class="d-flex align-center">
-                <span>{{ title }}</span>
+                <span class="text-truncate">{{ title }}</span>
                 <v-spacer></v-spacer>
                 <v-btn 
                     v-if="closable" 

@@ -26,3 +26,9 @@ onMounted(async () => {
 });
 
 </script>
+
+<style>
+body {
+  font-size: small;
+}
+</style>
