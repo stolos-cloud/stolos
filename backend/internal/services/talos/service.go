@@ -168,7 +168,7 @@ func (s *TalosService) GetNodeDisks(ctx context.Context, client *machineryClient
 
 // GetBootstrapCachedNodes reads cached machine definitions and builds Node models.
 func (s *TalosService) GetBootstrapCachedNodes(clusterID uuid.UUID) ([]*models.Node, error) {
-	machinesJsonBytes, err := os.ReadFile(filepath.Join(s.cfg.TalosFolder, "machines.json"))
+	machinesJsonBytes, err := os.ReadFile(filepath.Join(s.cfg.TalosFolder, "machines.json")) // TODO : Store the config bundles in DB ?
 	if err != nil {
 		return nil, err
 	}

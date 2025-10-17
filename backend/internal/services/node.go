@@ -6,9 +6,16 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	machineapi "github.com/siderolabs/talos/pkg/machinery/api/machine"
+	"github.com/siderolabs/talos/pkg/machinery/config/configpatcher"
+	"github.com/siderolabs/talos/pkg/machinery/config/container"
+	"github.com/siderolabs/talos/pkg/machinery/config/encoder"
+	machineconf "github.com/siderolabs/talos/pkg/machinery/config/machine"
+	"github.com/siderolabs/talos/pkg/machinery/config/types/v1alpha1"
 	"github.com/stolos-cloud/stolos/backend/internal/config"
 	"github.com/stolos-cloud/stolos/backend/internal/models"
 	gcpservices "github.com/stolos-cloud/stolos/backend/internal/services/gcp"
+	"github.com/stolos-cloud/stolos/backend/internal/services/talos"
 	"gorm.io/gorm"
 )
 
@@ -16,13 +23,15 @@ type NodeService struct {
 	db              *gorm.DB
 	cfg             *config.Config
 	providerManager *ProviderManager
+	ts              *talos.TalosService
 }
 
-func NewNodeService(db *gorm.DB, cfg *config.Config, providerManager *ProviderManager) *NodeService {
+func NewNodeService(db *gorm.DB, cfg *config.Config, providerManager *ProviderManager, talosService *talos.TalosService) *NodeService {
 	return &NodeService{
 		db:              db,
 		cfg:             cfg,
 		providerManager: providerManager,
+		ts:              talosService,
 	}
 }
 
@@ -210,6 +219,9 @@ func (s *NodeService) ProvisionNodes(configs []models.NodeProvisionConfig) ([]mo
 		provisionedNodes = append(provisionedNodes, node)
 	}
 
+	var existingNodeCount int64
+	s.db.Where(&models.Node{Status: models.StatusActive}).Count(&existingNodeCount)
+
 	// TODO: Apply Talos configuration to all nodes
 	// 1. Create/load Talos config
 	// 2. Apply configs to each node
@@ -217,7 +229,55 @@ func (s *NodeService) ProvisionNodes(configs []models.NodeProvisionConfig) ([]mo
 	//
 	// For now, update status to active as a placeholder
 	for i := range provisionedNodes {
-		provisionedNodes[i].Status = models.StatusActive
+
+		var node = provisionedNodes[i]
+
+		configBundle, err := s.ts.GetMachineConfigBundle()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get machine config configBundle for provisioning: %w", err)
+		}
+
+		cli, err := talos.GetInsecureMachineryClient(context.Background(), node.IPAddress)
+
+		if err != nil {
+			return nil, fmt.Errorf("failed to get machinery client for provisioning: %w", err)
+		}
+
+		cfg := &v1alpha1.Config{
+			ConfigVersion: "v1alpha1",
+			MachineConfig: &v1alpha1.MachineConfig{
+				MachineNetwork: &v1alpha1.NetworkConfig{
+					NetworkHostname: fmt.Sprintf("%s-%d", node.Role, i+int(existingNodeCount)),
+					NameServers: []string{
+						"192.168.2.5", // TODO : Remove
+						"8.8.8.8",
+					},
+				},
+				MachineInstall: &v1alpha1.InstallConfig{
+					InstallDiskSelector: &v1alpha1.InstallDiskSelector{
+						Name: "/dev/sda", //TODO : Fix via user dropdown list !
+					},
+				},
+			},
+		}
+
+		ctr := container.NewV1Alpha1(cfg)
+		patch := configpatcher.NewStrategicMergePatch(ctr)
+		err = configBundle.ApplyPatches([]configpatcher.Patch{patch}, node.Role == "controlplane", node.Role == "worker")
+
+		machineConfigRendered, err := configBundle.Serialize(encoder.CommentsDocs, machineconf.TypeControlPlane)
+		if err != nil {
+			return nil, fmt.Errorf("failed to build machine config configBundle for provisioning: %w", err)
+		}
+
+		_, err = cli.ApplyConfiguration(context.Background(), &machineapi.ApplyConfigurationRequest{
+			Data:           machineConfigRendered,
+			Mode:           machineapi.ApplyConfigurationRequest_AUTO, // (1)
+			DryRun:         false,
+			TryModeTimeout: nil,
+		})
+
+		node.Status = models.StatusActive
 		if err := s.db.Save(&provisionedNodes[i]).Error; err != nil {
 			return nil, fmt.Errorf("failed to update node %s status: %w", provisionedNodes[i].ID, err)
 		}

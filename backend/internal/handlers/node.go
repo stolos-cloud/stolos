@@ -8,21 +8,21 @@ import (
 	"github.com/stolos-cloud/stolos/backend/internal/config"
 	"github.com/stolos-cloud/stolos/backend/internal/models"
 	"github.com/stolos-cloud/stolos/backend/internal/services"
-	talosservices "github.com/stolos-cloud/stolos/backend/internal/services/talos"
+	talos "github.com/stolos-cloud/stolos/backend/internal/services/talos"
 	"gorm.io/gorm"
 )
 
 type NodeHandlers struct {
 	db           *gorm.DB
 	nodeService  *services.NodeService
-	talosService *talosservices.TalosService
+	talosService *talos.TalosService
 }
 
-func NewNodeHandlers(db *gorm.DB, cfg *config.Config, providerManager *services.ProviderManager) *NodeHandlers {
+func NewNodeHandlers(db *gorm.DB, cfg *config.Config, providerManager *services.ProviderManager, talosService *talos.TalosService) *NodeHandlers {
 	return &NodeHandlers{
 		db:           db,
-		nodeService:  services.NewNodeService(db, cfg, providerManager),
-		talosService: talosservices.NewTalosService(db, cfg),
+		nodeService:  services.NewNodeService(db, cfg, providerManager, talosService),
+		talosService: talos.NewTalosService(db, cfg),
 	}
 }
 

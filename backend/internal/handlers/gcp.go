@@ -51,7 +51,7 @@ func NewGCPHandlers(db *gorm.DB, cfg *config.Config, providerManager *services.P
 		db:                    db,
 		gcpService:            gcpService,
 		gitopsService:         gitopsService,
-		nodeService:           services.NewNodeService(db, cfg, providerManager),
+		nodeService:           services.NewNodeService(db, cfg, providerManager, talosService),
 		infrastructureService: infrastructureService,
 		gcpResourcesService:   gcpservices.NewGCPResourcesService(db, gcpService),
 		provisioningService:   gcpservices.NewProvisioningService(db, cfg, talosService, gcpService),
@@ -94,13 +94,13 @@ func (h *GCPHandlers) GetGCPStatus(c *gin.Context) {
 		talosImagesConfigured := gcpConfig.TalosImageAMD64 != ""
 
 		response["gcp"] = gin.H{
-			"configured":             true,
-			"project_id":             gcpConfig.ProjectID,
-			"region":                 gcpConfig.Region,
-			"bucket_name":            gcpConfig.BucketName,
-			"service_account_email":  gcpConfig.ServiceAccountEmail,
-			"infrastructure_status":  gcpConfig.InfrastructureStatus,
-			"talos_version":          gcpConfig.TalosVersion,
+			"configured":              true,
+			"project_id":              gcpConfig.ProjectID,
+			"region":                  gcpConfig.Region,
+			"bucket_name":             gcpConfig.BucketName,
+			"service_account_email":   gcpConfig.ServiceAccountEmail,
+			"infrastructure_status":   gcpConfig.InfrastructureStatus,
+			"talos_version":           gcpConfig.TalosVersion,
 			"talos_images_configured": talosImagesConfigured,
 		}
 
