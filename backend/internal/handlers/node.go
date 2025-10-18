@@ -193,3 +193,21 @@ func (h *NodeHandlers) ProvisionNodes(c *gin.Context) {
 		"nodes":       nodes,
 	})
 }
+
+// GetTalosconfig godoc
+// @Summary Returns talosconfig File in TALOS_FOLDER
+// @Description Returns the talosconfig file in TALOS_FOLDER, destined for operators to do manual talosctl operations.
+// @Tags nodes
+// @Accept json
+// @Produce yaml
+// @Success 200 {object} []byte "Message indicating success"
+// @Failure 500 {object}
+// @Router /nodes/talosconfig [get]
+//func (h *NodeHandlers) GetTalosconfig(c *gin.Context) {
+//	err := h.nodeService.GetTalosconfig()
+//	if err != nil {
+//		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+//		return
+//	}
+//	c.JSON(http.StatusOK, gin.H{"message": "Sample nodes created"})
+//}

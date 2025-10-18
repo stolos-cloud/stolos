@@ -252,8 +252,15 @@ func (s *NodeService) ProvisionNodes(configs []models.NodeProvisionConfig) ([]mo
 			return nil, fmt.Errorf("failed to build machine config configBundle for provisioning: %w", err)
 		}
 
-		// Build typed JSON Patch: remove diskSelector, add disk="/dev/sda"
+		nodeName := fmt.Sprintf("%s-%d", provisionedNodes[i].Role, i+1+int(existingNodeCount))
+
+		// Build typed JSON Patch: remove diskSelector, add disk="/dev/sda", replace hostname
 		patch := jsonpatch.Patch{
+			jsonpatch.Operation{
+				"op":    raw("replace"),
+				"path":  raw("/machine/network/hostname"),
+				"value": raw(nodeName),
+			},
 			jsonpatch.Operation{
 				"op":   raw("remove"),
 				"path": raw("/machine/install/diskSelector"),
@@ -276,6 +283,8 @@ func (s *NodeService) ProvisionNodes(configs []models.NodeProvisionConfig) ([]mo
 		})
 
 		provisionedNodes[i].Status = models.StatusActive
+		provisionedNodes[i].Name = nodeName
+
 		if err := s.db.Save(&provisionedNodes[i]).Error; err != nil {
 			return nil, fmt.Errorf("failed to update node %s status: %w", provisionedNodes[i].ID, err)
 		}
