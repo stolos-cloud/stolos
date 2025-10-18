@@ -7,13 +7,10 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
 	"time"
-
-	manifests "github.com/stolos-cloud/stolos/k8s_manifests"
 
 	"github.com/cavaliergopher/grab/v3"
 	tea "github.com/charmbracelet/bubbletea"
@@ -31,6 +28,7 @@ import (
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/oauth"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/platform"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/talos"
+	"github.com/yokecd/yoke/pkg/yoke"
 	"golang.org/x/oauth2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -48,6 +46,7 @@ var githubConfig *github.Config
 var githubToken *oauth2.Token
 var gcpToken *oauth2.Token
 var gcpEnabled = gcp.GCPClientId != "" && gcp.GCPClientSecret != ""
+
 // var gitHubEnabled = github.GithubOauthClientId != "" && github.GithubOauthClientSecret != "" // legacy
 var gitHubEnabled = true
 var gitHubUser *github.User
@@ -804,6 +803,20 @@ func RunPortalStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 	go func() {
 		m.Logger.Debug("RunPortalStepInBackground")
 		CreateProviderSecrets(m.Logger)
+		cmdr, err := yoke.FromKubeConfig("kubeconfig")
+		err = cmdr.Takeoff(context.Background(), yoke.TakeoffParams{
+			Namespace:       "atc",
+			CreateNamespace: true,
+			Flight: yoke.FlightParams{
+				Path: "oci://ghcr.io/yokecd/atc-installer:0.15.0",
+			},
+			Release: "atc",
+		})
+
+		if err != nil {
+			m.Logger.Errorf("Failed to deploy yoke: %v", err)
+		}
+
 		s.IsDone = true
 	}()
 	return nil
@@ -829,12 +842,12 @@ func DeployArgoCD(loggerRef *tui.UILogger) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	valuesPath := filepath.Join(tmpDir, "values.yaml")
-	if err := os.WriteFile(valuesPath, manifests.ArgoValuesYaml, 0644); err != nil {
-		panic(err)
-	}
+	//valuesPath := filepath.Join(tmpDir, "values.yaml")
+	//if err := os.WriteFile(valuesPath, manifests.ArgoValuesYaml, 0644); err != nil {
+	//	panic(err)
+	//}
 
-	release, err := helm.HelmInstallArgo(helmClient, "stolos-argocd", "stolos-argocd", []string{valuesPath})
+	release, err := helm.HelmInstallArgo(helmClient, "stolos-argocd", "stolos-argocd", []string{})
 	if err != nil {
 		loggerRef.Errorf("Failed to deploy ArgoCD: %s", err)
 		return

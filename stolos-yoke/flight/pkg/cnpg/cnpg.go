@@ -41,6 +41,15 @@ func DeployCnpgApplication(input types.Stolos) *types.Application {
 					RepoURL:        "https://cloudnative-pg.github.io/charts",
 					TargetRevision: input.Spec.CNPG.Version,
 					Chart:          "cloudnative-pg",
+					Helm: &types.ApplicationSourceHelm{
+						Namespace: input.Spec.CNPG.Namespace,
+						Parameters: []types.HelmParameter{
+							{
+								Name:  "namespaceOverride",
+								Value: input.Spec.CNPG.Namespace,
+							},
+						},
+					},
 				},
 				{
 					RepoURL:        "https://github.com/cloudnative-pg/plugin-barman-cloud",

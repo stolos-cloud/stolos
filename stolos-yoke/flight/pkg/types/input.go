@@ -9,13 +9,14 @@ type Stolos struct {
 }
 
 type StolosSpec struct {
-	ClusterName string      `json:"clusterName"`
-	BaseDomain  string      `json:"baseDomain"`
-	MetalLB     MetalLB     `json:"metallb"`
-	ArgoCD      ArgoCD      `json:"argocd"`
-	Contour     Contour     `json:"contour"`
-	CertManager CertManager `json:"certManager"`
-	CNPG        CNPG        `json:"cnpg"`
+	ClusterName    string         `json:"clusterName"`
+	BaseDomain     string         `json:"baseDomain"`
+	MetalLB        MetalLB        `json:"metallb"`
+	ArgoCD         ArgoCD         `json:"argocd"`
+	Contour        Contour        `json:"contour"`
+	CertManager    CertManager    `json:"certManager"`
+	CNPG           CNPG           `json:"cnpg"`
+	StolosPlatform StolosPlatform `json:"stolosPlatform"`
 }
 
 type MetalLB struct {
@@ -56,4 +57,22 @@ type CNPG struct {
 	Namespace     string `json:"namespace"`
 	Version       string `json:"version"`
 	BarmanVersion string `json:"barmanVersion"`
+}
+
+type StolosPlatform struct {
+	Deploy               bool         `json:"deploy"`
+	Namespace            string       `json:"namespace"`
+	BackendSubdomain     string       `json:"backendSubdomain"`
+	FrontendSubdomain    string       `json:"frontendSubdomain"`
+	Database             CnpgDbConfig `json:"database"`
+	DefaultAdminPassword string       `json:"defaultAdminPassword"`
+	DefaultAdminEmail    string       `json:"defaultAdminEmail"`
+}
+
+type CnpgDbConfig struct {
+	DBPassowrdSecret string `json:"dbPassowrdSecret"`
+	DBPasswordKey    string `json:"dbPasswordKey"`
+	Image            string `json:"image"`
+	InstanceCount    int    `json:"instanceCount"`
+	SizeInGigabytes  int    `json:"sizeInGigabytes"`
 }

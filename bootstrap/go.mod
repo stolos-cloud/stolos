@@ -19,7 +19,6 @@ require (
 	github.com/siderolabs/siderolink v0.3.15
 	github.com/siderolabs/talos v1.11.0-beta.0
 	github.com/siderolabs/talos/pkg/machinery v1.11.0-beta.0
-	github.com/stolos-cloud/stolos/k8s_manifests v0.0.0
 	golang.org/x/oauth2 v0.31.0
 	google.golang.org/api v0.249.0
 	google.golang.org/grpc v1.75.0

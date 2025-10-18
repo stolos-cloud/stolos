@@ -2,6 +2,7 @@ package argocd
 
 import (
 	_ "embed"
+	"fmt"
 
 	certmanagerv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 	certmanagermetav1 "github.com/cert-manager/cert-manager/pkg/apis/meta/v1"
@@ -9,8 +10,11 @@ import (
 	types "github.com/stolos-cloud/stolos/stolos-yoke/flight/pkg/types"
 	"github.com/stolos-cloud/stolos/stolos-yoke/flight/pkg/utils"
 	"github.com/yokecd/yoke/pkg/flight"
+	"github.com/yokecd/yoke/pkg/helm"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+
 	//rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -22,10 +26,16 @@ var ArgoValuesYaml []byte
 //go:embed argocd-image-updater.yaml
 var ImageUpdaterYaml []byte
 
+//go:embed argo-cd-8.3.0.tgz
+var ArgoCDChart []byte
+
 var DefaultSyncPolicy = &types.SyncPolicy{
 	Automated: &types.SyncPolicyAutomated{
 		Prune:    true,
 		SelfHeal: true,
+	},
+	SyncOptions: types.SyncOptions{
+		"ServerSideApply=true",
 	},
 }
 
@@ -37,6 +47,25 @@ func AllArgoCD(input types.Stolos) []flight.Resource {
 		DeployArgocdCert(input),
 	}
 	all = append(all, DeployArgoCDImageUpdaterResources(input)...)
+
+	//_, err := k8s.Lookup[types.Application](k8s.ResourceIdentifier{
+	//	ApiVersion: "argoproj.io/v1alpha1",
+	//	Kind:       "Application",
+	//	Name:       "argocd",
+	//	Namespace:  input.Spec.ArgoCD.Namespace,
+	//})
+	//
+	//if err != nil {
+	//	resources, err := DeployInitChart(input)
+	//	if err == nil {
+	//		for _, res := range resources {
+	//			all = append(all, res)
+	//		}
+	//	} else {
+	//		fmt.Fprintf(os.Stderr, "error deploying argocd chart: %v\n", err)
+	//	}
+	//}
+
 	return all
 }
 
@@ -51,6 +80,27 @@ func CreateArgoNamespace(input types.Stolos) *v1.Namespace {
 	ns.SetGroupVersionKind(gvks[0])
 
 	return &ns
+}
+
+func DeployInitChart(input types.Stolos) ([]*unstructured.Unstructured, error) {
+	chart, err := helm.LoadChartFromZippedArchive(ArgoCDChart)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load chart from zipped archive: %w", err)
+	}
+
+	resources, err := chart.Render(
+		"argocd",
+		input.Spec.ArgoCD.Namespace,
+		map[string]any{
+			"namespaceOverride": input.Spec.ArgoCD.Namespace,
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to render chart: %w", err)
+	}
+
+	return resources, nil
+
 }
 
 func DeployArgoHelm(input types.Stolos) *types.Application {
@@ -180,6 +230,9 @@ func DeployArgoCDImageUpdaterResources(input types.Stolos) []flight.Resource {
 			results = append(results, &dep)
 		} else {
 			results = append(results, &res)
+		}
+		if res.GetNamespace() != "" {
+			res.SetNamespace(input.Spec.ArgoCD.Namespace)
 		}
 	}
 

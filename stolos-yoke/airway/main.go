@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"time"
 
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,19 +24,25 @@ func main() {
 }
 
 func run() error {
+
 	return json.NewEncoder(os.Stdout).Encode(v1alpha1.Airway{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "stolosplatforms.stolos.cloud",
 		},
 		Spec: v1alpha1.AirwaySpec{
-			Mode: v1alpha1.AirwayModeDynamic,
+			Mode: v1alpha1.AirwayModeStandard,
 			WasmURLs: v1alpha1.WasmURLs{
-				Flight: "oci://ghcr.io/stolos-cloud/stolos/flight:v1-alpha.10",
+				Flight: "oci://ghcr.io/stolos-cloud/stolos/flight:v1-alpha.20",
 			},
-			CrossNamespace: true,
-			//FixDriftInterval:       metav1.Duration{Duration: 2 * time.Minute},
+			CrossNamespace:         true,
+			FixDriftInterval:       metav1.Duration{Duration: 5 * time.Minute},
 			ClusterAccess:          true,
 			ResourceAccessMatchers: []string{"*"},
+			Prune: v1alpha1.PruneOptions{
+				CRDs:       true,
+				Namespaces: true,
+			},
+			Timeout: metav1.Duration{Duration: 1 * time.Minute},
 
 			Template: apiextv1.CustomResourceDefinitionSpec{
 				Group: "stolos.cloud",

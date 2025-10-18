@@ -7,17 +7,18 @@ import (
 	"runtime"
 
 	"github.com/invopop/jsonschema"
-	argoappv1 "github.com/stolos-cloud/stolos/stolos-yoke/flight/pkg/argocd"
+	"github.com/stolos-cloud/stolos/stolos-yoke/flight/pkg/argocd"
 	cert_manager "github.com/stolos-cloud/stolos/stolos-yoke/flight/pkg/cert-manager"
 	"github.com/stolos-cloud/stolos/stolos-yoke/flight/pkg/cnpg"
 	"github.com/stolos-cloud/stolos/stolos-yoke/flight/pkg/contour"
 	"github.com/stolos-cloud/stolos/stolos-yoke/flight/pkg/metallb"
+	"github.com/stolos-cloud/stolos/stolos-yoke/flight/pkg/stolos"
 	types "github.com/stolos-cloud/stolos/stolos-yoke/flight/pkg/types"
-	"github.com/stolos-cloud/stolos/stolos-yoke/flight/pkg/utils"
 	"github.com/yokecd/yoke/pkg/flight"
 	k8s "github.com/yokecd/yoke/pkg/flight/wasi/k8s"
-	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/kubernetes/scheme"
 )
@@ -47,7 +48,7 @@ func run() error {
 	scheme.Scheme.AddKnownTypes(argoApp.GetObjectKind().GroupVersionKind().GroupVersion(), argoApp)
 	resources := []flight.Resource{}
 	if input.Spec.ArgoCD.Deploy {
-		resources = append(resources, argoappv1.AllArgoCD(input)...)
+		resources = append(resources, argocd.AllArgoCD(input)...)
 	}
 
 	if input.Spec.MetalLB.Deploy {
@@ -66,34 +67,68 @@ func run() error {
 		resources = append(resources, contour.AllContour(input)...)
 	}
 
+	if input.Spec.StolosPlatform.Deploy {
+		resources = append(resources, stolos.AllStolos(input)...)
+	}
+
+	resources = append(resources, selfArgoApp(input))
+
 	resultResources := []flight.Resource{}
 	coreScheme := k8sruntime.NewScheme()
 	scheme.AddToScheme(coreScheme)
 	allTypes := coreScheme.AllKnownTypes()
-	existingCrds := map[string]bool{}
+	existingCrds := map[schema.GroupVersionKind]bool{}
 
-	pluralNamer := utils.NewAllLowercasePluralNamer(make(map[string]string))
 	for _, res := range resources {
-		pluralKind := pluralNamer.Name(res.GroupVersionKind().Kind)
-		crdName := pluralKind + "." + res.GroupVersionKind().Group
 		_, isCoreRes := allTypes[res.GroupVersionKind()]
-		_, crdExists := existingCrds[crdName]
+		_, crdExists := existingCrds[res.GroupVersionKind()]
 		if isCoreRes || crdExists {
 			resultResources = append(resultResources, res)
 		} else {
-			_, err := k8s.Lookup[apiextv1.CustomResourceDefinition](k8s.ResourceIdentifier{
-				ApiVersion: "apiextensions.k8s.io/v1",
-				Kind:       "CustomResourceDefinition",
-				Name:       crdName,
-			})
 
+			_, err := k8s.GetRestMapping(res.GroupVersionKind().GroupVersion().String(), res.GroupVersionKind().Kind)
 			if err == nil {
-				existingCrds[crdName] = true
 				resultResources = append(resultResources, res)
+				existingCrds[res.GroupVersionKind()] = true
+			} else {
+				fmt.Fprint(os.Stderr, err.Error())
 			}
+
 		}
 	}
 
 	return json.NewEncoder(os.Stdout).Encode(resultResources)
+}
 
+func selfArgoApp(input types.Stolos) *types.Application {
+	app := types.Application{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Application",
+			APIVersion: "argoproj.io/v1alpha1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "stolos-flight",
+			Namespace: input.Spec.ArgoCD.Namespace,
+		},
+		Spec: types.ApplicationSpec{
+			Source: &types.ApplicationSource{
+				RepoURL:        "https://github.com/stolos-cloud/stolos",
+				TargetRevision: "feature/yoke",
+				Path:           "stolos-yoke",
+				Directory: &types.ApplicationSourceDirectory{
+					Include: "stolos-platform.yaml",
+				},
+			},
+			Destination: types.ApplicationDestination{
+				Server: "https://kubernetes.default.svc",
+			},
+			Project:    "default",
+			SyncPolicy: argocd.DefaultSyncPolicy,
+		},
+	}
+
+	gvks, _, _ := scheme.Scheme.ObjectKinds(&app)
+	app.SetGroupVersionKind(gvks[0])
+
+	return &app
 }
