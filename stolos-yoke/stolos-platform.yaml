@@ -47,5 +47,5 @@ spec:
       dbPassowrdSecret: postgresql-stolos-app
       dbPasswordKey: password
       image: ghcr.io/cloudnative-pg/postgresql:17.6
-      instanceCount: 3
+      instanceCount: 1
       sizeInGigabytes: 2
