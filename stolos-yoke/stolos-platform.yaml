@@ -36,7 +36,8 @@ spec:
     defaultClusterIssuer: letsencrypt-staging
     email: "stolos@stolos.cloud"
     selfSigned: true
-  stolosPlatform: 
+  stolosPlatform:
+    deploy: false
     backendSubdomain: api
     defaultAdminEmail: admin@stolos.cloud
     defaultAdminPassword: Password1!
