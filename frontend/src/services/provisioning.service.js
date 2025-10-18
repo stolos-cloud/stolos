@@ -13,11 +13,12 @@ export async function generateISO(payload) {
     }
 }
 
-export async function getConnectedNodes({ status }) {
+export async function getConnectedNodes({ status } = {}) {
     try {
-        const response = await api.get('/api/nodes', {
-            params: { status: status },
-        });
+        const params = {};
+        if (status !== undefined) params.status = status;
+
+        const response = await api.get('/api/nodes', { params });
         return response.data;
     } catch (error) {
         console.error('Error fetching connected nodes:', error);

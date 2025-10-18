@@ -4,7 +4,7 @@
             :title="$t('cloudProvider.title')"
             :subheading="$t('cloudProvider.subheading')"
         />
-        <v-sheet border rounded class="mt-4">
+        <v-sheet class="mt-4 border rounded">
           <v-data-table
             :headers="nodeHeaders"
             :items="nodesCloud"
@@ -14,7 +14,6 @@
             :no-data-text="$t('cloudProvider.table.noDataText')"
             :items-per-page="10"
             :items-per-page-text="$t('cloudProvider.table.itemsPerPageText')"
-            class="elevation-8"
             mobile-breakpoint="md"
             :hide-default-footer="nodesCloud.length < 10"
           >
@@ -26,7 +25,20 @@
                 <BaseButton icon="mdi-plus" size="small" :text="$t('cloudProvider.buttons.addNewConfiguration')" :disabled="!isValidAddConfig" @click="showDialogConfigurateCloudConfig" />
               </v-toolbar>
             </template>
-            <template v-slot:item.actions="{ item }">
+            <template v-slot:item.service_account_email="{ item }">
+              <div class="d-flex align-center">
+                <span class="d-none d-md-inline text-truncate">{{ item.service_account_email }}</span>
+                <span class="d-md-none">{{ item.service_account_email }}</span>
+                <v-btn
+                  class="ml-1"
+                  :icon="copiedItem === item.service_account_email ? 'mdi-check' : 'mdi-content-copy'"
+                  size="x-small"
+                  variant="text"
+                  @click="copyToClipboard(item.service_account_email)"
+                />
+              </div>
+            </template>
+            <template v-slot:item.actions="{ item }"> 
               <v-icon color="medium-emphasis" icon="mdi-pencil" size="small" @click="edit(item)"></v-icon>
             </template>
           </v-data-table>
@@ -86,6 +98,7 @@ const notification = ref({
   text: '',
   type: 'info'
 });
+const copiedItem = ref(null);
 
 // Form state
 const formFields = reactive({
@@ -182,7 +195,14 @@ function updateCloudConfiguration(typeConfig) {
     formFields.serviceAccountFile.value = undefined;
   });
 }
-
+function copyToClipboard(value) {
+  navigator.clipboard.writeText(value).then(() => {
+    copiedItem.value = value;
+    setTimeout(() => {
+      copiedItem.value = null;
+    }, 2000);
+  })
+}
 function showNotification(message, type) {
   notification.value = {
     visible: true,

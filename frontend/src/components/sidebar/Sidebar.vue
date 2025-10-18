@@ -1,5 +1,5 @@
 <template>
-    <v-navigation-drawer v-model="drawerModel" :width="sidebarWidth" app :permanent="!temporary" :temporary="temporary" :elevation="props.elevation">
+    <v-navigation-drawer v-model="drawerModel" :width="sidebarWidth" app :permanent="!temporary" :temporary="temporary" :elevation="elevation">
       <v-list-item :style="{ height: props.toolbarHeight + 'px' }">
         <template #prepend>
             <v-icon>mdi-rocket</v-icon>
@@ -66,7 +66,7 @@ const props = defineProps({
     },
     elevation: {
         type: Number,
-        default: 5,
+        default: 8,
     },
 });
 
@@ -92,7 +92,11 @@ const operatorMenu = [
   { title: 'cloudProvider.title', icon: 'mdi-cloud', route: '/cloud-provider' },
   { title: 'templates.title', icon: 'mdi-layers-triple', route: '/templates' },
   { title: 'secretsSecurity.title',  icon: 'mdi-shield', route: '/secrets-security' },
-  { title: 'userManagement.title', icon: 'mdi-account-supervisor-circle', route: '/user-management' }
+  { title: 'administration.title', icon: 'mdi-account-supervisor-circle', children: [
+      { title: 'administration.users.title', route: '/administration/users' },
+      { title: 'administration.teams.title', route: '/administration/teams' }
+    ]
+  }
 ];
 
 // Emits

@@ -3,47 +3,53 @@
         <BaseLabelBar
             :title="$t('dashboard.title')"
             :subheading="$t('dashboard.subheading')"
-            :actions="actions"
         />
-        <!-- Active connected nodes -->
-        <v-sheet border rounded class="mt-4">
+        <v-sheet class="mt-4 border rounded">
           <v-data-table
             :headers="nodeHeaders"
             :items="nodes"
             :items-length="nodes.length"
             :search="search"
             :loading="loading"
-            :loading-text="$t('dashboard.onPremises.table.loadingText')"
-            :no-data-text="$t('dashboard.onPremises.table.noDataText')"
+            :loading-text="$t('dashboard.provision.table.loadingText')"
+            :no-data-text="$t('dashboard.provision.table.noDataText')"
             :items-per-page="10"
-            :items-per-page-text="$t('dashboard.onPremises.table.itemsPerPageText')"
-            class="elevation-8"
-            mobile-breakpoint="md"
+            :items-per-page-text="$t('dashboard.provision.table.itemsPerPageText')"
             :hide-default-footer="nodes.length < 10"
+            mobile-breakpoint="md"
           >
             <!-- Slot for top -->
             <template v-slot:top>
-              <v-toolbar>
+              <v-toolbar flat>
                 <v-toolbar-title>
-                  {{ $t('dashboard.onPremises.table.title') }}
+                  {{ $t('dashboard.provision.table.title') }}
                 </v-toolbar-title>
+                <BaseButton 
+                  icon="mdi-download"
+                  elevation="2"
+                  :tooltip="$t('dashboard.buttons.downloadISOOnPremise')"
+                  :text="$t('dashboard.buttons.downloadISOOnPremise')" 
+                  @click="showDownloadISODialog" 
+                />
               </v-toolbar>
-              <v-text-field
-                v-model="search"
-                label="Search"
-                prepend-inner-icon="mdi-magnify"
-                variant="outlined"
-                hide-details
-                single-line
-                dense
-                class="pa-3"
-              />
+              <v-text-field v-model="search" label="Search" prepend-inner-icon="mdi-magnify" variant="outlined" hide-details single-line dense class="pa-3"/>
             </template>
 
             <!-- Slot for status -->
             <template #item.status="{ item }">
-                <v-chip color="success">
+                <v-chip :color="getStatusColor(item.status)">
                     {{ item.status }}
+                </v-chip>
+            </template>
+
+            <!-- Slot for labels -->
+            <template #item.labels="{ item }">
+                <v-chip 
+                  v-for="(label, index) in item.labels"
+                  :key="index"
+                  class="ma-1"
+                >
+                  {{ label }}
                 </v-chip>
             </template>
           </v-data-table>
@@ -85,17 +91,12 @@ const loading = ref(false);
 const nodes = ref([]);
 
 // Computed
-const actions = computed(() => [
-  {
-    text: t('dashboard.buttons.downloadISOOnPremise'),
-    color: 'primary',
-    onClick: () => dialogDownloadISOOnPremise.value = true
-  }
-]);
 const nodeHeaders = computed(() => [
-  { title: t('dashboard.onPremises.table.headers.nodename'), value: 'name' },
-  { title: t('dashboard.onPremises.table.headers.role'), value: 'role' },
-  { title: t('dashboard.onPremises.table.headers.status'), value: 'status', align: "center" }
+  { title: t('dashboard.provision.table.headers.nodename'), value: 'name' },
+  { title: t('dashboard.provision.table.headers.role'), value: 'role', align : "center" },
+  { title: t('dashboard.provision.table.headers.provider'), value: 'provider', align : "center" },
+  { title: t('dashboard.provision.table.headers.status'), value: 'status', align: "center" },
+  { title: t('dashboard.provision.table.headers.labels'), value: 'labels', align: "center" },
 ]);
 const listISOTypes = computed(() => store.getters['referenceLists/getIsoTypes']);
 
@@ -114,6 +115,9 @@ onMounted(() => {
 });
 
 // Methods
+function showDownloadISODialog() {
+    dialogDownloadISOOnPremise.value = true;
+}
 function cancelDownloadISO() {
     isoRadioButtons.value = undefined;
     dialogDownloadISOOnPremise.value = false;
@@ -146,14 +150,16 @@ function confirmDownloadISO() {
 function fetchConnectedNodesActive() {
     loading.value = true;
 
-    getConnectedNodes({status: "active"})
+    getConnectedNodes()
     .then(response => {
         nodes.value = response
-            .filter(node => node.provider?.toLowerCase() === "onprem")
+            .filter(node => node.status?.toLowerCase() !== "pending")
             .map(node => ({
                 ...node,
                 status: node.status.charAt(0).toUpperCase() + node.status.slice(1),
-                role: node.role.charAt(0).toUpperCase() + node.role.slice(1)
+                role: node.role.charAt(0).toUpperCase() + node.role.slice(1),
+                provider: node.provider.charAt(0).toUpperCase() + node.provider.slice(1),
+                labels: JSON.parse(node.labels || '[]'),
             }));
     })
     .catch(error => {
@@ -162,5 +168,17 @@ function fetchConnectedNodesActive() {
     .finally(() => {
         loading.value = false;
     });
+}
+function getStatusColor(status) {
+  switch (status.toLowerCase()) {
+    case 'active':
+      return 'success';
+    case 'provisioning':
+      return 'warning';
+    case 'failed':
+      return 'error';
+    default:
+      return 'grey';
+  }
 }
 </script>
