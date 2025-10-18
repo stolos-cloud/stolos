@@ -8,20 +8,21 @@ import (
 	"github.com/stolos-cloud/stolos/backend/internal/config"
 	"github.com/stolos-cloud/stolos/backend/internal/models"
 	"github.com/stolos-cloud/stolos/backend/internal/services"
+	"github.com/stolos-cloud/stolos/backend/internal/services/node"
 	talos "github.com/stolos-cloud/stolos/backend/internal/services/talos"
 	"gorm.io/gorm"
 )
 
 type NodeHandlers struct {
 	db           *gorm.DB
-	nodeService  *services.NodeService
+	nodeService  *node.NodeService
 	talosService *talos.TalosService
 }
 
 func NewNodeHandlers(db *gorm.DB, cfg *config.Config, providerManager *services.ProviderManager, talosService *talos.TalosService) *NodeHandlers {
 	return &NodeHandlers{
 		db:           db,
-		nodeService:  services.NewNodeService(db, cfg, providerManager, talosService),
+		nodeService:  node.NewNodeService(db, cfg, providerManager, talosService),
 		talosService: talos.NewTalosService(db, cfg),
 	}
 }
@@ -113,7 +114,7 @@ func (h *NodeHandlers) UpdateActiveNodeConfig(c *gin.Context) {
 // @Router /nodes/config [put]
 func (h *NodeHandlers) UpdateActiveNodesConfig(c *gin.Context) {
 	var req struct {
-		Nodes []services.NodeConfigUpdate `json:"nodes" binding:"required"`
+		Nodes []node.NodeConfigUpdate `json:"nodes" binding:"required"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -164,7 +165,7 @@ func (h *NodeHandlers) CreateSampleNodes(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param request body models.NodeProvisionRequest true "Array of nodes to provision with role and labels"
-// @Success 200 {object} map[string]interface{} "Returns provisioned count and nodes array"
+// @Success 200 {object} models.NodeProvisionRequest "Returns provisioned count and nodes array"
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /nodes/provision [post]
@@ -187,11 +188,7 @@ func (h *NodeHandlers) ProvisionNodes(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message":     "Nodes provisioned successfully",
-		"provisioned": len(nodes),
-		"nodes":       nodes,
-	})
+	c.JSON(http.StatusOK, nodes)
 }
 
 // GetTalosconfig godoc

@@ -17,6 +17,7 @@ import (
 	"github.com/stolos-cloud/stolos/backend/internal/services"
 	gcpservices "github.com/stolos-cloud/stolos/backend/internal/services/gcp"
 	gitopsservices "github.com/stolos-cloud/stolos/backend/internal/services/gitops"
+	"github.com/stolos-cloud/stolos/backend/internal/services/node"
 	talosservices "github.com/stolos-cloud/stolos/backend/internal/services/talos"
 	wsservices "github.com/stolos-cloud/stolos/backend/internal/services/websocket"
 	"gorm.io/gorm"
@@ -34,7 +35,7 @@ type GCPHandlers struct {
 	db                    *gorm.DB
 	gcpService            *gcpservices.GCPService
 	gitopsService         *gitopsservices.GitOpsService
-	nodeService           *services.NodeService
+	nodeService           *node.NodeService
 	infrastructureService *services.InfrastructureService
 	gcpResourcesService   *gcpservices.GCPResourcesService
 	provisioningService   *gcpservices.ProvisioningService
@@ -51,7 +52,7 @@ func NewGCPHandlers(db *gorm.DB, cfg *config.Config, providerManager *services.P
 		db:                    db,
 		gcpService:            gcpService,
 		gitopsService:         gitopsService,
-		nodeService:           services.NewNodeService(db, cfg, providerManager, talosService),
+		nodeService:           node.NewNodeService(db, cfg, providerManager, talosService),
 		infrastructureService: infrastructureService,
 		gcpResourcesService:   gcpservices.NewGCPResourcesService(db, gcpService),
 		provisioningService:   gcpservices.NewProvisioningService(db, cfg, talosService, gcpService),
