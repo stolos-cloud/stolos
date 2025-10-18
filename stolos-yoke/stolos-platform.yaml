@@ -48,4 +48,4 @@ spec:
       dbPasswordKey: password
       image: ghcr.io/cloudnative-pg/postgresql:17.6
       instanceCount: 1
-      sizeInGigabytes: 2
+      sizeInGigabytes: 1
