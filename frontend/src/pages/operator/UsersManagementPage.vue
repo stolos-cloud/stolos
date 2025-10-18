@@ -4,7 +4,7 @@
             :title="$t('administration.users.title')"
             :subheading="$t('administration.users.subheading')"
         />
-        <v-sheet border rounded class="mt-4">
+        <v-sheet class="mt-4 border rounded">
           <v-data-table
             :headers="userHeaders"
             :items="users"
@@ -37,15 +37,16 @@
                 <div class="d-flex align-center">
                     <span>{{ item.role }}</span>
                     <v-icon
-                        class="ml-2"
-                        size="small"
-                        icon="mdi-pencil"
-                        @click="showEditRoleDialog(item)"
+                      v-if="currentUserId !== item.id"
+                      class="ml-2"
+                      size="small"
+                      icon="mdi-pencil"
+                      @click="showEditRoleDialog(item)"
                     />
                 </div>
             </template>
             <template #item.actions="{ item }">
-              <v-btn v-tooltip="{ text: $t('administration.users.buttons.deleteUser') }" icon="mdi-delete" size="small" variant="text" @click="deleteUser(item)" />
+              <v-btn v-tooltip="{ text: $t('administration.users.buttons.deleteUser') }" icon="mdi-delete" size="small" variant="text" :disabled="currentUserId === item.id" @click="deleteUser(item)" />
             </template>
           </v-data-table>
         </v-sheet>
@@ -116,6 +117,7 @@ const userHeaders = computed(() => [
   { title: t('administration.users.table.headers.actions'), value: 'actions', sortable: false, align: 'center' }
 ]);
 const userRoles = computed(() => store.getters['referenceLists/getUserRoles']);
+const currentUserId = computed(() => store.getters['user/getId']);
 
 // Form state
 const formFields = reactive({

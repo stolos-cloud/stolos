@@ -44,16 +44,18 @@
     "dashboard": {
         "title": "Tableau de Bord",
         "subheading": "Bienvenue sur Stolos",
-        "onPremises": {
+        "provision": {
             "table": {
-                "title": "Noeuds connectés actifs",
+                "title": "Noeuds connectés",
                 "loadingText": "Chargement des nœuds connectés...",
-                "noDataText": "Aucun noeud connecté actif trouvé.",
+                "noDataText": "Aucun noeud connecté trouvé.",
                 "itemsPerPageText": "Articles par page :",
                 "headers": {
                     "nodename": "Nom du noeud",
+                    "role": "Rôle",
+                    "provider": "Fournisseur",
                     "status": "Statut",
-                    "role": "Rôle"
+                    "labels": "Étiquettes"
                 }
             }
         },
@@ -225,7 +227,7 @@
         },
         "teams": {
             "title": "Gestion des équipes",
-            "subheading": "Gérer les équipes et leurs membres",
+            "subheading": "Gérer les équipes des développeurs et leurs membres",
             "table": {
                 "title": "Équipes",
                 "loadingText": "Chargement des équipes...",
@@ -248,6 +250,14 @@
                     "title": "Supprimer l'équipe",
                     "confirmationText": "Êtes-vous sûr de vouloir supprimer l'équipe {teamName} ? Cette action ne peut pas être annulée."
                 },
+                "viewDetailsTeam": {
+                    "title": "Détails de l'équipe",
+                    "usersTitle": "Membres de l'équipe",
+                    "totalMembersLabel": "Aucun membre | 1 membre au total | {count} membres au total",
+                    "messages": {
+                        "noMembers": "Cette équipe n'a pas de membres."
+                    }
+                },
                 "deleteUserFromTeam": {
                     "title": "Supprimer l'utilisateur de l'équipe",
                     "confirmationText": "Êtes-vous sûr de vouloir supprimer {email} de l'équipe ? Cette action ne peut pas être annulée."
@@ -255,18 +265,20 @@
             },
             "formfields": {
                 "teamName": "Nom de l'équipe",
-                "emailList": "Liste des utilisateurs par courriel"
+                "emailList": "Liste des utilisateurs par courriel",
+                "noDataText": "Aucun utilisateur disponible à ajouter"
             },
             "notifications": {
-                "createTeamSuccess": "Équipe {teamName} créée avec succès",
-                "addUserSuccess": "Utilisateur {email} ajouté à l'équipe avec succès",
-                "deleteUserSuccess": "Utilisateur {email} supprimé de l'équipe avec succès",
-                "deleteTeamSuccess": "Équipe {teamName} supprimée avec succès",
+                "createTeamSuccess": "Équipe créée avec succès",
+                "addUserSuccess": "Utilisateur ajouté à l'équipe avec succès",
+                "deleteUserSuccess": "Utilisateur supprimé de l'équipe avec succès",
+                "deleteTeamSuccess": "Équipe supprimée avec succès",
                 "deleteTeamError": "Échec de la suppression de l'équipe"
             },
             "buttons": {
                 "createNewTeam": "Créer une nouvelle équipe",
                 "addUserToTeam": "Ajouter un utilisateur",
+                "deleteUserFromTeam": "Supprimer un utilisateur",
                 "deleteTeam": "Supprimer l'équipe"
             }
         }

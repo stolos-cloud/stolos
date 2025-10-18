@@ -1,11 +1,12 @@
 export class AutoComplete {
-    constructor({ label, value, items, multiple, required, rules }) {
+    constructor({ label, value, items, multiple, required, rules, noDataText }) {
         this.label = label;
         this.value = value;
         this.items = items;
         this.multiple = multiple;
         this.required = required;
         this.rules = rules;
+        this.noDataText = noDataText;
     }
     getLabel() {
         return this.label;
@@ -31,6 +32,10 @@ export class AutoComplete {
         return this.rules;
     }
 
+    getNoDataText() {
+        return this.noDataText;
+    }
+
     setLabel(label) {
         this.label = label;
     }
@@ -46,13 +51,17 @@ export class AutoComplete {
     setRequired(required) {
         this.required = required;
     }
-    
+
     setMultiple(multiple) {
         this.multiple = multiple;
     }
 
     setRules(rules) {
         this.rules = rules;
+    }
+
+    setNoDataText(noDataText) {
+        this.noDataText = noDataText;
     }
 
     change(value) {

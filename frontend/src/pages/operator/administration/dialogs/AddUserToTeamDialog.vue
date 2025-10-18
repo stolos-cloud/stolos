@@ -41,6 +41,7 @@ const formFields = reactive({
     userChoiceEmail: new AutoComplete({
         label: t('administration.teams.formfields.emailList'),
         items: usersData,
+        noDataText: t('administration.teams.formfields.noDataText'),
         required: true,
         rules: autoCompleteRules
     }),

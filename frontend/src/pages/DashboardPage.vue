@@ -4,18 +4,17 @@
             :title="$t('dashboard.title')"
             :subheading="$t('dashboard.subheading')"
         />
-        <!-- Active connected nodes -->
-        <v-sheet border rounded class="mt-4">
+        <v-sheet class="mt-4 border rounded">
           <v-data-table
             :headers="nodeHeaders"
             :items="nodes"
             :items-length="nodes.length"
             :search="search"
             :loading="loading"
-            :loading-text="$t('dashboard.onPremises.table.loadingText')"
-            :no-data-text="$t('dashboard.onPremises.table.noDataText')"
+            :loading-text="$t('dashboard.provision.table.loadingText')"
+            :no-data-text="$t('dashboard.provision.table.noDataText')"
             :items-per-page="10"
-            :items-per-page-text="$t('dashboard.onPremises.table.itemsPerPageText')"
+            :items-per-page-text="$t('dashboard.provision.table.itemsPerPageText')"
             :hide-default-footer="nodes.length < 10"
             mobile-breakpoint="md"
           >
@@ -23,7 +22,7 @@
             <template v-slot:top>
               <v-toolbar flat>
                 <v-toolbar-title>
-                  {{ $t('dashboard.onPremises.table.title') }}
+                  {{ $t('dashboard.provision.table.title') }}
                 </v-toolbar-title>
                 <BaseButton 
                   icon="mdi-download"
@@ -38,8 +37,19 @@
 
             <!-- Slot for status -->
             <template #item.status="{ item }">
-                <v-chip color="success">
+                <v-chip :color="getStatusColor(item.status)">
                     {{ item.status }}
+                </v-chip>
+            </template>
+
+            <!-- Slot for labels -->
+            <template #item.labels="{ item }">
+                <v-chip 
+                  v-for="(label, index) in item.labels"
+                  :key="index"
+                  class="ma-1"
+                >
+                  {{ label }}
                 </v-chip>
             </template>
           </v-data-table>
@@ -82,9 +92,11 @@ const nodes = ref([]);
 
 // Computed
 const nodeHeaders = computed(() => [
-  { title: t('dashboard.onPremises.table.headers.nodename'), value: 'name' },
-  { title: t('dashboard.onPremises.table.headers.role'), value: 'role' },
-  { title: t('dashboard.onPremises.table.headers.status'), value: 'status', align: "center" }
+  { title: t('dashboard.provision.table.headers.nodename'), value: 'name' },
+  { title: t('dashboard.provision.table.headers.role'), value: 'role', align : "center" },
+  { title: t('dashboard.provision.table.headers.provider'), value: 'provider', align : "center" },
+  { title: t('dashboard.provision.table.headers.status'), value: 'status', align: "center" },
+  { title: t('dashboard.provision.table.headers.labels'), value: 'labels', align: "center" },
 ]);
 const listISOTypes = computed(() => store.getters['referenceLists/getIsoTypes']);
 
@@ -138,14 +150,16 @@ function confirmDownloadISO() {
 function fetchConnectedNodesActive() {
     loading.value = true;
 
-    getConnectedNodes({status: "active"})
+    getConnectedNodes()
     .then(response => {
         nodes.value = response
-            .filter(node => node.provider?.toLowerCase() === "onprem")
+            .filter(node => node.status?.toLowerCase() !== "pending")
             .map(node => ({
                 ...node,
                 status: node.status.charAt(0).toUpperCase() + node.status.slice(1),
-                role: node.role.charAt(0).toUpperCase() + node.role.slice(1)
+                role: node.role.charAt(0).toUpperCase() + node.role.slice(1),
+                provider: node.provider.charAt(0).toUpperCase() + node.provider.slice(1),
+                labels: JSON.parse(node.labels || '[]'),
             }));
     })
     .catch(error => {
@@ -154,5 +168,17 @@ function fetchConnectedNodesActive() {
     .finally(() => {
         loading.value = false;
     });
+}
+function getStatusColor(status) {
+  switch (status.toLowerCase()) {
+    case 'active':
+      return 'success';
+    case 'provisioning':
+      return 'warning';
+    case 'failed':
+      return 'error';
+    default:
+      return 'grey';
+  }
 }
 </script>

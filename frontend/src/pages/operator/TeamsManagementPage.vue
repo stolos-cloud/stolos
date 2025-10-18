@@ -13,7 +13,7 @@
                 mobile-breakpoint="md" :hide-default-footer="teams.length < 10"
                 @click:row="(event, item) => {
                     if (event.target.closest('.v-btn, .v-icon')) return
-                    showViewDetailsDialog(item)
+                    showViewDetailsDialog(item.item)
                 }"
             >
                 <template v-slot:top>
@@ -48,20 +48,12 @@
             @loading="overlay = $event"
             @userAdded="userAddedToTeam"
         />
-        <!--
         <ViewDetailsTeamDialog 
             v-model="dialogViewDetailsTeam"
             :team="selectedTeam"
             @loading="overlay = $event"
-            @userAdded="userAddedToTeam"
-        -->
-        <!-- Dialog View Details Teams -->
-        <BaseDialog v-model="dialogViewDetailsTeam" :title="$t('teamsManagement.dialogs.viewDetailsTeam.title')" width="600" closable>
-            
-            <template #actions>
-                <BaseButton size="small" variant="outlined" :text="$t('actionButtons.cancel')" @click="closeViewDetailsTeamDialog" />
-            </template>
-        </BaseDialog>
+            @userDeletedFromTeam="userDeletedFromTeam"
+        />
         <v-overlay class="d-flex align-center justify-center" v-model="overlay" persistent>
             <v-progress-circular indeterminate />
         </v-overlay>
@@ -73,9 +65,10 @@
 <script setup>
 import { ref, onMounted, computed } from "vue";
 import { useI18n } from "vue-i18n";
-import { getTeams, getTeamDetails, deleteTeamById } from '@/services/teams.service';
+import { getTeams, deleteTeamById } from '@/services/teams.service';
 import CreateTeamDialog from "./administration/dialogs/CreateTeamDialog.vue";
 import AddUserToTeamDialog from "./administration/dialogs/AddUserToTeamDialog.vue";
+import ViewDetailsTeamDialog from "./administration/dialogs/ViewDetailsTeamDialog.vue";
 
 const { t } = useI18n();
 
@@ -120,11 +113,15 @@ function showViewDetailsDialog(item) {
     dialogViewDetailsTeam.value = true;
 }
 function teamCreated() {
-    showNotification(t('teamsManagement.notifications.teamCreated'), 'success');
+    showNotification(t('administration.teams.notifications.createTeamSuccess'), 'success');
     fetchTeams();
 }
 function userAddedToTeam() {
-    showNotification(t('teamsManagement.notifications.userAdded'), 'success');
+    showNotification(t('administration.teams.notifications.addUserSuccess'), 'success');
+    fetchTeams();
+}
+function userDeletedFromTeam() {
+    showNotification(t('administration.teams.notifications.deleteUserSuccess'), 'success');
     fetchTeams();
 }
 function fetchTeams() {
@@ -139,7 +136,6 @@ function fetchTeams() {
         console.error("Error fetching teams:", error);
     });
 }
-
 function deleteTeam(team) {
     confirmDialog.value.open({
         title: t('administration.teams.dialogs.deleteTeam.title'),
@@ -155,7 +151,7 @@ function deleteTeamConfirmed(team) {
 
     deleteTeamById(team.id)
     .then(() => {
-        showNotification(t('administration.teams.notifications.deleteTeamSuccess', { teamName: team.name }), 'success');
+        showNotification(t('administration.teams.notifications.deleteTeamSuccess'), 'success');
         fetchTeams();
     })
     .catch((error) => {

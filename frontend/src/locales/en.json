@@ -44,16 +44,18 @@
     "dashboard": {
         "title": "Dashboard",
         "subheading": "Welcome to Stolos",
-        "onPremises": {
+        "provision": {
             "table": {
-                "title": "Active connected nodes",
+                "title": "Connected nodes",
                 "loadingText": "Loading connected nodes...",
-                "noDataText": "No active connected nodes found.",
+                "noDataText": "No connected nodes found.",
                 "itemsPerPageText": "Items per page :",
                 "headers": {
                     "nodename": "Node name",
+                    "role": "Role",
+                    "provider": "Provider",
                     "status": "Status",
-                    "role": "Role"
+                    "labels": "Labels"
                 }
             }
         },
@@ -224,7 +226,7 @@
         },
         "teams": {
             "title": "Teams management",
-            "subheading": "Manage teams and their members",
+            "subheading": "Manage developer teams and their members",
             "table": {
                 "title": "Teams",
                 "loadingText": "Loading teams...",
@@ -247,25 +249,35 @@
                     "title": "Delete team",
                     "confirmationText": "Are you sure you want to delete the team {teamName} ? This action cannot be undone."
                 },
+                "viewDetailsTeam": {
+                    "title": "Team details",
+                    "usersTitle": "Team members",
+                    "totalMembersLabel": "No members | 1 total member | {count} total members",
+                    "messages": {
+                        "noMembers": "This team has no members."
+                    }
+                },
                 "deleteUserFromTeam": {
                     "title": "Delete user from team",
-                    "confirmationText": "Are you sure you want to delete {email} from the team? This action cannot be undone."
+                    "confirmationText": "Are you sure you want to delete {userEmail} from the team? This action cannot be undone."
                 }
             },
             "formfields": {
                 "teamName": "Team name",
-                "emailList": "Email user list"
+                "emailList": "Email user list",
+                "noDataText": "No users available to add"
             },
             "notifications": {
-                "createTeamSuccess": "Team {teamName} created successfully",
-                "addUserSuccess": "User {email} added to team successfully",
-                "deleteUserSuccess": "User {email} deleted from team successfully",
-                "deleteTeamSuccess": "Team {teamName} deleted successfully",
+                "createTeamSuccess": "Team created successfully",
+                "addUserSuccess": "User added to team successfully",
+                "deleteUserSuccess": "User deleted from team successfully",
+                "deleteTeamSuccess": "Team deleted successfully",
                 "deleteTeamError": "Failed to delete team"
             },
             "buttons": {
                 "createNewTeam": "Create new team",
                 "addUserToTeam": "Add user",
+                "deleteUserFromTeam": "Delete user",
                 "deleteTeam": "Delete team"
             }
         }

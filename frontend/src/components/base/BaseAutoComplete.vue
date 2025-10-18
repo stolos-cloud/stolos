@@ -3,11 +3,12 @@
         v-model="model"
         :items="AutoComplete.items"
         :label="AutoComplete.label"
+        :disabled="AutoComplete.disabled"
         :multiple="AutoComplete.multiple"
         :rules="AutoComplete.rules"
         item-title="label"
         item-value="value"
-        :no-data-text="$t('errors.noData')"
+        :no-data-text="AutoComplete.noDataText || $t('errors.noData')"
         hide-details
         class="mt-4"
         @update:search-input="emit('search', $event)"
