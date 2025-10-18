@@ -36,3 +36,15 @@ spec:
     defaultClusterIssuer: letsencrypt-staging
     email: "stolos@stolos.cloud"
     selfSigned: true
+  stolosPlatform: 
+    backendSubdomain: api
+    defaultAdminEmail: admin@stolos.cloud
+    defaultAdminPassword: Password1!
+    frontendSubdomain: k8s
+    namespace: stolos-system
+    database:
+      dbPassowrdSecret: postgresql-stolos-app
+      dbPasswordKey: password
+      image: ghcr.io/cloudnative-pg/postgresql:17.6
+      instanceCount: 1
+      sizeInGigabytes: 2
