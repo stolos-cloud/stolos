@@ -7,6 +7,7 @@ import (
 	"github.com/stolos-cloud/stolos/backend/internal/config"
 	"github.com/stolos-cloud/stolos/backend/internal/models"
 	"github.com/stolos-cloud/stolos/backend/internal/services/node"
+	talosservice "github.com/stolos-cloud/stolos/backend/internal/services/talos"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -29,7 +30,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 func TestNodeService_CreateNode(t *testing.T) {
 	db := setupTestDB(t)
 	cfg := &config.Config{}
-	service := node.NewNodeService(db, cfg, nil)
+	service := node.NewNodeService(db, cfg, nil, talosservice.NewTalosService(db, cfg))
 
 	clusterID := uuid.New()
 
@@ -62,7 +63,7 @@ func TestNodeService_CreateNode(t *testing.T) {
 func TestNodeService_GetNode(t *testing.T) {
 	db := setupTestDB(t)
 	cfg := &config.Config{}
-	service := node.NewNodeService(db, cfg, nil)
+	service := node.NewNodeService(db, cfg, nil, talosservice.NewTalosService(db, cfg))
 
 	clusterID := uuid.New()
 
@@ -86,7 +87,7 @@ func TestNodeService_GetNode(t *testing.T) {
 func TestNodeService_GetNode_NotFound(t *testing.T) {
 	db := setupTestDB(t)
 	cfg := &config.Config{}
-	service := node.NewNodeService(db, cfg, nil)
+	service := node.NewNodeService(db, cfg, nil, talosservice.NewTalosService(db, cfg))
 
 	randomID := uuid.New()
 
