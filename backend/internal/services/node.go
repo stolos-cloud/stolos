@@ -226,24 +226,22 @@ func (s *NodeService) ProvisionNodes(configs []models.NodeProvisionConfig) ([]mo
 	// For now, update status to active as a placeholder
 	for i := range provisionedNodes {
 
-		var node = provisionedNodes[i]
-
 		configBundle, err := s.ts.GetMachineConfigBundle()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get machine config configBundle for provisioning: %w", err)
 		}
 
-		cli, err := talos.GetInsecureMachineryClient(context.Background(), node.IPAddress)
+		cli, err := talos.GetInsecureMachineryClient(context.Background(), provisionedNodes[i].IPAddress)
 
 		if err != nil {
 			return nil, fmt.Errorf("failed to get machinery client for provisioning: %w", err)
 		}
 
 		var existingNodeCount int64
-		s.db.Model(&models.Node{}).Where("status = 'active' AND role = ?", node.Role).Count(&existingNodeCount)
+		s.db.Model(&models.Node{}).Where("status = 'active' AND role = ?", provisionedNodes[i].Role).Count(&existingNodeCount)
 
 		var machineconftype machineconf.Type
-		if node.Role == "control-plane" {
+		if provisionedNodes[i].Role == "control-plane" {
 			machineconftype = machineconf.TypeControlPlane
 		} else {
 			machineconftype = machineconf.TypeWorker
@@ -277,7 +275,7 @@ func (s *NodeService) ProvisionNodes(configs []models.NodeProvisionConfig) ([]mo
 			TryModeTimeout: nil,
 		})
 
-		node.Status = models.StatusActive
+		provisionedNodes[i].Status = models.StatusActive
 		if err := s.db.Save(&provisionedNodes[i]).Error; err != nil {
 			return nil, fmt.Errorf("failed to update node %s status: %w", provisionedNodes[i].ID, err)
 		}
