@@ -37,7 +37,7 @@ spec:
     email: "stolos@stolos.cloud"
     selfSigned: true
   stolosPlatform:
-    deploy: false
+    deploy: true
     backendSubdomain: api
     defaultAdminEmail: admin@stolos.cloud
     defaultAdminPassword: Password1!
