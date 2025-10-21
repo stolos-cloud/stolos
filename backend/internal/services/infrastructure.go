@@ -5,10 +5,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
-	"strings"
 
 	"github.com/stolos-cloud/stolos/backend/internal/config"
+	"github.com/stolos-cloud/stolos/backend/internal/helpers"
 	"github.com/stolos-cloud/stolos/backend/internal/models"
 	gcpservices "github.com/stolos-cloud/stolos/backend/internal/services/gcp"
 	gitopsservices "github.com/stolos-cloud/stolos/backend/internal/services/gitops"
@@ -43,29 +42,6 @@ func NewInfrastructureService(db *gorm.DB, cfg *config.Config, providerManager *
 	}
 }
 
-// sanitizeGCPResourceName converts a cluster name to a valid GCP resource name
-// GCP requirements: lowercase, letters/numbers/hyphens only, start with letter, no trailing hyphen
-func sanitizeGCPResourceName(name string) string {
-	// Convert to lowercase
-	name = strings.ToLower(name)
-
-	// Replace invalid characters with hyphens
-	reg := regexp.MustCompile(`[^a-z0-9-]+`)
-	name = reg.ReplaceAllString(name, "-")
-
-	// Remove leading non-letter characters
-	name = regexp.MustCompile(`^[^a-z]+`).ReplaceAllString(name, "")
-
-	// Remove trailing hyphens
-	name = strings.TrimRight(name, "-")
-
-	// If empty after sanitization, use default
-	if name == "" {
-		name = "cluster"
-	}
-
-	return name
-}
 
 // sets up the base infrastructure (VPC, subnets, etc.) needed for VM provisioning
 func (s *InfrastructureService) InitializeInfrastructure(ctx context.Context, providerName string) error {
@@ -121,7 +97,7 @@ func (s *InfrastructureService) InitializeInfrastructure(ctx context.Context, pr
 
 	// Render infrastructure template
 	templateData := InfrastructureTemplateData{
-		ClusterName: sanitizeGCPResourceName(cluster.Name),
+		ClusterName: helpers.SanitizeResourceName(cluster.Name),
 		BucketName:  backendConfig["bucket"],
 		ProjectID:   gcpConfig.ProjectID,
 		Region:      gcpConfig.Region,
@@ -248,7 +224,7 @@ func (s *InfrastructureService) DestroyInfrastructure(ctx context.Context, provi
 
 	// Render infrastructure template
 	templateData := InfrastructureTemplateData{
-		ClusterName: sanitizeGCPResourceName(cluster.Name),
+		ClusterName: helpers.SanitizeResourceName(cluster.Name),
 		BucketName:  backendConfig["bucket"],
 		ProjectID:   gcpConfig.ProjectID,
 		Region:      gcpConfig.Region,
@@ -299,7 +275,7 @@ func (s *InfrastructureService) GetInfrastructureStatus(ctx context.Context, pro
 		}, nil
 	}
 
-	sanitizedName := sanitizeGCPResourceName(cluster.Name)
+	sanitizedName := helpers.SanitizeResourceName(cluster.Name)
 
 	return map[string]any{
 		"status": gcpConfig.InfrastructureStatus,
@@ -364,7 +340,7 @@ func (s *InfrastructureService) PublishNodeModuleToRepo(providerName, talosVersi
 
 	// Template data for module templates
 	templateData := NodeModuleTemplateData{
-		ClusterName:       sanitizeGCPResourceName(cluster.Name),
+		ClusterName:       helpers.SanitizeResourceName(cluster.Name),
 		TalosImageProject: gcpConfig.ProjectID,
 		TalosImageName:    talosImageName,
 	}
@@ -477,7 +453,7 @@ func (s *InfrastructureService) ForceUnlockState(ctx context.Context, providerNa
 
 	// Render infrastructure template (needed to connect to backend)
 	templateData := InfrastructureTemplateData{
-		ClusterName: sanitizeGCPResourceName(cluster.Name),
+		ClusterName: helpers.SanitizeResourceName(cluster.Name),
 		BucketName:  backendConfig["bucket"],
 		ProjectID:   gcpConfig.ProjectID,
 		Region:      gcpConfig.Region,

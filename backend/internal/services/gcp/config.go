@@ -58,7 +58,7 @@ func (s *GCPService) ConfigureGCP(ctx context.Context, projectID, region, servic
 	var bucketName string
 	// Only create bucket if it doesn't exist in DB
 	if err != nil || config.BucketName == "" {
-		bucketName, err = s.CreateTerraformBucket(ctx, projectID, region)
+		bucketName, err = s.CreateTerraformBucket(ctx, projectID, region, s.cfg.ClusterName)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create terraform bucket: %w", err)
 		}
@@ -211,13 +211,13 @@ func (s *GCPService) ExtractProjectID(serviceAccountJSON []byte) (string, error)
 	return projectID, nil
 }
 
-func (s *GCPService) CreateTerraformBucket(ctx context.Context, projectID, region string) (string, error) {
+func (s *GCPService) CreateTerraformBucket(ctx context.Context, projectID, region, clusterName string) (string, error) {
 	gcpClient, err := s.getGCPClient(projectID, region)
 	if err != nil {
 		return "", err
 	}
 
-	bucketName, err := gcpClient.CreateTerraformBucket(ctx)
+	bucketName, err := gcpClient.CreateTerraformBucket(ctx, clusterName)
 	if err != nil {
 		return "", fmt.Errorf("failed to create terraform bucket: %w", err)
 	}

@@ -267,11 +267,13 @@ definitions:
   models.NodeStatus:
     enum:
     - pending
+    - provisioning
     - active
     - failed
     type: string
     x-enum-varnames:
     - StatusPending
+    - StatusProvisioning
     - StatusActive
     - StatusFailed
   models.Role:
@@ -290,7 +292,7 @@ definitions:
     - RoleAdmin
     - RoleDeveloper
     - RoleViewer
-  services.NodeConfigUpdate:
+  node.NodeConfigUpdate:
     properties:
       id:
         type: string
@@ -406,6 +408,28 @@ paths:
       summary: Refresh JWT token
       tags:
       - auth
+  /cluster/info:
+    get:
+      description: Get general cluster information including name and GitOps repository
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: cluster_name, gitops_repo_owner, gitops_repo_name, gitops_branch
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get cluster info
+      tags:
+      - cluster
   /gcp/bucket:
     post:
       consumes:
@@ -909,7 +933,7 @@ paths:
           properties:
             nodes:
               items:
-                $ref: '#/definitions/services.NodeConfigUpdate'
+                $ref: '#/definitions/node.NodeConfigUpdate'
               type: array
           type: object
       produces:
@@ -954,8 +978,7 @@ paths:
         "200":
           description: Returns provisioned count and nodes array
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/models.NodeProvisionRequest'
         "400":
           description: Bad Request
           schema:

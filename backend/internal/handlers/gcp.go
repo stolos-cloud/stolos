@@ -261,7 +261,14 @@ func (h *GCPHandlers) CreateTerraformBucket(c *gin.Context) {
 		return
 	}
 
-	bucketName, err := h.gcpService.CreateTerraformBucket(c.Request.Context(), req.ProjectID, req.Region)
+	// Get cluster name from database
+	var cluster models.Cluster
+	if err := h.db.First(&cluster).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get cluster info"})
+		return
+	}
+
+	bucketName, err := h.gcpService.CreateTerraformBucket(c.Request.Context(), req.ProjectID, req.Region, cluster.Name)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

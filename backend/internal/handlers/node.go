@@ -105,7 +105,7 @@ func (h *NodeHandlers) UpdateActiveNodeConfig(c *gin.Context) {
 // @Tags nodes
 // @Accept json
 // @Produce json
-// @Param request body object{nodes=[]services.NodeConfigUpdate} true "Array of node label updates"
+// @Param request body object{nodes=[]node.NodeConfigUpdate} true "Array of node label updates"
 // @Success 200 {object} map[string]interface{} "Returns updated count and nodes array"
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
