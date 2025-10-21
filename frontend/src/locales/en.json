@@ -290,7 +290,8 @@
         "search": "Search",
         "goHome": "Go to home",
         "download": "Download",
-        "downloadISOOnPremise": "Download ISO On-Premise"
+        "downloadISOOnPremise": "Download ISO On-Premise",
+        "viewRepo": "View repository"
     },
     "rules": {
         "validation": {

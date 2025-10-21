@@ -32,6 +32,7 @@ const dashboardComponent = computed(() => {
 const actions = computed(() => {
     if (userRole.value === 'admin') {
         return [
+            { icon: "mdi-github", text: t('actionButtons.viewRepo'), tooltip: t('actionButtons.viewRepo'), onClick: () => redirectToRepository() },
             { icon: "mdi-download", text: t('actionButtons.downloadISOOnPremise'), tooltip: t('actionButtons.downloadISOOnPremise'), onClick: () => showDownloadISODialog() }
         ];
     } else {
@@ -42,5 +43,8 @@ const actions = computed(() => {
 // Methods
 function showDownloadISODialog() {
     dialogDownloadISOOnPremise.value = true;
+}
+function redirectToRepository() {
+    window.open('#', '_blank');
 }
 </script>

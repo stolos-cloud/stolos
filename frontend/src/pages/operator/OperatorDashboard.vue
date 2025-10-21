@@ -1,22 +1,21 @@
 <template>
     <v-sheet class="mt-4 border rounded">
         <v-data-table
-        :headers="nodeHeaders"
-        :items="nodes"
-        :items-length="nodes.length"
-        :search="search"
-        :loading="loading"
-        :loading-text="$t('dashboard.provision.table.loadingText')"
-        :no-data-text="$t('dashboard.provision.table.noDataText')"
-        :items-per-page="10"
-        :items-per-page-text="$t('dashboard.provision.table.itemsPerPageText')"
-        :hide-default-footer="nodes.length < 10"
-        mobile-breakpoint="md"
+            :headers="nodeHeaders"
+            :items="nodes"
+            :items-length="nodes.length"
+            :search="search"
+            :loading="loading"
+            :loading-text="$t('dashboard.provision.table.loadingText')"
+            :no-data-text="$t('dashboard.provision.table.noDataText')"
+            :items-per-page="10"
+            :items-per-page-text="$t('dashboard.provision.table.itemsPerPageText')"
+            :hide-default-footer="nodes.length < 10"
+            mobile-breakpoint="md"
         >
             <!-- Slot for top -->
             <template v-slot:top>
-                <BaseToolbarTable :title="$t('dashboard.provision.table.title')" :buttons="actionsButtonForTable" />
-                <v-text-field v-model="search" label="Search" prepend-inner-icon="mdi-magnify" variant="outlined" hide-details single-line dense class="pa-3"/>
+                <BaseToolbarTable v-model="search" :title="$t('dashboard.provision.table.title')" :buttons="actionsButtonForTable" />
             </template>
 
             <!-- Slot for status -->

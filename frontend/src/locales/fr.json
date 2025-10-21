@@ -291,7 +291,8 @@
         "search": "Rechercher",
         "goHome": "Aller à l'accueil",
         "download": "Télécharger",
-        "downloadISOOnPremise": "Télécharger l'ISO On-Premise"
+        "downloadISOOnPremise": "Télécharger l'ISO On-Premise",
+        "viewRepo": "Voir le répertoire"
     },
     "rules": {
         "validation": {

@@ -17,9 +17,7 @@
                 }"
             >
                 <template v-slot:top>
-                    <BaseToolbarTable :title="$t('administration.teams.table.title')" :buttons="actionsButtonForTable" />
-                    <v-text-field v-model="search" label="Search" prepend-inner-icon="mdi-magnify" variant="outlined"
-                        hide-details single-line dense class="pa-3" />
+                    <BaseToolbarTable v-model="search" :title="$t('administration.teams.table.title')" :buttons="actionsButtonForTable" />
                 </template>
                 <template #[`item.actions`]="{ item }">
                     <v-btn v-tooltip="{ text: $t('administration.teams.buttons.addUserToTeam') }" icon="mdi-account-plus" size="small" variant="text" @click="showAddUserToTeamDialog(item)" />

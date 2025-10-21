@@ -1,24 +1,39 @@
 <template>
-    <v-toolbar flat>
-        <v-toolbar-title>{{ title }}</v-toolbar-title>
-        <template v-if="buttons.length > 0">
-            <BaseButton 
-                class="ml-2"
-                v-for="(btn, i) in buttons"
-                :key="i"
-                :icon="btn.icon"
-                :text="btn.text" 
-                :tooltip="btn.tooltip"
-                :disabled="btn.disabled" 
-                elevation="2"
-                @click="btn.click" 
-            />
-        </template>
-    </v-toolbar>
+    <div>
+        <v-toolbar flat>
+            <v-toolbar-title>{{ title }}</v-toolbar-title>
+            <template v-if="buttons.length > 0">
+                <BaseButton 
+                    class="ml-2"
+                    v-for="(btn, i) in buttons"
+                    :key="i"
+                    :icon="btn.icon"
+                    :text="btn.text" 
+                    :tooltip="btn.tooltip"
+                    :disabled="btn.disabled" 
+                    elevation="2"
+                    @click="btn.click" 
+                />
+            </template>
+        </v-toolbar>
+        <v-text-field 
+            v-if="modelValue !== undefined"
+            v-model="localSearch" 
+            label="Search" 
+            prepend-inner-icon="mdi-magnify" 
+            variant="outlined" 
+            hide-details 
+            single-line 
+            dense 
+            class="pa-3"
+        />
+    </div>
 </template>
 
 <script setup>
-defineProps({
+import { ref, watch } from 'vue';
+
+const props = defineProps({
     title: {
         type: String,
         required: true
@@ -26,6 +41,22 @@ defineProps({
     buttons: {
         type: Array,
         default: () => []
+    },
+    modelValue: {
+        type: String,
+        default: undefined
     }
+});
+
+// state
+const localSearch = ref(props.modelValue);
+
+// Emits
+const emit = defineEmits(['update:modelValue']);
+
+// Watchers
+watch(localSearch, (val) => emit('update:modelValue', val));
+watch(() => props.search, (val) => {
+    if (val !== localSearch.value) localSearch.value = val;
 });
 </script>

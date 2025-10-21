@@ -19,8 +19,7 @@
                 mobile-breakpoint="md"
             >
                 <template v-slot:top>
-                    <BaseToolbarTable :title="$t('administration.users.table.title')" :buttons="actionsButtonForTable" />
-                    <v-text-field v-model="search" label="Search" prepend-inner-icon="mdi-magnify" variant="outlined" hide-details single-line dense class="pa-3"/>
+                    <BaseToolbarTable v-model="search" :title="$t('administration.users.table.title')" :buttons="actionsButtonForTable" />
                 </template>
                 <template #[`item.role`]="{ item }">
                     <div class="d-flex align-center">
