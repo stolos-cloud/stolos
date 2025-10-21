@@ -1,31 +1,23 @@
 <template>
-    <v-sheet class="mt-4 border rounded">
-        <v-data-table
+    <div>
+        <BaseDataTable
+            v-model="search"
             :headers="nodeHeaders"
             :items="nodes"
-            :items-length="nodes.length"
-            :search="search"
             :loading="loading"
-            :loading-text="$t('dashboard.provision.table.loadingText')"
-            :no-data-text="$t('dashboard.provision.table.noDataText')"
-            :items-per-page="10"
-            :items-per-page-text="$t('dashboard.provision.table.itemsPerPageText')"
-            :hide-default-footer="nodes.length < 10"
-            mobile-breakpoint="md"
+            :loadingText="$t('dashboard.provision.table.loadingText')"
+            :noDataText="$t('dashboard.provision.table.noDataText')"
+            :itemsPerPageText="$t('dashboard.provision.table.itemsPerPageText')"
+            :titleToolbar="$t('dashboard.provision.table.title')"
+            :actionsButtonForTable="actionsButtonForTable"
+            rowClickable
+            @click:row="(event, item) => showDetailsNodeDialog(item.item)"
         >
-            <!-- Slot for top -->
-            <template v-slot:top>
-                <BaseToolbarTable v-model="search" :title="$t('dashboard.provision.table.title')" :buttons="actionsButtonForTable" />
-            </template>
-
-            <!-- Slot for status -->
             <template #[`item.status`]="{ item }">
                 <v-chip :color="getStatusColor(item.status)">
                     {{ item.status }}
                 </v-chip>
-            </template>
-
-            <!-- Slot for labels -->
+            </template>        
             <template #[`item.labels`]="{ item }">
                 <v-chip 
                     v-for="(label, index) in item.labels"
@@ -35,14 +27,16 @@
                     {{ label }}
                 </v-chip>
             </template>
-        </v-data-table>
-    </v-sheet>
+        </BaseDataTable>
+        <ViewDetailsNodeDialog v-model="dialogViewDetailsNode" :node="selectedNode" />
+    </div>
 </template>
 
 <script setup>
 import { getConnectedNodes } from '@/services/provisioning.service';
 import { computed, ref , onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
+import ViewDetailsNodeDialog from './dialogs/node/ViewDetailsNodeDialog.vue';
 
 const { t } = useI18n();
 
@@ -50,6 +44,8 @@ const { t } = useI18n();
 const search = ref('');
 const loading = ref(false);
 const nodes = ref([]);
+const dialogViewDetailsNode = ref(false);
+const selectedNode = ref(null);
 
 // Computed
 const nodeHeaders = computed(() => [
@@ -95,6 +91,10 @@ function fetchConnectedNodes() {
         .finally(() => {
             loading.value = false;
         });
+}
+function showDetailsNodeDialog(node) {
+    selectedNode.value = node;
+    dialogViewDetailsNode.value = true;
 }
 function getStatusColor(status) {
     switch (status.toLowerCase()) {

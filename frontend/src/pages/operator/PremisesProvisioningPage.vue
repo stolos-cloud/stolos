@@ -5,81 +5,72 @@
             :subheading="$t('provisioning.onPremises.subheading')"
             :actions="actionsLabelBar"
         />
-        <v-sheet class="mt-4 border rounded">
-            <v-data-table-server
-                :headers="nodeHeaders"
-                :items="nodes"
-                :items-length="nodes.length"
-                :loading=loading
-                :loading-text="$t('provisioning.onPremises.table.loadingText')"
-                :no-data-text="$t('provisioning.onPremises.table.noDataText')"
-                :items-per-page="10"
-                :items-per-page-text="$t('provisioning.onPremises.table.itemsPerPageText')"
-                :hide-default-footer="nodes.length < 10"
-                mobile-breakpoint="md"
-            >
-                <!-- Slot for top -->
-                <template v-slot:top>
-                    <BaseToolbarTable :title="$t('provisioning.onPremises.table.title')" :buttons="actionsButtonForTable" />
-                </template>
+        <BaseDataTable
+            :headers="nodeHeaders"
+            :items="nodes"
+            :loading="loading"
+            :loadingText="$t('provisioning.onPremises.table.loadingText')"
+            :noDataText="$t('provisioning.onPremises.table.noDataText')"
+            :itemsPerPageText="$t('provisioning.onPremises.table.itemsPerPageText')"
+            :titleToolbar="$t('provisioning.onPremises.table.title')"
+            :actionsButtonForTable="actionsButtonForTable"
+        >
+            <!-- Slot for status -->
+            <template #[`item.status`]="{ item }">
+                <v-chip color="yellow">
+                    {{ item.status }}
+                </v-chip>
+            </template>
+            
+            <!-- Slot for roles -->
+            <template #[`item.role`]="{ item }">
+                <v-select
+                v-model="item.role"
+                :items="provisioningRoles"
+                item-value="value"
+                item-title="label"
+                dense
+                density="compact"
+                placeholder="Select role"
+                variant="solo"
+                hide-details
+                ></v-select>
+            </template>
 
-                <!-- Slot for status -->
-                <template #[`item.status`]="{ item }">
-                    <v-chip color="yellow">
-                        {{ item.status }}
+            <!-- Slot for labels -->
+            <template #[`item.labels`]="{ item }">
+                <div class="d-flex flex-wrap align-center">
+                    <v-chip
+                        v-for="(label, index) in item.labels"
+                        :key="index"
+                        class="ma-1"
+                        closable
+                        @click:close="item.labels.splice(index, 1)"
+                    >
+                        {{ label }}
                     </v-chip>
-                </template>
-                
-                <!-- Slot for roles -->
-                <template #[`item.role`]="{ item }">
-                    <v-select
-                    v-model="item.role"
-                    :items="provisioningRoles"
-                    item-value="value"
-                    item-title="label"
-                    dense
-                    density="compact"
-                    placeholder="Select role"
-                    variant="solo"
-                    hide-details
-                    ></v-select>
-                </template>
-
-                <!-- Slot for labels -->
-                <template #[`item.labels`]="{ item }">
-                    <div class="d-flex flex-wrap align-center">
-                        <v-chip
-                            v-for="(label, index) in item.labels"
-                            :key="index"
-                            class="ma-1"
-                            closable
-                            @click:close="item.labels.splice(index, 1)"
-                        >
-                            {{ label }}
+                    <template v-if="!item.addingLabel">
+                        <v-chip class="ma-1" elevation="2" @click="item.addingLabel = true">
+                            {{ $t('provisioning.onPremises.buttons.addLabel') }}
                         </v-chip>
-                        <template v-if="!item.addingLabel">
-                            <v-chip class="ma-1" elevation="2" @click="item.addingLabel = true">
-                                {{ $t('provisioning.onPremises.buttons.addLabel') }}
-                            </v-chip>
-                        </template>
-                        <template v-else>
-                            <v-text-field
-                                v-model="item.newLabel"
-                                density="compact"
-                                placeholder="New label"
-                                variant="solo"
-                                rounded
-                                hide-details
-                                max-width="120"
-                                autofocus
-                                @keyup.enter="addLabel(item)"
-                                @blur="addLabel(item); item.addingLabel = false"
-                            />
-                        </template>
-                    </div>
-                </template>
-            </v-data-table-server>
-        </v-sheet>
+                    </template>
+                    <template v-else>
+                        <v-text-field
+                            v-model="item.newLabel"
+                            density="compact"
+                            placeholder="New label"
+                            variant="solo"
+                            rounded
+                            hide-details
+                            max-width="120"
+                            autofocus
+                            @keyup.enter="addLabel(item)"
+                            @blur="addLabel(item); item.addingLabel = false"
+                        />
+                    </template>
+                </div>
+            </template>
+        </BaseDataTable>
         <DownloadISOOnPremDialog v-model="dialogDownloadISOOnPremise" />
     </PortalLayout>
 </template>

@@ -14,7 +14,8 @@
 import DownloadISOOnPremDialog from '@/pages/operator/dialogs/download/DownloadISOOnPremDialog.vue';
 import OperatorDashboard from '@/pages/operator/OperatorDashboard.vue';
 import DeveloperDashboard from '@/pages/developer/DeveloperDashboard.vue';
-import { computed, ref } from 'vue';
+import { computed, ref, onMounted } from 'vue';
+//import { getClusterInfo } from '@/services/cluster.service';
 import { useI18n } from 'vue-i18n';
 import { useStore } from 'vuex';
 
@@ -23,6 +24,7 @@ const store = useStore();
 
 // State
 const dialogDownloadISOOnPremise = ref(false);
+const clusterInfo = ref(null);
 
 // Computed
 const userRole = computed(() => store.getters['user/getRole']);
@@ -40,11 +42,25 @@ const actions = computed(() => {
     }
 });
 
+// Mounted
+onMounted(() => {
+    if(userRole.value === 'admin') {
+        // getClusterInfo().then((response) => {
+        //     if(response.gitops_configured) {
+        //         clusterInfo.value = response;
+        //     }
+        // }).catch(error => {
+        //     console.error('Failed to fetch cluster info:', error);
+        // });
+    }
+});
+
 // Methods
 function showDownloadISODialog() {
     dialogDownloadISOOnPremise.value = true;
 }
 function redirectToRepository() {
-    window.open('#', '_blank');
+    const repoLink = `https://github.com/${clusterInfo.value.gitops_repo_owner}/${clusterInfo.value.gitops_repo_name}/tree/${clusterInfo.value.gitops_branch}`;
+    window.open(repoLink, '_blank');
 }
 </script>

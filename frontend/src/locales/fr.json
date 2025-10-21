@@ -57,6 +57,20 @@
                     "status": "Statut",
                     "labels": "Étiquettes"
                 }
+            },
+            "dialogs": {
+                "viewDetailsNode": {
+                    "title": "Détails du noeud",
+                    "subheading": "Informations générales",
+                    "nodeInfo": {
+                        "ipAddress": "Adresse IP",
+                        "macAddress": "Adresse MAC",
+                        "instanceId": "ID d'instance",
+                        "architecture": "Architecture",
+                        "createdAt": "Créé le",
+                        "updatedAt": "Mis à jour le"
+                    }
+                }
             }
         }
     },
@@ -109,7 +123,14 @@
         "cloud": {
             "sidemenuTitle": "Cloud",
             "title": "Provisionnement Cloud",
-            "subheading": "Gérez vos ressources cloud"
+            "subheading": "Gérez vos ressources cloud",
+            "nodeFormfields": {
+                "namePrefix": "Préfixe de nom",
+                "numberOfNodes": "Nombre de noeuds",
+                "role": "Rôle",
+                "zone": "Zone",
+                "machineType": "Type de machine"
+            }
         }
     },
     "cloudProvider": {

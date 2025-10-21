@@ -4,40 +4,33 @@
             :title="$t('administration.users.title')"
             :subheading="$t('administration.users.subheading')"
         />
-        <v-sheet class="mt-4 border rounded">
-            <v-data-table
-                :headers="userHeaders"
-                :items="users"
-                :items-length="users.length"
-                :loading=loading
-                :search="search"
-                :loading-text="$t('administration.users.table.loadingText')"
-                :no-data-text="$t('administration.users.table.noDataText')"
-                :items-per-page="10"
-                :items-per-page-text="$t('administration.users.table.itemsPerPageText')"
-                :hide-default-footer="users.length < 10"
-                mobile-breakpoint="md"
-            >
-                <template v-slot:top>
-                    <BaseToolbarTable v-model="search" :title="$t('administration.users.table.title')" :buttons="actionsButtonForTable" />
-                </template>
-                <template #[`item.role`]="{ item }">
-                    <div class="d-flex align-center">
-                        <span>{{ item.role }}</span>
-                        <v-icon
-                            v-if="currentUserId !== item.id"
-                            class="ml-2"
-                            size="small"
-                            icon="mdi-pencil"
-                            @click="showEditRoleDialog(item)"
-                        />
-                    </div>
-                </template>
-                <template #[`item.actions`]="{ item }">
-                    <v-btn v-tooltip="{ text: $t('administration.users.buttons.deleteUser') }" icon="mdi-delete" size="small" variant="text" :disabled="currentUserId === item.id" @click="deleteUser(item)" />
-                </template>
-            </v-data-table>
-        </v-sheet>
+        <BaseDataTable
+            v-model="search"
+            :headers="userHeaders"
+            :items="users"
+            :loading="loading"
+            :loadingText="$t('administration.users.table.loadingText')"
+            :noDataText="$t('administration.users.table.noDataText')"
+            :itemsPerPageText="$t('administration.users.table.itemsPerPageText')"
+            :titleToolbar="$t('administration.users.table.title')"
+            :actionsButtonForTable="actionsButtonForTable"
+        >
+            <template #[`item.role`]="{ item }">
+                <div class="d-flex align-center">
+                    <span>{{ item.role }}</span>
+                    <v-icon
+                        v-if="currentUserId !== item.id"
+                        class="ml-2"
+                        size="small"
+                        icon="mdi-pencil"
+                        @click="showEditRoleDialog(item)"
+                    />
+                </div>
+            </template>
+            <template #[`item.actions`]="{ item }">
+                <v-btn v-tooltip="{ text: $t('administration.users.buttons.deleteUser') }" icon="mdi-delete" size="small" variant="text" :disabled="currentUserId === item.id" @click="deleteUser(item)" />
+            </template>
+        </BaseDataTable>
         <EditUserRoleDialog v-model="dialogEditUserRole" :userSelected="userTemp" @userRoleUpdated="fetchUsers" @update:userSelected="userTemp = $event" />
         <AddNewUserDialog v-model="dialogAddUser" @userAdded="fetchUsers" />
         <BaseConfirmDialog ref="confirmDialog" />

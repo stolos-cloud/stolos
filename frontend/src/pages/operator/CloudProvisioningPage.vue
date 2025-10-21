@@ -226,36 +226,36 @@ onMounted(() => {
 // Form state
 const formFields = reactive({
     namePrefix: new TextField({
-        label: t('administration.users.formfields.namePrefix'),
+        label: t('provisioning.cloud.nodeFormfields.namePrefix'),
         type: "text",
         required: true,
         rules: textfieldRules
     }),
     number: new TextField({
-        label: t('administration.users.formfields.number'),
+        label: t('provisioning.cloud.nodeFormfields.numberOfNodes'),
         type: "number",
         min: 1,
         max: 10,
         required: true,
         rules: textfieldRules
     }),
+    role: new Select({
+        label: t('provisioning.cloud.nodeFormfields.role'),
+        options: roleProvisioningTypes.value,
+        required: true,
+        rules: textfieldRules
+    }),
     zone: new AutoComplete({
-        label: t('provisioning.cloud.formfields.zone'),
+        label: t('provisioning.cloud.nodeFormfields.zone'),
         items: cloudZones,
         required: true,
         rules: textfieldRules
     }),
     machineType: new AutoComplete({
-        label: t('provisioning.cloud.formfields.machineType'),
+        label: t('provisioning.cloud.nodeFormfields.machineType'),
         items: availableMachineTypes,
         required: true,
         disabled: computed(() => !formFields.zone.value),
-        rules: textfieldRules
-    }),
-    role: new Select({
-        label: t('administration.users.formfields.role'),
-        options: roleProvisioningTypes.value,
-        required: true,
         rules: textfieldRules
     })
 });

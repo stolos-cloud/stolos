@@ -4,40 +4,36 @@
             :title="$t('cloudProvider.title')"
             :subheading="$t('cloudProvider.subheading')"
         />
-        <v-sheet class="mt-4 border rounded">
-            <v-data-table
-                :headers="nodeHeaders"
-                :items="nodesCloud"
-                :items-length="nodesCloud.length"
-                :loading=loading
-                :loading-text="$t('cloudProvider.table.loadingText')"
-                :no-data-text="$t('cloudProvider.table.noDataText')"
-                :items-per-page="10"
-                :items-per-page-text="$t('cloudProvider.table.itemsPerPageText')"
-                mobile-breakpoint="md"
-                :hide-default-footer="nodesCloud.length < 10"
-            >
-                <template v-slot:top>
-                    <BaseToolbarTable :title="$t('cloudProvider.table.title')" :buttons="actionsButtonForTable" />
-                </template>
-                <template v-slot:[`item.service_account_email`]="{ item }">
-                    <div class="d-flex align-center">
-                        <span class="d-none d-md-inline text-truncate">{{ item.service_account_email }}</span>
-                        <span class="d-md-none">{{ item.service_account_email }}</span>
-                        <v-btn
-                            class="ml-1"
-                            :icon="copiedItem === item.service_account_email ? 'mdi-check' : 'mdi-content-copy'"
-                            size="x-small"
-                            variant="text"
-                            @click="copyToClipboard(item.service_account_email)"
-                        />
-                    </div>
-                </template>
-                <template v-slot:[`item.actions`]="{ item }">
-                    <v-icon color="medium-emphasis" icon="mdi-pencil" size="small" @click="edit(item)"></v-icon>
-                </template>
-            </v-data-table>
-        </v-sheet>
+        <BaseDataTable
+            :headers="nodeHeaders"
+            :items="nodesCloud"
+            :loading="loading"
+            :loadingText="$t('cloudProvider.table.loadingText')"
+            :noDataText="$t('cloudProvider.table.noDataText')"
+            :itemsPerPageText="$t('cloudProvider.table.itemsPerPageText')"
+            :titleToolbar="$t('cloudProvider.table.title')"
+            :actionsButtonForTable="actionsButtonForTable"
+        >
+            <template v-slot:top>
+                <BaseToolbarTable :title="$t('cloudProvider.table.title')" :buttons="actionsButtonForTable" />
+            </template>
+            <template v-slot:[`item.service_account_email`]="{ item }">
+                <div class="d-flex align-center">
+                    <span class="d-none d-md-inline text-truncate">{{ item.service_account_email }}</span>
+                    <span class="d-md-none">{{ item.service_account_email }}</span>
+                    <v-btn
+                        class="ml-1"
+                        :icon="copiedItem === item.service_account_email ? 'mdi-check' : 'mdi-content-copy'"
+                        size="x-small"
+                        variant="text"
+                        @click="copyToClipboard(item.service_account_email)"
+                    />
+                </div>
+            </template>
+            <template v-slot:[`item.actions`]="{ item }">
+                <v-icon color="medium-emphasis" icon="mdi-pencil" size="small" @click="edit(item)"></v-icon>
+            </template>
+        </BaseDataTable>
         <ConfigurateCloudDialog v-model="dialogConfigurateCloudConfig" @cloudConfigurationAdded="fetchGCPStatus" />
         <UpdateCloudDialog v-model="dialogUpdateCloudConfig" :region="selectedRegion" @cloudConfigurationUpdated="fetchGCPStatus" />        
     </PortalLayout>

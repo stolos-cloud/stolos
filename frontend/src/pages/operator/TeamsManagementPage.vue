@@ -1,30 +1,24 @@
 <template>
     <PortalLayout>
         <BaseLabelBar :title="$t('administration.teams.title')" :subheading="$t('administration.teams.subheading')" />
-        <v-sheet class="mt-4 border rounded">
-            <v-data-table 
-                :headers="teamHeaders" 
-                :items="teams" 
-                :items-length="teams.length" 
-                :loading=loading
-                :search="search" :loading-text="$t('administration.teams.table.loadingText')"
-                :no-data-text="$t('administration.teams.table.noDataText')" :items-per-page="10"
-                :items-per-page-text="$t('administration.teams.table.itemsPerPageText')" 
-                mobile-breakpoint="md" :hide-default-footer="teams.length < 10"
-                @click:row="(event, item) => {
-                    if (event.target.closest('.v-btn, .v-icon')) return
-                    showViewDetailsDialog(item.item)
-                }"
-            >
-                <template v-slot:top>
-                    <BaseToolbarTable v-model="search" :title="$t('administration.teams.table.title')" :buttons="actionsButtonForTable" />
-                </template>
-                <template #[`item.actions`]="{ item }">
-                    <v-btn v-tooltip="{ text: $t('administration.teams.buttons.addUserToTeam') }" icon="mdi-account-plus" size="small" variant="text" @click="showAddUserToTeamDialog(item)" />
-                    <v-btn v-tooltip="{ text: $t('administration.teams.buttons.deleteTeam') }" icon="mdi-delete" size="small" variant="text" @click="deleteTeam(item)" />
-                </template>
-            </v-data-table>
-        </v-sheet>
+        <BaseDataTable
+            v-model="search"
+            :headers="teamHeaders"
+            :items="teams"
+            :loading="loading"
+            :loadingText="$t('administration.teams.table.loadingText')"
+            :noDataText="$t('administration.teams.table.noDataText')"
+            :itemsPerPageText="$t('administration.teams.table.itemsPerPageText')"
+            :titleToolbar="$t('administration.teams.table.title')"
+            :actionsButtonForTable="actionsButtonForTable"
+            rowClickable
+            @click:row="(event, item) => showViewDetailsDialog(item.item)"
+        >
+            <template #[`item.actions`]="{ item }">
+                <v-btn v-tooltip="{ text: $t('administration.teams.buttons.addUserToTeam') }" icon="mdi-account-plus" size="small" variant="text" @click="showAddUserToTeamDialog(item)" />
+                <v-btn v-tooltip="{ text: $t('administration.teams.buttons.deleteTeam') }" icon="mdi-delete" size="small" variant="text" @click="deleteTeam(item)" />
+            </template>
+        </BaseDataTable>
         <CreateTeamDialog v-model="dialogCreateTeam" @teamCreated="fetchTeams" />
         <AddUserToTeamDialog v-model="dialogAddUserToTeam" :team="selectedTeam" @userAdded="fetchTeams" />
         <ViewDetailsTeamDialog  v-model="dialogViewDetailsTeam" :team="selectedTeam" @userDeletedFromTeam="fetchTeams" />
@@ -133,9 +127,3 @@ function deleteTeamConfirmed(team) {
     });
 }
 </script>
-
-<style scoped>
-:deep(.v-data-table__tr:hover) {
-  background-color: rgba(var(--v-theme-on-surface), 0.1);
-}
-</style>

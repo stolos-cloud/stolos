@@ -56,7 +56,7 @@ const emit = defineEmits(['update:modelValue']);
 
 // Watchers
 watch(localSearch, (val) => emit('update:modelValue', val));
-watch(() => props.search, (val) => {
+watch(() => props.modelValue, (val) => {
     if (val !== localSearch.value) localSearch.value = val;
 });
 </script>
