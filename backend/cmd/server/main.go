@@ -103,7 +103,7 @@ func main() {
 					log.Fatal("Failed to initialize cluster:", err)
 				}
 
-				// Migrate Talos configs from files to database (one-time migration)
+				// Migrate Talos configs from files to db
 				if err := talosService.MigrateTalosConfigFromFiles(); err != nil {
 					log.Printf("Note: Talos config migration skipped: %v", err)
 				}
