@@ -30,6 +30,7 @@ import (
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/marshal"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/oauth"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/platform"
+	"github.com/stolos-cloud/stolos-bootstrap/pkg/platform_talos"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/talos"
 	"golang.org/x/oauth2"
 	corev1 "k8s.io/api/core/v1"
@@ -48,8 +49,9 @@ var githubConfig *github.Config
 var githubToken *oauth2.Token
 var gcpToken *oauth2.Token
 var gcpEnabled = gcp.GCPClientId != "" && gcp.GCPClientSecret != ""
+
 // var gitHubEnabled = github.GithubOauthClientId != "" && github.GithubOauthClientSecret != "" // legacy
-var gitHubEnabled = true
+var gitHubEnabled = false
 var gitHubUser *github.User
 var gitHubAppManifestParams *github.AppManifestParams
 var gitHubAppManifest *github.AppManifest
@@ -562,6 +564,18 @@ func RunWaitForServersStep(model *tui.Model, step *tui.Step) tea.Cmd {
 		for i := 0; i < 5; i++ {
 			err := talos.EventSink(&bootstrapInfos.TalosInfo, func(ctx context.Context, event events.Event) error {
 				ip := strings.Split(event.Node, ":")[0]
+
+				var blacklist = []string{
+					"192.168.2.67",
+					"192.168.2.68",
+					"192.168.2.69",
+					"192.168.2.70",
+				}
+
+				if slices.Contains(blacklist, ip) {
+					return nil
+				}
+
 				_, ok := saveState.MachinesDisks[ip]
 				if !ok {
 					saveState.MachinesDisks[ip] = ""
@@ -861,6 +875,20 @@ func CreateBackendSecrets(loggerRef *tui.UILogger) {
 			if err != nil {
 				loggerRef.Errorf("Failed to create namespace stolos-system: %s", err)
 				return
+			}
+		}
+
+		// Create platform talos/k8s secret
+		loggerRef.Info("Creating platform talos/k8s secret...")
+		talosSecretData, err := platform_talos.NewBootstrapSecret(saveState.MachinesCache)
+		if err != nil {
+			loggerRef.Errorf("Failed to read data for platform talos configuration secret: %s", err)
+		} else {
+			err = talosSecretData.CreateOrUpdateSecret(ctx, k8sClient, "stolos-system", "stolos-talos-config")
+			if err != nil {
+				loggerRef.Errorf("Failed to create platform config secret: %s", err)
+			} else {
+				loggerRef.Success("Platform configuration secret created successfully")
 			}
 		}
 

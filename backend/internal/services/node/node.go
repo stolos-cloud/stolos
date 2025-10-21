@@ -1,28 +1,38 @@
-package services
+package node
 
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
+	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/google/uuid"
+	machineapi "github.com/siderolabs/talos/pkg/machinery/api/machine"
+	"github.com/siderolabs/talos/pkg/machinery/config/configpatcher"
+	"github.com/siderolabs/talos/pkg/machinery/config/encoder"
+	machineconf "github.com/siderolabs/talos/pkg/machinery/config/machine"
 	"github.com/stolos-cloud/stolos/backend/internal/config"
 	"github.com/stolos-cloud/stolos/backend/internal/models"
+	"github.com/stolos-cloud/stolos/backend/internal/services"
 	gcpservices "github.com/stolos-cloud/stolos/backend/internal/services/gcp"
+	"github.com/stolos-cloud/stolos/backend/internal/services/talos"
 	"gorm.io/gorm"
 )
 
 type NodeService struct {
 	db              *gorm.DB
 	cfg             *config.Config
-	providerManager *ProviderManager
+	providerManager *services.ProviderManager
+	ts              *talos.TalosService
 }
 
-func NewNodeService(db *gorm.DB, cfg *config.Config, providerManager *ProviderManager) *NodeService {
+func NewNodeService(db *gorm.DB, cfg *config.Config, providerManager *services.ProviderManager, talosService *talos.TalosService) *NodeService {
 	return &NodeService{
 		db:              db,
 		cfg:             cfg,
 		providerManager: providerManager,
+		ts:              talosService,
 	}
 }
 
@@ -169,61 +179,157 @@ func (s *NodeService) UpdateActiveNodesConfig(updates []NodeConfigUpdate) ([]mod
 }
 
 // ProvisionNodes provisions multiple on-prem nodes by updating their role and labels,
-// then changing their status from pending to active
-func (s *NodeService) ProvisionNodes(configs []models.NodeProvisionConfig) ([]models.Node, error) {
-	var provisionedNodes []models.Node
+// then applying Talos machine configuration. It continues processing all nodes even if
+// some fail, returning a result list with per-node success/error details.
+func (s *NodeService) ProvisionNodes(configs []models.NodeProvisionConfig) ([]models.NodeProvisionResult, error) {
+	results := make([]models.NodeProvisionResult, 0, len(configs))
 
-	for _, config := range configs {
-		// Validate role
-		if config.Role != "worker" && config.Role != "control-plane" {
-			return nil, fmt.Errorf("invalid role '%s' for node %s. Must be 'worker' or 'control-plane'", config.Role, config.NodeID)
+	// Get machine config bundle from TALOS_FOLDER, fatal if it fails
+	configBundle, err := s.ts.GetMachineConfigBundle()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get machine config bundle: %w", err)
+	}
+
+	for _, cfg := range configs {
+		result := models.NodeProvisionResult{
+			NodeID: cfg.NodeID,
+			Role:   cfg.Role,
+			Labels: cfg.Labels,
 		}
 
-		// Get node from database
+		// ensure valid role
+		if cfg.Role != "worker" && cfg.Role != "control-plane" {
+			result.Error = fmt.Sprintf("invalid role '%s' (must be 'worker' or 'control-plane')", cfg.Role)
+			results = append(results, result)
+			continue
+		}
+
+		// Get node from db
 		var node models.Node
-		if err := s.db.Where("id = ? AND provider = ?", config.NodeID, "onprem").First(&node).Error; err != nil {
-			if err == gorm.ErrRecordNotFound {
-				return nil, fmt.Errorf("node %s not found or not an on-prem node", config.NodeID)
+		if err := s.db.Where("id = ? AND provider = ?", cfg.NodeID, "onprem").First(&node).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				result.Error = fmt.Sprintf("node %s not found or not an on-prem node", cfg.NodeID)
+			} else {
+				result.Error = fmt.Sprintf("failed to fetch node %s: %v", cfg.NodeID, err)
 			}
-			return nil, fmt.Errorf("failed to fetch node %s: %w", config.NodeID, err)
+			results = append(results, result)
+			continue
 		}
 
-		// Check if node is in pending status
+		// Sanity check node state
 		if node.Status != models.StatusPending {
-			return nil, fmt.Errorf("node %s must be in pending status to provision (current: %s)", config.NodeID, node.Status)
+			result.Error = fmt.Sprintf("node %s must be pending to provision (current: %s)", cfg.NodeID, node.Status)
+			results = append(results, result)
+			continue
 		}
 
 		// Update role and labels
-		node.Role = config.Role
-		if len(config.Labels) > 0 {
-			labelsJSON, err := json.Marshal(config.Labels)
-			if err != nil {
-				return nil, fmt.Errorf("failed to marshal labels for node %s: %w", config.NodeID, err)
+		node.Role = cfg.Role
+		if len(cfg.Labels) > 0 {
+			if labelsJSON, err := json.Marshal(cfg.Labels); err != nil {
+				result.Error = fmt.Sprintf("failed to marshal labels: %v", err)
+				results = append(results, result)
+				continue
+			} else {
+				node.Labels = string(labelsJSON)
 			}
-			node.Labels = string(labelsJSON)
 		}
-
 		if err := s.db.Save(&node).Error; err != nil {
-			return nil, fmt.Errorf("failed to update node %s: %w", config.NodeID, err)
+			result.Error = fmt.Sprintf("failed to update node in DB: %v", err)
+			results = append(results, result)
+			continue
 		}
 
-		provisionedNodes = append(provisionedNodes, node)
-	}
-
-	// TODO: Apply Talos configuration to all nodes
-	// 1. Create/load Talos config
-	// 2. Apply configs to each node
-	// 3. Update node status to active after successful config application
-	//
-	// For now, update status to active as a placeholder
-	for i := range provisionedNodes {
-		provisionedNodes[i].Status = models.StatusActive
-		if err := s.db.Save(&provisionedNodes[i]).Error; err != nil {
-			return nil, fmt.Errorf("failed to update node %s status: %w", provisionedNodes[i].ID, err)
+		// get talos api client for node
+		cli, err := talos.GetInsecureMachineryClient(context.Background(), node.IPAddress)
+		if err != nil {
+			result.Error = fmt.Sprintf("failed to get Talos client for %s: %v", node.IPAddress, err)
+			results = append(results, result)
+			continue
 		}
+
+		// get existing node count for this type
+		var existingNodeCount int64
+		if err := s.db.Model(&models.Node{}).
+			Where("status = 'active' AND role = ?", node.Role).
+			Count(&existingNodeCount).Error; err != nil {
+			result.Error = fmt.Sprintf("failed to count existing nodes: %v", err)
+			results = append(results, result)
+			continue
+		}
+		nodeName := fmt.Sprintf("%s-%d", node.Role, int(existingNodeCount)+1)
+
+		// create machineConfig for the node (part 1)
+		var machineType machineconf.Type
+		if node.Role == "control-plane" {
+			machineType = machineconf.TypeControlPlane
+		} else {
+			machineType = machineconf.TypeWorker
+		}
+		rendered, err := configBundle.Serialize(encoder.CommentsDocs, machineType)
+		if err != nil {
+			result.Error = fmt.Sprintf("failed to serialize config: %v", err)
+			results = append(results, result)
+			continue
+		}
+
+		// use json patch to overwrite certain values (part 2)
+		patch := jsonpatch.Patch{
+			jsonpatch.Operation{
+				"op":    raw("replace"),
+				"path":  raw("/machine/network/hostname"),
+				"value": raw(nodeName),
+			},
+			jsonpatch.Operation{
+				"op":   raw("remove"),
+				"path": raw("/machine/install/diskSelector"),
+			},
+			jsonpatch.Operation{
+				"op":    raw("add"),
+				"path":  raw("/machine/install/disk"),
+				"value": raw("/dev/sda"),
+			},
+		}
+
+		patched, err := configpatcher.JSON6902(rendered, patch)
+		if err != nil {
+			result.Error = fmt.Sprintf("failed to apply JSON patch: %v", err)
+			results = append(results, result)
+			continue
+		}
+
+		// Send talos ApplyConfiguration request
+		_, err = cli.ApplyConfiguration(context.Background(), &machineapi.ApplyConfigurationRequest{
+			Data:   patched,
+			Mode:   machineapi.ApplyConfigurationRequest_AUTO,
+			DryRun: false,
+		})
+		if err != nil {
+			result.Error = fmt.Sprintf("failed to apply configuration: %v", err)
+			results = append(results, result)
+			continue
+		}
+
+		// Set node to "provisioning" status
+		node.Status = models.StatusProvisioning
+		node.Name = nodeName
+		if err := s.db.Save(&node).Error; err != nil {
+			result.Error = fmt.Sprintf("failed to update DB after provisioning: %v", err)
+			results = append(results, result)
+			continue
+		}
+
+		result.Succeeded = true
+		results = append(results, result)
 	}
 
-	return provisionedNodes, nil
+	return results, nil
+}
+
+func raw(v any) *json.RawMessage {
+	b, _ := json.Marshal(v)
+	rm := json.RawMessage(b)
+	return &rm
 }
 
 // ListNodes lists nodes with optional status filter, offset, and limit.

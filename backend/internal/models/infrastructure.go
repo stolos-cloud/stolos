@@ -11,15 +11,17 @@ import (
 type NodeStatus string
 
 const (
-	StatusPending NodeStatus = "pending"
-	StatusActive  NodeStatus = "active"
-	StatusFailed  NodeStatus = "failed"
+	StatusPending      NodeStatus = "pending"
+	StatusProvisioning NodeStatus = "provisioning"
+	StatusActive       NodeStatus = "active"
+	StatusFailed       NodeStatus = "failed"
 )
 
 var ValidNodeStatuses = map[NodeStatus]bool{
-	StatusPending: true,
-	StatusActive:  true,
-	StatusFailed:  true,
+	StatusPending:      true,
+	StatusProvisioning: true,
+	StatusActive:       true,
+	StatusFailed:       true,
 }
 
 type Node struct {
@@ -162,6 +164,14 @@ type NodeProvisionConfig struct {
 	Labels []string  `json:"labels" example:"zone=us-east,type=compute"`
 }
 
+type NodeProvisionResult struct {
+	NodeID    uuid.UUID `json:"node_id" binding:"required" example:"550e8400-e29b-41d4-a716-446655440000"`
+	Role      string    `json:"role" binding:"required" example:"worker"`
+	Labels    []string  `json:"labels" example:"zone=us-east,type=compute"`
+	Succeeded bool      `json:"succeeded" example:"true"`
+	Error     string    `json:"error" example:""`
+}
+
 // GCP Node Provision Request (with multiplier support)
 type GCPNodeProvisionRequest struct {
 	NamePrefix  string   `json:"name_prefix" binding:"required" example:"worker"`
@@ -178,13 +188,13 @@ type GCPNodeProvisionRequest struct {
 type ProvisionRequestStatus string
 
 const (
-	ProvisionStatusPending        ProvisionRequestStatus = "pending"
-	ProvisionStatusPlanning       ProvisionRequestStatus = "planning"
+	ProvisionStatusPending          ProvisionRequestStatus = "pending"
+	ProvisionStatusPlanning         ProvisionRequestStatus = "planning"
 	ProvisionStatusAwaitingApproval ProvisionRequestStatus = "awaiting_approval"
-	ProvisionStatusApplying       ProvisionRequestStatus = "applying"
-	ProvisionStatusCompleted      ProvisionRequestStatus = "completed"
-	ProvisionStatusFailed         ProvisionRequestStatus = "failed"
-	ProvisionStatusRejected       ProvisionRequestStatus = "rejected"
+	ProvisionStatusApplying         ProvisionRequestStatus = "applying"
+	ProvisionStatusCompleted        ProvisionRequestStatus = "completed"
+	ProvisionStatusFailed           ProvisionRequestStatus = "failed"
+	ProvisionStatusRejected         ProvisionRequestStatus = "rejected"
 )
 
 // Provision Request - tracks async node provisioning operations

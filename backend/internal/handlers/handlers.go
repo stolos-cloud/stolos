@@ -4,6 +4,7 @@ import (
 	"github.com/stolos-cloud/stolos/backend/internal/config"
 	"github.com/stolos-cloud/stolos/backend/internal/middleware"
 	"github.com/stolos-cloud/stolos/backend/internal/services"
+	"github.com/stolos-cloud/stolos/backend/internal/services/talos"
 	wsservices "github.com/stolos-cloud/stolos/backend/internal/services/websocket"
 	"gorm.io/gorm"
 )
@@ -32,7 +33,7 @@ func NewHandlers(db *gorm.DB, cfg *config.Config, providerManager *services.Prov
 		teamHandlers: NewTeamHandlers(db),
 		userHandlers: NewUserHandlers(db),
 		isoHandlers:  NewISOHandlers(db, cfg),
-		nodeHandlers: NewNodeHandlers(db, cfg, providerManager),
+		nodeHandlers: NewNodeHandlers(db, cfg, providerManager, talos.NewTalosService(db, cfg)),
 		gcpHandlers:  NewGCPHandlers(db, cfg, providerManager, wsManager),
 		jwtService:   jwtService,
 		db:           db,
