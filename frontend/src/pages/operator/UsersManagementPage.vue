@@ -25,11 +25,11 @@
                     <div class="d-flex align-center">
                         <span>{{ item.role }}</span>
                         <v-icon
-                        v-if="currentUserId !== item.id"
-                        class="ml-2"
-                        size="small"
-                        icon="mdi-pencil"
-                        @click="showEditRoleDialog(item)"
+                            v-if="currentUserId !== item.id"
+                            class="ml-2"
+                            size="small"
+                            icon="mdi-pencil"
+                            @click="showEditRoleDialog(item)"
                         />
                     </div>
                 </template>

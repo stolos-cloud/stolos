@@ -167,14 +167,12 @@ function fetchConnectedNodes() {
             loading.value = false;
         });
 }
-
 function addLabel(item) {
     if (item.newLabel && !item.labels.includes(item.newLabel)) {
         item.labels.push(item.newLabel);
     }
     item.newLabel = '';
 }
-
 function provisionConnectedNodes() {
     if (!canProvision.value) return;
     showOverlay();
