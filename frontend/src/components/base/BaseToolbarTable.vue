@@ -19,7 +19,7 @@
         <v-text-field 
             v-if="modelValue !== undefined"
             v-model="localSearch" 
-            label="Search" 
+            :label="$t('actionButtons.search')" 
             prepend-inner-icon="mdi-magnify" 
             variant="outlined" 
             hide-details 
