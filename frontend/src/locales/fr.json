@@ -57,23 +57,21 @@
                     "status": "Statut",
                     "labels": "Étiquettes"
                 }
-            }
-        },
-        "dialogs": {
-            "downloadISOOnPremise":  {
-                "title": "Télécharger l'ISO On-Premise",
-                "noticeText": "Pour utiliser le mode On-Prem, commencez par télécharger l'ISO (AMD ou ARM) et installez-le sur vos serveurs physiques. Une fois que les serveurs sont démarrés avec l'ISO, ils apparaîtront dans la page de Provisionnement pour être configurés."
             },
-            "downloadISOOnCloud": {
-                "title": "Télécharger l'ISO Cloud",
-                "noticeText": "Pour utiliser le mode Cloud, commencez par télécharger l'ISO (AMD ou ARM) et créez une VM sur votre fournisseur de cloud avec. Une fois la VM démarrée avec l'ISO, elle apparaîtra dans la page de Provisionnement pour être configurée."
+            "dialogs": {
+                "viewDetailsNode": {
+                    "title": "Détails du noeud",
+                    "subheading": "Informations générales",
+                    "nodeInfo": {
+                        "ipAddress": "Adresse IP",
+                        "macAddress": "Adresse MAC",
+                        "instanceId": "ID d'instance",
+                        "architecture": "Architecture",
+                        "createdAt": "Créé le",
+                        "updatedAt": "Mis à jour le"
+                    }
+                }
             }
-        },
-        "buttons": {
-            "downloadISOOnPremise": "Télécharger l'ISO On-Premise",
-            "downloadISOOnCloud": "Télécharger l'ISO Cloud",
-            "cancel": "Annuler",
-            "download": "Télécharger"
         }
     },
     "applications": {
@@ -125,7 +123,14 @@
         "cloud": {
             "sidemenuTitle": "Cloud",
             "title": "Provisionnement Cloud",
-            "subheading": "Gérez vos ressources cloud"
+            "subheading": "Gérez vos ressources cloud",
+            "nodeFormfields": {
+                "namePrefix": "Préfixe de nom",
+                "numberOfNodes": "Nombre de noeuds",
+                "role": "Rôle",
+                "zone": "Zone",
+                "machineType": "Type de machine"
+            }
         }
     },
     "cloudProvider": {
@@ -221,7 +226,7 @@
                 "deleteError": "Échec de la suppression de l'utilisateur"
             },
             "buttons": {
-                "addUser": "Ajouter un utilisateur",
+                "addUser": "Ajouter un nouvel utilisateur",
                 "deleteUser": "Supprimer un utilisateur"
             }
         },
@@ -283,6 +288,33 @@
             }
         }
     },
+    "dialogs": {
+        "downloadISOOnPremise":  {
+            "title": "Télécharger l'ISO On-Premise",
+            "noticeText": "Pour utiliser le mode On-Prem, commencez par télécharger l'ISO (AMD ou ARM) et installez-le sur vos serveurs physiques. Une fois les serveurs démarrés avec l'ISO, ils apparaîtront dans la page de Provisioning pour être configurés.",
+            "label": "Choix de l'ISO",
+            "precision": "Choisissez l'architecture de l'ISO que vous souhaitez télécharger"
+        }
+    },
+    "actionButtons": {
+        "add": "Ajouter",
+        "edit": "Modifier",
+        "delete": "Supprimer",
+        "save": "Enregistrer",
+        "cancel": "Annuler",
+        "confirm": "Confirmer",
+        "back": "Retour",
+        "next": "Suivant",
+        "finish": "Terminer",
+        "create": "Créer",
+        "viewDetails": "Voir les détails",
+        "refresh": "Rafraîchir",
+        "search": "Rechercher",
+        "goHome": "Aller à l'accueil",
+        "download": "Télécharger",
+        "downloadISOOnPremise": "Télécharger l'ISO On-Premise",
+        "viewRepo": "Voir le répertoire"
+    },
     "rules": {
         "validation": {
             "email": {
@@ -303,24 +335,11 @@
             },
             "autoComplete": {
                 "required": "Ce champ est requis"
+            },
+            "radioGroup": {
+                "required": "Ce champ est requis"
             }
         }
-    },
-    "actionButtons": {
-        "add": "Ajouter",
-        "edit": "Modifier",
-        "delete": "Supprimer",
-        "save": "Enregistrer",
-        "cancel": "Annuler",
-        "confirm": "Confirmer",
-        "back": "Retour",
-        "next": "Suivant",
-        "finish": "Terminer",
-        "create": "Créer",
-        "viewDetails": "Voir les détails",
-        "refresh": "Rafraîchir",
-        "search": "Rechercher",
-        "goHome": "Aller à l'accueil"
     },
     "errors": {
         "noData": "Aucune donnée disponible",

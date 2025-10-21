@@ -4,59 +4,30 @@
             :title="$t('provisioning.cloud.title')"
             :subheading="$t('provisioning.cloud.subheading')"
         />
-
         <!-- Simple test form for WebSocket provisioning -->
-        <v-container>
-            <v-card class="pa-6 mb-4">
-                <v-card-title>GCP Node Provisioning Test</v-card-title>
-                <v-card-text>
-                    <v-form @submit.prevent="submitProvisionRequest">
-                        <v-text-field
-                            v-model="form.name_prefix"
-                            label="Name Prefix"
-                            hint="e.g., worker"
-                            required
-                        ></v-text-field>
+        <v-card class="pa-1 my-4 border">
+            <v-card-title>GCP Node Provisioning Test</v-card-title>
+            <v-card-text>
+                <v-form v-model="isValidForm">
+                    <BaseTextfield :Textfield="formFields.namePrefix" />
+                    <BaseTextfield :Textfield="formFields.number" />
+                    <BaseSelect v-model="formFields.role.value" :Select="formFields.role" />
+                    <BaseAutoComplete :AutoComplete="formFields.zone" />
+                    <BaseAutoComplete :AutoComplete="formFields.machineType" />
+                </v-form>
+            </v-card-text>
+            <v-card-actions>
+                <v-spacer></v-spacer>
+                <BaseButton
+                    :text="isProvisioning ? 'Provisioning...' : 'Provision Nodes'"
+                    :disabled="isProvisioning || !isValidForm"
+                    @click="submitProvisionRequest"
+                />
+            </v-card-actions>
+        </v-card>
 
-                        <v-text-field
-                            v-model.number="form.number"
-                            label="Number of Nodes"
-                            type="number"
-                            min="1"
-                            max="20"
-                            required
-                        ></v-text-field>
-
-                        <v-text-field
-                            v-model="form.zone"
-                            label="Zone"
-                            hint="e.g., us-central1-a"
-                            required
-                        ></v-text-field>
-
-                        <v-text-field
-                            v-model="form.machine_type"
-                            label="Machine Type"
-                            hint="e.g., n1-standard-2"
-                            required
-                        ></v-text-field>
-
-                        <v-select
-                            v-model="form.role"
-                            :items="['worker', 'control-plane']"
-                            label="Role"
-                            required
-                        ></v-select>
-
-                        <v-btn type="submit" color="primary" :disabled="isProvisioning" block>
-                            {{ isProvisioning ? 'Provisioning...' : 'Provision Nodes' }}
-                        </v-btn>
-                    </v-form>
-                </v-card-text>
-            </v-card>
-
-            <!-- Notebook-style sequential layout -->
-            <div v-if="provisioningPhase !== 'idle'">
+        <!-- Notebook-style sequential layout -->
+        <div v-if="provisioningPhase !== 'idle'">
                 <!-- Phase 1: Terraform Plan -->
                 <v-card class="mb-4">
                     <v-card-title class="bg-blue-darken-2">
@@ -189,8 +160,7 @@
                         </v-sheet>
                     </v-card-text>
                 </v-card>
-            </div>
-        </v-container>
+        </div>
 
         <v-overlay class="d-flex align-center justify-center" v-model="overlay" persistent>
             <v-progress-circular indeterminate></v-progress-circular>
@@ -199,14 +169,23 @@
 </template>
 
 <script setup>
-import PortalLayout from '@/components/layouts/PortalLayout.vue';
-import BaseLabelBar from '@/components/base/BaseLabelBar.vue';
-import { ref } from 'vue';
+import { ref, reactive, computed, onMounted } from 'vue';
 import api from '@/services/api';
 import { StorageService } from '@/services/storage.service';
+import { TextField } from '@/models/TextField.js';
+import { Select } from '@/models/Select.js';
+import { AutoComplete } from '@/models/AutoComplete';
+import { FormValidationRules } from '@/composables/FormValidationRules.js';
+import { useI18n } from 'vue-i18n';
+import { useStore } from 'vuex';
+
+const { t } = useI18n();
+const store = useStore();
+const { textfieldRules } = FormValidationRules();
 
 const overlay = ref(false);
 const isProvisioning = ref(false);
+const isValidForm = ref(false);
 const planLogs = ref([]);
 const applyLogs = ref([]);
 const status = ref('');
@@ -220,6 +199,65 @@ const form = ref({
     zone: 'us-central1-a',
     machine_type: 'n1-standard-2',
     role: 'worker',
+});
+
+// Computed
+const roleProvisioningTypes = computed(() => store.getters['referenceLists/getProvisioningRoles']);
+const cloudZones = computed(() => store.getters['referenceLists/getCloudZones']);
+const availableMachineTypes = computed(() => {
+    const zone = formFields.zone.value;
+    if (!zone) return undefined;
+    const machines =  store.getters['referenceLists/getMachinesTypesByZone'](zone);
+    return machines.map(machine => ({
+        label: `${machine.name} - ${machine.description}`,
+        value: machine.name
+    }));
+});
+
+// Mounted
+onMounted(() => {
+    formFields.namePrefix.value = form.value.name_prefix;
+    formFields.number.value = form.value.number;
+    formFields.zone.value = form.value.zone;
+    formFields.machineType.value = form.value.machine_type;
+    formFields.role.value = form.value.role;
+});
+
+// Form state
+const formFields = reactive({
+    namePrefix: new TextField({
+        label: t('provisioning.cloud.nodeFormfields.namePrefix'),
+        type: "text",
+        required: true,
+        rules: textfieldRules
+    }),
+    number: new TextField({
+        label: t('provisioning.cloud.nodeFormfields.numberOfNodes'),
+        type: "number",
+        min: 1,
+        max: 10,
+        required: true,
+        rules: textfieldRules
+    }),
+    role: new Select({
+        label: t('provisioning.cloud.nodeFormfields.role'),
+        options: roleProvisioningTypes.value,
+        required: true,
+        rules: textfieldRules
+    }),
+    zone: new AutoComplete({
+        label: t('provisioning.cloud.nodeFormfields.zone'),
+        items: cloudZones,
+        required: true,
+        rules: textfieldRules
+    }),
+    machineType: new AutoComplete({
+        label: t('provisioning.cloud.nodeFormfields.machineType'),
+        items: availableMachineTypes,
+        required: true,
+        disabled: computed(() => !formFields.zone.value),
+        rules: textfieldRules
+    })
 });
 
 const getLogColor = type => {

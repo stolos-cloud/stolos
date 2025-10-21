@@ -1,13 +1,15 @@
 <template>
-    <BaseDialog v-model="isOpen" :title="$t('administration.teams.dialogs.addUserToTeam.title')" closable>
-        <v-form v-model="isValidForm">
-            <BaseAutoComplete :AutoComplete="formFields.userChoiceEmail" />
-        </v-form>
-        <template #actions>
-            <BaseButton variant="outlined" :text="$t('actionButtons.cancel')" @click="closeDialog" />
-            <BaseButton :text="$t('actionButtons.add')" :disabled="!isValidForm" @click="addUserToTeam" />
-        </template>
-    </BaseDialog>
+    <div class="add-user-to-team-dialog">
+        <BaseDialog v-model="isOpen" :title="$t('administration.teams.dialogs.addUserToTeam.title')" closable>
+            <v-form v-model="isValidForm">
+                <BaseAutoComplete :AutoComplete="formFields.userChoiceEmail" />
+            </v-form>
+            <template #actions>
+                <BaseButton variant="outlined" :text="$t('actionButtons.cancel')" @click="closeDialog" />
+                <BaseButton :text="$t('actionButtons.add')" :disabled="!isValidForm" @click="addUserToTeam" />
+            </template>
+        </BaseDialog>
+    </div>
 </template>
 
 <script setup>
@@ -17,9 +19,13 @@ import { FormValidationRules } from "@/composables/FormValidationRules.js";
 import { AutoComplete } from "@/models/AutoComplete.js";
 import { addUserIdToTeam } from "@/services/teams.service";
 import { getUsers } from "@/services/users.service";
+import { GlobalNotificationHandler } from "@/composables/GlobalNotificationHandler";
+import { GlobalOverlayHandler } from "@/composables/GlobalOverlayHandler";
 
 const { t } = useI18n();
 const { autoCompleteRules } = FormValidationRules();
+const { showNotification } = GlobalNotificationHandler();
+const { showOverlay, hideOverlay } = GlobalOverlayHandler();
 
 const props = defineProps({
     modelValue: {
@@ -48,7 +54,7 @@ const formFields = reactive({
 });
 
 // Emits
-const emit = defineEmits(['update:modelValue', 'userAdded', 'loading']);
+const emit = defineEmits(['update:modelValue', 'userAdded']);
 
 // Watchers
 watch(() => props.modelValue, val => isOpen.value = val);
@@ -78,11 +84,12 @@ function filterUsersNotInTeam() {
 }
 function addUserToTeam() {
     if (!isValidForm.value) return;
-    emit('loading', true);
+    showOverlay();
 
     const userId = formFields.userChoiceEmail.value;
     addUserIdToTeam(props.team.id, { user_id: userId })
     .then(() => {
+        showNotification(t('administration.teams.notifications.addUserSuccess'), 'success');
         emit('userAdded');
     })
     .catch((error) => {
@@ -90,7 +97,7 @@ function addUserToTeam() {
     })
     .finally(() => {
         closeDialog();
-        emit('loading', false);
+        hideOverlay();
     });
 }
 </script>

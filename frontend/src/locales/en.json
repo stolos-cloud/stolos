@@ -57,24 +57,22 @@
                     "status": "Status",
                     "labels": "Labels"
                 }
-            }
-        },
-        "dialogs": {
-            "downloadISOOnPremise":  {
-                "title": "Download ISO On-Premise",
-                "noticeText": "For using the On-Prem mode, start by downloading the ISO (AMD or ARM) and install it on your physical servers. Once the servers are started with the ISO, they will appear in Provisioning page to be configured."
             },
-            "downloadISOOnCloud": {
-                "title": "Download ISO Cloud",
-                "noticeText": "For using the Cloud mode, start by downloading the ISO (AMD or ARM) and create a VM on your cloud provider with it. Once the VM is started with the ISO, it will appear in Provisioning page to be configured."
+            "dialogs": {
+                "viewDetailsNode": {
+                    "title": "Node details",
+                    "subheading": "General informations",
+                    "nodeInfo": {
+                        "ipAddress": "IP address",
+                        "macAddress": "MAC address",
+                        "instanceId": "Instance ID",
+                        "architecture": "Architecture",
+                        "createdAt": "Created at",
+                        "updatedAt": "Updated at"
+                    }
+                }
             }
-        },
-        "buttons": {
-            "downloadISOOnPremise": "Download ISO On-Premise",
-            "downloadISOOnCloud": "Download ISO Cloud",
-            "cancel": "Cancel",
-            "download": "Download"
-        }
+        }            
     },
     "applications": {
         "title": "Applications"
@@ -124,7 +122,14 @@
         "cloud": {
             "sidemenuTitle": "Cloud",
             "title": "Cloud provisioning",
-            "subheading": "Manage your cloud resources"
+            "subheading": "Manage your cloud resources",
+            "nodeFormfields": {
+                "namePrefix": "Name prefix",
+                "numberOfNodes": "Number of nodes",
+                "role": "Role",
+                "zone": "Zone",
+                "machineType": "Machine type"
+            }
         }
     },
     "cloudProvider": {
@@ -195,7 +200,7 @@
             },
             "dialogs": {
                 "addUser":  {
-                    "title": "Add user"
+                    "title": "Add new user"
                 },
                 "editUser": {
                     "title": "Edit user"
@@ -220,7 +225,7 @@
                 "deleteError": "Failed to delete user"
             },
             "buttons": {
-                "addUser": "Add user",
+                "addUser": "Add new user",
                 "deleteUser": "Delete user"
             }
         },
@@ -282,6 +287,33 @@
             }
         }
     },
+    "dialogs": {
+        "downloadISOOnPremise":  {
+            "title": "Download ISO On-Premise",
+            "noticeText": "For using the On-Prem mode, start by downloading the ISO (AMD or ARM) and install it on your physical servers. Once the servers are started with the ISO, they will appear in Provisioning page to be configured.",
+            "label": "ISO Choice",
+            "precision": "Choose the architecture of the ISO you want to download"
+        }
+    },
+    "actionButtons": {
+        "add": "Add",
+        "edit": "Edit",
+        "delete": "Delete",
+        "save": "Save",
+        "cancel": "Cancel",
+        "confirm": "Confirm",
+        "back": "Back",
+        "next": "Next",
+        "finish": "Finish",
+        "create": "Create",
+        "viewDetails": "View Details",
+        "refresh": "Refresh",
+        "search": "Search",
+        "goHome": "Go to home",
+        "download": "Download",
+        "downloadISOOnPremise": "Download ISO On-Premise",
+        "viewRepo": "View repository"
+    },
     "rules": {
         "validation": {
             "email": {
@@ -302,24 +334,11 @@
             },
             "autoComplete": {
                 "required": "This field is required"
+            },
+            "radioGroup": {
+                "required": "This field is required"
             }
         }
-    },
-    "actionButtons": {
-        "add": "Add",
-        "edit": "Edit",
-        "delete": "Delete",
-        "save": "Save",
-        "cancel": "Cancel",
-        "confirm": "Confirm",
-        "back": "Back",
-        "next": "Next",
-        "finish": "Finish",
-        "create": "Create",
-        "viewDetails": "View Details",
-        "refresh": "Refresh",
-        "search": "Search",
-        "goHome": "Go to home"
     },
     "errors": {
         "noData": "No data available",

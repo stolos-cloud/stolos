@@ -9,8 +9,9 @@
         item-title="label"
         item-value="value"
         :no-data-text="AutoComplete.noDataText || $t('errors.noData')"
-        hide-details
-        class="mt-4"
+        hide-details="auto"
+        variant="outlined"
+        class="my-4"
         @update:search-input="emit('search', $event)"
         @click:clear="emit('cleared')"
     ></v-autocomplete>
