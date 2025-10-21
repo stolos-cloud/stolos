@@ -21,7 +21,6 @@ import (
 	"github.com/stolos-cloud/stolos/backend/internal/routes"
 	"github.com/stolos-cloud/stolos/backend/internal/services"
 	discoveryservice "github.com/stolos-cloud/stolos/backend/internal/services/cluster"
-	"github.com/stolos-cloud/stolos/backend/internal/services/gitops"
 	"github.com/stolos-cloud/stolos/backend/internal/services/node"
 	talosservice "github.com/stolos-cloud/stolos/backend/internal/services/talos"
 	swaggerFiles "github.com/swaggo/files"
@@ -73,28 +72,20 @@ func main() {
 	// Initialize context
 	ctx := context.Background()
 
-	err = gontainer.Run(
-		ctx,
-		gontainer.NewFactory(func() *talosservice.TalosService {
-			return talosservice.NewTalosService(db, cfg)
-		}),
-		gontainer.NewFactory(func(ts *talosservice.TalosService) *discoveryservice.DiscoveryService {
-			return discoveryservice.NewDiscoveryService(db, cfg, ts)
-		}),
-		gontainer.NewFactory(func() *services.ProviderManager {
-			return services.NewProviderManager(db, cfg)
-		}),
-		gontainer.NewFactory(func(pm *services.ProviderManager, ts *talosservice.TalosService) *node.NodeService {
-			return node.NewNodeService(db, cfg, pm, ts)
-		}),
-		gontainer.NewFactory(func() *gitops.GitOpsService {
-			return gitops.NewGitOpsService(db, cfg)
-		}),
-		gontainer.NewEntrypoint(
+	// Register all services using modular wire.go files
+	allServices := RegisterAllServices(db, cfg)
+
+	// Add entrypoint
+	allServices = append(allServices, gontainer.NewEntrypoint(
 			func(talosService *talosservice.TalosService,
 				providerManager *services.ProviderManager,
-				gitOps *gitops.GitOpsService, nodeService *node.NodeService,
-				clusterDiscovery *discoveryservice.DiscoveryService, resolver *gontainer.Resolver) {
+				nodeService *node.NodeService,
+				clusterDiscovery *discoveryservice.DiscoveryService,
+				h *handlers.Handlers,
+				infrastructureService *services.InfrastructureService,
+				resolver *gontainer.Resolver) {
+				providerManager.SetInfrastructureService(infrastructureService)
+
 				// Start EventSink after cluster init.
 				talosService.StartEventSink()
 
@@ -112,6 +103,11 @@ func main() {
 					log.Fatal("Failed to initialize cluster:", err)
 				}
 
+				// Migrate Talos configs from files to database (one-time migration)
+				if err := talosService.MigrateTalosConfigFromFiles(); err != nil {
+					log.Printf("Note: Talos config migration skipped: %v", err)
+				}
+
 				r := gin.Default()
 
 				r.Use(cors.New(cors.Config{
@@ -120,8 +116,6 @@ func main() {
 					AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 					AllowCredentials: true,
 				}))
-
-				h := handlers.NewHandlers(db, cfg, providerManager)
 
 				routes.SetupRoutes(r, h)
 
@@ -163,8 +157,15 @@ func main() {
 				if err := r.Run(port); err != nil {
 					log.Fatal("Failed to start server:", err)
 				}
-			}),
-	)
+			}))
+
+	// Convert []any to individual gontainer.Option arguments
+	options := make([]gontainer.Option, len(allServices))
+	for i, svc := range allServices {
+		options[i] = svc.(gontainer.Option)
+	}
+
+	err = gontainer.Run(ctx, options...)
 
 }
 

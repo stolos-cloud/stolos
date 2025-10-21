@@ -23,6 +23,7 @@ type InfrastructureService struct {
 	cfg             *config.Config
 	providerManager *ProviderManager
 	gitopsService   *gitopsservices.GitOpsService
+	talosService    *talosservices.TalosService
 }
 
 type NodeConfig struct {
@@ -32,12 +33,13 @@ type NodeConfig struct {
 	Architecture string
 }
 
-func NewInfrastructureService(db *gorm.DB, cfg *config.Config, providerManager *ProviderManager, gitopsService *gitopsservices.GitOpsService) *InfrastructureService {
+func NewInfrastructureService(db *gorm.DB, cfg *config.Config, providerManager *ProviderManager, gitopsService *gitopsservices.GitOpsService, talosService *talosservices.TalosService) *InfrastructureService {
 	return &InfrastructureService{
 		db:              db,
 		cfg:             cfg,
 		providerManager: providerManager,
 		gitopsService:   gitopsService,
+		talosService:    talosService,
 	}
 }
 
@@ -338,8 +340,7 @@ func (s *InfrastructureService) PublishNodeModuleToRepo(providerName, talosVersi
 	}
 
 	// default to AMD
-	talosService := talosservices.NewTalosService(s.db, s.cfg)
-	talosImageName, err := talosService.GetGCPImageName("amd64")
+	talosImageName, err := s.talosService.GetGCPImageName("amd64")
 	if err != nil {
 		return fmt.Errorf("failed to get Talos image name: %w", err)
 	}

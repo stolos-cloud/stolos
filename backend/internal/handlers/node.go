@@ -5,9 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/stolos-cloud/stolos/backend/internal/config"
 	"github.com/stolos-cloud/stolos/backend/internal/models"
-	"github.com/stolos-cloud/stolos/backend/internal/services"
 	"github.com/stolos-cloud/stolos/backend/internal/services/node"
 	talos "github.com/stolos-cloud/stolos/backend/internal/services/talos"
 	"gorm.io/gorm"
@@ -19,11 +17,11 @@ type NodeHandlers struct {
 	talosService *talos.TalosService
 }
 
-func NewNodeHandlers(db *gorm.DB, cfg *config.Config, providerManager *services.ProviderManager, talosService *talos.TalosService) *NodeHandlers {
+func NewNodeHandlers(db *gorm.DB, nodeService *node.NodeService, talosService *talos.TalosService) *NodeHandlers {
 	return &NodeHandlers{
 		db:           db,
-		nodeService:  node.NewNodeService(db, cfg, providerManager, talosService),
-		talosService: talos.NewTalosService(db, cfg),
+		nodeService:  nodeService,
+		talosService: talosService,
 	}
 }
 

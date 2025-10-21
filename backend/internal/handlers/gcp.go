@@ -12,13 +12,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
-	"github.com/stolos-cloud/stolos/backend/internal/config"
 	"github.com/stolos-cloud/stolos/backend/internal/models"
 	"github.com/stolos-cloud/stolos/backend/internal/services"
 	gcpservices "github.com/stolos-cloud/stolos/backend/internal/services/gcp"
 	gitopsservices "github.com/stolos-cloud/stolos/backend/internal/services/gitops"
 	"github.com/stolos-cloud/stolos/backend/internal/services/node"
-	talosservices "github.com/stolos-cloud/stolos/backend/internal/services/talos"
 	wsservices "github.com/stolos-cloud/stolos/backend/internal/services/websocket"
 	"gorm.io/gorm"
 )
@@ -42,20 +40,24 @@ type GCPHandlers struct {
 	wsManager             *wsservices.Manager
 }
 
-func NewGCPHandlers(db *gorm.DB, cfg *config.Config, providerManager *services.ProviderManager, wsManager *wsservices.Manager) *GCPHandlers {
-	gcpService := gcpservices.NewGCPService(db, cfg)
-	gitopsService := gitopsservices.NewGitOpsService(db, cfg)
-	infrastructureService := services.NewInfrastructureService(db, cfg, providerManager, gitopsService)
-	talosService := talosservices.NewTalosService(db, cfg)
-
+func NewGCPHandlers(
+	db *gorm.DB,
+	gcpService *gcpservices.GCPService,
+	gitopsService *gitopsservices.GitOpsService,
+	nodeService *node.NodeService,
+	infrastructureService *services.InfrastructureService,
+	gcpResourcesService *gcpservices.GCPResourcesService,
+	provisioningService *gcpservices.ProvisioningService,
+	wsManager *wsservices.Manager,
+) *GCPHandlers {
 	return &GCPHandlers{
 		db:                    db,
 		gcpService:            gcpService,
 		gitopsService:         gitopsService,
-		nodeService:           node.NewNodeService(db, cfg, providerManager, talosService),
+		nodeService:           nodeService,
 		infrastructureService: infrastructureService,
-		gcpResourcesService:   gcpservices.NewGCPResourcesService(db, gcpService),
-		provisioningService:   gcpservices.NewProvisioningService(db, cfg, talosService, gcpService),
+		gcpResourcesService:   gcpResourcesService,
+		provisioningService:   provisioningService,
 		wsManager:             wsManager,
 	}
 }
