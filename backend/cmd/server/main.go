@@ -159,14 +159,15 @@ func main() {
 				}
 			}))
 
-	// Convert []any to individual gontainer.Option arguments
 	options := make([]gontainer.Option, len(allServices))
 	for i, svc := range allServices {
 		options[i] = svc.(gontainer.Option)
 	}
 
 	err = gontainer.Run(ctx, options...)
-
+	if err != nil {
+		log.Fatal("Failed to run application:", err)
+	}
 }
 
 func generateRandomSecret(length int) string {
