@@ -58,22 +58,6 @@
                     "labels": "Étiquettes"
                 }
             }
-        },
-        "dialogs": {
-            "downloadISOOnPremise":  {
-                "title": "Télécharger l'ISO On-Premise",
-                "noticeText": "Pour utiliser le mode On-Prem, commencez par télécharger l'ISO (AMD ou ARM) et installez-le sur vos serveurs physiques. Une fois que les serveurs sont démarrés avec l'ISO, ils apparaîtront dans la page de Provisionnement pour être configurés."
-            },
-            "downloadISOOnCloud": {
-                "title": "Télécharger l'ISO Cloud",
-                "noticeText": "Pour utiliser le mode Cloud, commencez par télécharger l'ISO (AMD ou ARM) et créez une VM sur votre fournisseur de cloud avec. Une fois la VM démarrée avec l'ISO, elle apparaîtra dans la page de Provisionnement pour être configurée."
-            }
-        },
-        "buttons": {
-            "downloadISOOnPremise": "Télécharger l'ISO On-Premise",
-            "downloadISOOnCloud": "Télécharger l'ISO Cloud",
-            "cancel": "Annuler",
-            "download": "Télécharger"
         }
     },
     "applications": {
@@ -221,7 +205,7 @@
                 "deleteError": "Échec de la suppression de l'utilisateur"
             },
             "buttons": {
-                "addUser": "Ajouter un utilisateur",
+                "addUser": "Ajouter un nouvel utilisateur",
                 "deleteUser": "Supprimer un utilisateur"
             }
         },
@@ -283,6 +267,32 @@
             }
         }
     },
+    "dialogs": {
+        "downloadISOOnPremise":  {
+            "title": "Télécharger l'ISO On-Premise",
+            "noticeText": "Pour utiliser le mode On-Prem, commencez par télécharger l'ISO (AMD ou ARM) et installez-le sur vos serveurs physiques. Une fois les serveurs démarrés avec l'ISO, ils apparaîtront dans la page de Provisioning pour être configurés.",
+            "label": "Choix de l'ISO",
+            "precision": "Choisissez l'architecture de l'ISO que vous souhaitez télécharger"
+        }
+    },
+    "actionButtons": {
+        "add": "Ajouter",
+        "edit": "Modifier",
+        "delete": "Supprimer",
+        "save": "Enregistrer",
+        "cancel": "Annuler",
+        "confirm": "Confirmer",
+        "back": "Retour",
+        "next": "Suivant",
+        "finish": "Terminer",
+        "create": "Créer",
+        "viewDetails": "Voir les détails",
+        "refresh": "Rafraîchir",
+        "search": "Rechercher",
+        "goHome": "Aller à l'accueil",
+        "download": "Télécharger",
+        "downloadISOOnPremise": "Télécharger l'ISO On-Premise"
+    },
     "rules": {
         "validation": {
             "email": {
@@ -303,24 +313,11 @@
             },
             "autoComplete": {
                 "required": "Ce champ est requis"
+            },
+            "radioGroup": {
+                "required": "Ce champ est requis"
             }
         }
-    },
-    "actionButtons": {
-        "add": "Ajouter",
-        "edit": "Modifier",
-        "delete": "Supprimer",
-        "save": "Enregistrer",
-        "cancel": "Annuler",
-        "confirm": "Confirmer",
-        "back": "Retour",
-        "next": "Suivant",
-        "finish": "Terminer",
-        "create": "Créer",
-        "viewDetails": "Voir les détails",
-        "refresh": "Rafraîchir",
-        "search": "Rechercher",
-        "goHome": "Aller à l'accueil"
     },
     "errors": {
         "noData": "Aucune donnée disponible",

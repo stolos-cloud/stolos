@@ -1,13 +1,15 @@
 <template>
-    <BaseDialog v-model="isOpen" :title="$t('administration.teams.dialogs.createTeam.title')" closable>
-        <v-form v-model="isValidForm">
-            <BaseTextfield :Textfield="formFields.teamName" />
-        </v-form>
-        <template #actions>
-            <BaseButton variant="outlined" :text="$t('actionButtons.cancel')" @click="closeDialog" />
-            <BaseButton  :text="$t('actionButtons.create')" :disabled="!isValidForm" @click="createTeam" />
-        </template>
-    </BaseDialog>
+    <div class="create-team-dialog">
+        <BaseDialog v-model="isOpen" :title="$t('administration.teams.dialogs.createTeam.title')" closable>
+            <v-form v-model="isValidForm">
+                <BaseTextfield :Textfield="formFields.teamName" />
+            </v-form>
+            <template #actions>
+                <BaseButton variant="outlined" :text="$t('actionButtons.cancel')" @click="closeDialog" />
+                <BaseButton  :text="$t('actionButtons.create')" :disabled="!isValidForm" @click="createTeam" />
+            </template>
+        </BaseDialog>
+    </div>
 </template>
 
 <script setup>
@@ -16,9 +18,13 @@ import { useI18n } from "vue-i18n";
 import { FormValidationRules } from "@/composables/FormValidationRules.js";
 import { TextField } from "@/models/TextField.js";
 import { createNewTeam } from "@/services/teams.service";
+import { GlobalNotificationHandler } from "@/composables/GlobalNotificationHandler";
+import { GlobalOverlayHandler } from "@/composables/GlobalOverlayHandler";
 
 const { t } = useI18n();
 const { textfieldRules } = FormValidationRules();
+const { showNotification } = GlobalNotificationHandler();
+const { showOverlay, hideOverlay } = GlobalOverlayHandler();
 
 const props = defineProps({
     modelValue: {
@@ -42,7 +48,7 @@ const formFields = reactive({
 });
 
 // Emits
-const emit = defineEmits(['update:modelValue', 'teamCreated', 'loading']);
+const emit = defineEmits(['update:modelValue', 'teamCreated']);
 
 // Watchers
 watch(() => props.modelValue, val => isOpen.value = val);
@@ -55,11 +61,12 @@ function closeDialog() {
 }
 function createTeam() {
     if(!isValidForm.value) return;
-    emit('loading', true);
+    showOverlay();
 
     const teamName = formFields.teamName.value;
     createNewTeam({ name: teamName })
         .then(() => {
+            showNotification(t('administration.teams.notifications.createTeamSuccess'), 'success');
             emit('teamCreated');
         })
         .catch((error) => {
@@ -67,7 +74,7 @@ function createTeam() {
         })
         .finally(() => {
             closeDialog();
-            emit('loading', false);
+            hideOverlay();
         });
 }
 </script>

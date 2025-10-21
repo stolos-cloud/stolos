@@ -1,7 +1,7 @@
 <template>
     <PortalLayout>
         <BaseLabelBar :title="$t('administration.teams.title')" :subheading="$t('administration.teams.subheading')" />
-        <v-sheet border rounded class="mt-4">
+        <v-sheet class="mt-4 border rounded">
             <v-data-table 
                 :headers="teamHeaders" 
                 :items="teams" 
@@ -17,48 +17,20 @@
                 }"
             >
                 <template v-slot:top>
-                    <v-toolbar flat>
-                        <v-toolbar-title>
-                            {{ $t('administration.teams.table.title') }}
-                        </v-toolbar-title>
-                        <BaseButton 
-                            icon="mdi-plus" 
-                            elevation="2" 
-                            :tooltip="$t('administration.teams.buttons.createNewTeam')"
-                            :text="$t('administration.teams.buttons.createNewTeam')" 
-                            @click="showCreateTeamDialog" />
-                    </v-toolbar>
+                    <BaseToolbarTable :title="$t('administration.teams.table.title')" :buttons="actionsButtonForTable" />
                     <v-text-field v-model="search" label="Search" prepend-inner-icon="mdi-magnify" variant="outlined"
                         hide-details single-line dense class="pa-3" />
                 </template>
-                <template #item.actions="{ item }">
+                <template #[`item.actions`]="{ item }">
                     <v-btn v-tooltip="{ text: $t('administration.teams.buttons.addUserToTeam') }" icon="mdi-account-plus" size="small" variant="text" @click="showAddUserToTeamDialog(item)" />
                     <v-btn v-tooltip="{ text: $t('administration.teams.buttons.deleteTeam') }" icon="mdi-delete" size="small" variant="text" @click="deleteTeam(item)" />
                 </template>
             </v-data-table>
         </v-sheet>
-        <CreateTeamDialog 
-            v-model="dialogCreateTeam"
-            @loading="overlay = $event"
-            @teamCreated="teamCreated"
-        />
-        <AddUserToTeamDialog 
-            v-model="dialogAddUserToTeam"
-            :team="selectedTeam"
-            @loading="overlay = $event"
-            @userAdded="userAddedToTeam"
-        />
-        <ViewDetailsTeamDialog 
-            v-model="dialogViewDetailsTeam"
-            :team="selectedTeam"
-            @loading="overlay = $event"
-            @userDeletedFromTeam="userDeletedFromTeam"
-        />
-        <v-overlay class="d-flex align-center justify-center" v-model="overlay" persistent>
-            <v-progress-circular indeterminate />
-        </v-overlay>
+        <CreateTeamDialog v-model="dialogCreateTeam" @teamCreated="fetchTeams" />
+        <AddUserToTeamDialog v-model="dialogAddUserToTeam" :team="selectedTeam" @userAdded="fetchTeams" />
+        <ViewDetailsTeamDialog  v-model="dialogViewDetailsTeam" :team="selectedTeam" @userDeletedFromTeam="fetchTeams" />
         <BaseConfirmDialog ref="confirmDialog" />
-        <BaseNotification v-model="notification.visible" :text="notification.text" :type="notification.type" />
     </PortalLayout>
 </template>
 
@@ -66,33 +38,45 @@
 import { ref, onMounted, computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { getTeams, deleteTeamById } from '@/services/teams.service';
-import CreateTeamDialog from "./administration/dialogs/CreateTeamDialog.vue";
-import AddUserToTeamDialog from "./administration/dialogs/AddUserToTeamDialog.vue";
-import ViewDetailsTeamDialog from "./administration/dialogs/ViewDetailsTeamDialog.vue";
+import { GlobalNotificationHandler } from "@/composables/GlobalNotificationHandler";
+import { GlobalOverlayHandler } from "@/composables/GlobalOverlayHandler";
+import CreateTeamDialog from "./dialogs/administration/CreateTeamDialog.vue";
+import AddUserToTeamDialog from "./dialogs/administration/AddUserToTeamDialog.vue";
+import ViewDetailsTeamDialog from "./dialogs/administration/ViewDetailsTeamDialog.vue";
 
 const { t } = useI18n();
+const { showNotification } = GlobalNotificationHandler();
+const { showOverlay, hideOverlay } = GlobalOverlayHandler();
 
 // State
 const dialogCreateTeam = ref(false);
 const dialogAddUserToTeam = ref(false);
 const dialogViewDetailsTeam = ref(false);
 const loading = ref(false);
-const overlay = ref(false);
 const teams = ref([]);
 const search = ref('');
 const confirmDialog = ref(null);
 const selectedTeam = ref(null);
-const notification = ref({
-    visible: false,
-    text: '',
-    type: 'info'
-});
 
 // Computed
 const teamHeaders = computed(() => [
     { title: t('administration.teams.table.headers.teams'), value: 'name' },
     { title: t('administration.teams.table.headers.numberOfMembers'), value: 'numberOfUsers', sortable: false, align: 'center' },
     { title: t('administration.teams.table.headers.actions'), value: 'actions', sortable: false, align: 'center' }
+]);
+const actionsButtonForTable = computed(() => [
+    {
+        icon: "mdi-refresh",
+        tooltip: t('actionButtons.refresh'),
+        text: t('actionButtons.refresh'),
+        click: fetchTeams
+    },
+    {
+        icon: "mdi-plus",
+        tooltip: t('administration.teams.buttons.createNewTeam'),
+        text: t('administration.teams.buttons.createNewTeam'),
+        click: showCreateTeamDialog
+    }
 ]);
 
 //Mounted
@@ -111,18 +95,6 @@ function showAddUserToTeamDialog(item) {
 function showViewDetailsDialog(item) {
     selectedTeam.value = item;
     dialogViewDetailsTeam.value = true;
-}
-function teamCreated() {
-    showNotification(t('administration.teams.notifications.createTeamSuccess'), 'success');
-    fetchTeams();
-}
-function userAddedToTeam() {
-    showNotification(t('administration.teams.notifications.addUserSuccess'), 'success');
-    fetchTeams();
-}
-function userDeletedFromTeam() {
-    showNotification(t('administration.teams.notifications.deleteUserSuccess'), 'success');
-    fetchTeams();
 }
 function fetchTeams() {
     getTeams().then(response => {
@@ -147,7 +119,7 @@ function deleteTeam(team) {
     })
 }
 function deleteTeamConfirmed(team) {
-    overlay.value = true;
+    showOverlay();
 
     deleteTeamById(team.id)
     .then(() => {
@@ -159,15 +131,8 @@ function deleteTeamConfirmed(team) {
         showNotification(t('administration.teams.notifications.deleteTeamError'), 'error');
     })
     .finally(() => {
-        overlay.value = false;
+        hideOverlay();
     });
-}
-function showNotification(message, type) {
-    notification.value = {
-        visible: true,
-        text: message,
-        type: type
-    };
 }
 </script>
 

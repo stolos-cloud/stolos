@@ -12,6 +12,8 @@
                     class="ml-2"
                     :key="index"
                     :text="action.text"
+                    :tooltip="action.tooltip"
+                    :elevation="2"
                     :color="action.color || 'primary'"
                     :variant="action.variant || 'elevated'"
                     :icon="action.icon"

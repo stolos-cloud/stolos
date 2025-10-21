@@ -57,8 +57,12 @@
 import { ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { getTeamDetails, deleteUserFromTeamByUserId } from "@/services/teams.service";
+import { GlobalNotificationHandler } from "@/composables/GlobalNotificationHandler";
+import { GlobalOverlayHandler } from "@/composables/GlobalOverlayHandler";
 
 const { t } = useI18n();
+const { showNotification } = GlobalNotificationHandler();
+const { showOverlay, hideOverlay } = GlobalOverlayHandler();
 
 const props = defineProps({
     modelValue: {
@@ -77,7 +81,7 @@ const confirmDialog = ref(null);
 const copiedItem = ref(null);
 
 // Emits
-const emit = defineEmits(['update:modelValue', 'userDeletedFromTeam', 'loading']);
+const emit = defineEmits(['update:modelValue', 'userDeletedFromTeam']);
 
 // Watchers
 watch(() => props.modelValue, val => isOpen.value = val);
@@ -113,19 +117,20 @@ function showConfirmDelete(user) {
     })
 }
 function deleteUserFromTeam(user) {
-    emit('loading', true);
+    showOverlay();
 
     deleteUserFromTeamByUserId(props.team.id, user.id)
-    .then(() => {
-        emit('userDeletedFromTeam');
-    })
-    .catch((error) => {
-        console.error("Error deleting user from team:", error);
-    })
-    .finally(() => {
-        emit('loading', false);
-        closeDialog();
-    });
+        .then(() => {
+            showNotification(t('administration.teams.notifications.deleteUserSuccess'), 'success');
+            emit('userDeletedFromTeam');
+        })
+        .catch((error) => {
+            console.error("Error deleting user from team:", error);
+        })
+        .finally(() => {
+            closeDialog();
+            hideOverlay();
+        });
 }
 function copyToClipboard(text) {
     navigator.clipboard.writeText(text)
