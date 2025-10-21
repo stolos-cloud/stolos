@@ -10,6 +10,7 @@ import (
 	gcpservices "github.com/stolos-cloud/stolos/backend/internal/services/gcp"
 	gitopsservices "github.com/stolos-cloud/stolos/backend/internal/services/gitops"
 	talosservices "github.com/stolos-cloud/stolos/backend/internal/services/talos"
+	tfpkg "github.com/stolos-cloud/stolos/backend/pkg/terraform"
 	"gorm.io/gorm"
 )
 
@@ -49,6 +50,15 @@ func (pm *ProviderManager) SetInfrastructureService(infrastructureService *Infra
 
 // discovers and initializes all available cloud providers
 func (pm *ProviderManager) InitializeProviders(ctx context.Context) error {
+
+	if err := tfpkg.CheckTerraformInstalled(); err != nil {
+		log.Printf("Terraform not installed - cloud provider features will be unavailable: %v", err)
+
+		if err := pm.initializeGitOps(ctx); err != nil {
+			log.Printf("Warning: GitOps initialization failed: %v", err)
+		}
+		return nil
+	}
 
 	if err := pm.initializeGitOps(ctx); err != nil {
 		log.Printf("Warning: GitOps initialization failed: %v", err)
