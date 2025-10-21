@@ -16,8 +16,8 @@ type TalosInfo struct {
 }
 
 type Machines struct {
-	ControlPlanes map[string][]byte `json:"ControlPlanes"` // map IP : Hostname
-	Workers       map[string][]byte `json:"Workers"`       // map IP : Hostname
+	ControlPlanes map[string][]byte `json:"ControlPlanes"` // map IP : ConfigBundle b64
+	Workers       map[string][]byte `json:"Workers"`       // map IP : ConfigBundle b64
 }
 
 type ServerConfig struct {

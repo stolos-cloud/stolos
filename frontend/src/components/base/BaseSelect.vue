@@ -10,7 +10,8 @@
         item-value="value"
         variant="outlined"
         density="comfortable"
-        class="mt-4"
+        hide-details="auto"
+        class="my-4"
     />
 </template>
 

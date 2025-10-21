@@ -11,15 +11,17 @@ import (
 type NodeStatus string
 
 const (
-	StatusPending NodeStatus = "pending"
-	StatusActive  NodeStatus = "active"
-	StatusFailed  NodeStatus = "failed"
+	StatusPending      NodeStatus = "pending"
+	StatusProvisioning NodeStatus = "provisioning"
+	StatusActive       NodeStatus = "active"
+	StatusFailed       NodeStatus = "failed"
 )
 
 var ValidNodeStatuses = map[NodeStatus]bool{
-	StatusPending: true,
-	StatusActive:  true,
-	StatusFailed:  true,
+	StatusPending:      true,
+	StatusProvisioning: true,
+	StatusActive:       true,
+	StatusFailed:       true,
 }
 
 type Node struct {
@@ -70,6 +72,10 @@ type GCPConfig struct {
 	ServiceAccountKeyJSON string         `json:"-" gorm:"type:text"`
 	Region                string         `json:"region" gorm:"default:'us-central1'"`
 	IsConfigured          bool           `json:"is_configured" gorm:"default:false"`
+	InfrastructureStatus  string         `json:"infrastructure_status" gorm:"default:'unconfigured'"` // unconfigured, pending, initializing, ready, failed
+	TalosVersion          string         `json:"talos_version" gorm:"default:'v1.11.1'"`
+	TalosImageAMD64       string         `json:"talos_image_amd64"`
+	TalosImageARM64       string         `json:"talos_image_arm64"`
 	CreatedAt             time.Time      `json:"created_at"`
 	UpdatedAt             time.Time      `json:"updated_at"`
 	DeletedAt             gorm.DeletedAt `json:"-" gorm:"index"`
@@ -156,4 +162,58 @@ type NodeProvisionConfig struct {
 	NodeID uuid.UUID `json:"node_id" binding:"required" example:"550e8400-e29b-41d4-a716-446655440000"`
 	Role   string    `json:"role" binding:"required" example:"worker"`
 	Labels []string  `json:"labels" example:"zone=us-east,type=compute"`
+}
+
+type NodeProvisionResult struct {
+	NodeID    uuid.UUID `json:"node_id" binding:"required" example:"550e8400-e29b-41d4-a716-446655440000"`
+	Role      string    `json:"role" binding:"required" example:"worker"`
+	Labels    []string  `json:"labels" example:"zone=us-east,type=compute"`
+	Succeeded bool      `json:"succeeded" example:"true"`
+	Error     string    `json:"error" example:""`
+}
+
+// GCP Node Provision Request (with multiplier support)
+type GCPNodeProvisionRequest struct {
+	NamePrefix  string   `json:"name_prefix" binding:"required" example:"worker"`
+	Number      int      `json:"number" binding:"required,min=1,max=20" example:"5"`
+	Zone        string   `json:"zone" binding:"required" example:"us-central1-a"`
+	MachineType string   `json:"machine_type" binding:"required" example:"n1-standard-2"`
+	Role        string   `json:"role" binding:"required" example:"worker"`
+	Labels      []string `json:"labels" example:"zone=us-central1"`
+	DiskSizeGB  int      `json:"disk_size_gb" example:"100"`
+	DiskType    string   `json:"disk_type" example:"pd-standard"`
+}
+
+// Provision Request Status
+type ProvisionRequestStatus string
+
+const (
+	ProvisionStatusPending          ProvisionRequestStatus = "pending"
+	ProvisionStatusPlanning         ProvisionRequestStatus = "planning"
+	ProvisionStatusAwaitingApproval ProvisionRequestStatus = "awaiting_approval"
+	ProvisionStatusApplying         ProvisionRequestStatus = "applying"
+	ProvisionStatusCompleted        ProvisionRequestStatus = "completed"
+	ProvisionStatusFailed           ProvisionRequestStatus = "failed"
+	ProvisionStatusRejected         ProvisionRequestStatus = "rejected"
+)
+
+// Provision Request - tracks async node provisioning operations
+type ProvisionRequest struct {
+	ID         uuid.UUID              `json:"id" gorm:"type:uuid;primary_key"`
+	Provider   string                 `json:"provider" gorm:"not null"` // gcp, aws, azure
+	Status     ProvisionRequestStatus `json:"status" gorm:"type:varchar(50);not null;default:'pending'"`
+	Request    datatypes.JSON         `json:"request" gorm:"type:jsonb;not null"` // Original request payload
+	PlanOutput string                 `json:"plan_output" gorm:"type:text"`       // Terraform plan output
+	NodeIDs    datatypes.JSON         `json:"node_ids" gorm:"type:jsonb"`         // Array of created node IDs
+	Error      string                 `json:"error,omitempty" gorm:"type:text"`
+	CreatedAt  time.Time              `json:"created_at"`
+	UpdatedAt  time.Time              `json:"updated_at"`
+	DeletedAt  gorm.DeletedAt         `json:"-" gorm:"index"`
+}
+
+func (p *ProvisionRequest) BeforeCreate(tx *gorm.DB) error {
+	if p.ID == (uuid.UUID{}) {
+		p.ID = uuid.New()
+	}
+	return nil
 }

@@ -16,9 +16,11 @@ export function FormValidationRules() {
         v => /[!@#$%^&*(),.?":{}|<>-]/.test(v) || t('rules.validation.password.special'),
     ];
     const textfieldRules = [v => !!v || t('rules.validation.textfield.required')];
+    const autoCompleteRules = [v => !!v && v.length > 0 || t('rules.validation.autoComplete.required')];
     return {
         emailRules,
         passwordRules,
         textfieldRules,
+        autoCompleteRules
     };
 }

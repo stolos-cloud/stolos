@@ -52,6 +52,8 @@ func setupNodeRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
 		nodes.PUT("/config", h.NodeHandlers().UpdateActiveNodesConfig)
 		nodes.POST("/provision", h.NodeHandlers().ProvisionNodes)
 		nodes.POST("/samples", h.NodeHandlers().CreateSampleNodes) // TODO: remove in production
+		//nodes.GET("/talosconfig", h.NodeHandlers().GetTalosconfig)
+		//nodes.GET("/kubeconfig", h.NodeHandlers().GetKubeconfig)
 	}
 }
 
@@ -99,6 +101,9 @@ func setupGCPRoutes(public *gin.RouterGroup, protected *gin.RouterGroup, h *hand
 
 	public.GET("/gcp/resources", h.GCPHandlers().GetGCPResources)
 
+	// WebSocket endpoint - public but validates token from query param
+	public.GET("/gcp/nodes/provision/:request_id/stream", h.GCPHandlers().ProvisionGCPNodesStream)
+
 	// Protected routes
 	gcp := protected.Group("/gcp")
 	{
@@ -118,5 +123,7 @@ func setupGCPRoutes(public *gin.RouterGroup, protected *gin.RouterGroup, h *hand
 		gcp.POST("/instances", h.GCPHandlers().QueryGCPInstances)
 
 		gcp.POST("/resources/refresh", h.GCPHandlers().RefreshGCPResources)
+
+		gcp.POST("/nodes/provision", h.GCPHandlers().ProvisionGCPNodes)
 	}
 }

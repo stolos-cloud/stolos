@@ -1,13 +1,13 @@
 export class TextField {
-    constructor({ label, value, type, required, rules, disabled, minDate, maxDate, readonly }) {
-        if (type === 'date' && !maxDate) {
-            maxDate = '2099-12-31';
+    constructor({ label, value, type, required, rules, disabled, min, max, readonly }) {
+        if (type === 'date' && !max) {
+            max = '2099-12-31';
         }
         this.label = label;
         this.value = value;
         this.type = type;
-        this.minDate = minDate;
-        this.maxDate = maxDate;
+        this.min = min;
+        this.max = max;
         this.required = required;
         this.readonly = readonly;
         this.rules = rules;
@@ -34,12 +34,12 @@ export class TextField {
         return this.type;
     }
 
-    getMinDate() {
-        return this.minDate;
+    getMin() {
+        return this.min;
     }
 
-    getMaxDate() {
-        return this.maxDate;
+    getMax() {
+        return this.max;
     }
 
     isDisabled() {
@@ -70,12 +70,12 @@ export class TextField {
         this.type = type;
     }
 
-    setMinDate(minDate) {
-        this.minDate = minDate;
+    setMin(min) {
+        this.min = min;
     }
 
-    setMaxDate(maxDate) {
-        this.maxDate = maxDate;
+    setMax(max) {
+        this.max = max;
     }
 
     change(value) {

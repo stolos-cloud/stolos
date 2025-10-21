@@ -30,6 +30,7 @@ import (
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/marshal"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/oauth"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/platform"
+	"github.com/stolos-cloud/stolos-bootstrap/pkg/platform_talos"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/talos"
 	"golang.org/x/oauth2"
 	corev1 "k8s.io/api/core/v1"
@@ -573,7 +574,7 @@ func RunWaitForServersStep(model *tui.Model, step *tui.Step) tea.Cmd {
 			err := talos.EventSink(&bootstrapInfos.TalosInfo, func(ctx context.Context, event events.Event) error {
 				ip := strings.Split(event.Node, ":")[0]
 
-				var blacklist []string = []string{
+				var blacklist = []string{
 					"192.168.2.67",
 					"192.168.2.68",
 					"192.168.2.69",
@@ -825,7 +826,7 @@ func RunArgoStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 func RunPortalStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 	go func() {
 		m.Logger.Debug("RunPortalStepInBackground")
-		CreateProviderSecrets(m.Logger)
+		CreateBackendSecrets(m.Logger)
 		s.IsDone = true
 	}()
 	return nil
@@ -864,8 +865,8 @@ func DeployArgoCD(loggerRef *tui.UILogger) {
 	loggerRef.Successf("Successfully Installed release %s in namespace %s ; Notes:%s\n", release.Name, release.Namespace, release.Info.Notes)
 }
 
-func CreateProviderSecrets(loggerRef *tui.UILogger) {
-	// Apply provider secrets
+func CreateBackendSecrets(loggerRef *tui.UILogger) {
+	// Apply backend secrets including providers configuration.
 	k8sClient, err := k8s.NewClientFromKubeconfig(kubeconfig)
 	if err != nil {
 		loggerRef.Errorf("Failed to create Kubernetes client: %s", err)
@@ -886,9 +887,23 @@ func CreateProviderSecrets(loggerRef *tui.UILogger) {
 			}
 		}
 
+		// Create platform talos/k8s secret
+		loggerRef.Info("Creating platform talos/k8s secret...")
+		talosSecretData, err := platform_talos.NewBootstrapSecret(saveState.MachinesCache)
+		if err != nil {
+			loggerRef.Errorf("Failed to read data for platform talos configuration secret: %s", err)
+		} else {
+			err = talosSecretData.CreateOrUpdateSecret(ctx, k8sClient, "stolos-system", "stolos-talos-config")
+			if err != nil {
+				loggerRef.Errorf("Failed to create platform config secret: %s", err)
+			} else {
+				loggerRef.Success("Platform configuration secret created successfully")
+			}
+		}
+
 		// Create platform configuration secret
 		loggerRef.Info("Creating platform configuration secret...")
-		platformConfig := platform.NewPlatformConfig(bootstrapInfos.GitHubInfo.BaseDomain)
+		platformConfig := platform.NewPlatformConfig(bootstrapInfos.TalosInfo.ClusterName, bootstrapInfos.GitHubInfo.BaseDomain)
 		err = platformConfig.CreateOrUpdateSecret(ctx, k8sClient, "stolos-system", "stolos-system-config")
 		if err != nil {
 			loggerRef.Errorf("Failed to create platform config secret: %s", err)

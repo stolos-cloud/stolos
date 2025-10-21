@@ -6,7 +6,8 @@ import CloudProvisioningPage from '@/pages/operator/CloudProvisioningPage.vue';
 import CloudProviderPage from '@/pages/operator/CloudProviderPage.vue';
 import SecretsSecurityPage from '@/pages/operator/SecretsSecurityPage.vue';
 import TemplatesPage from '@/pages/operator/TemplatesPage.vue';
-import UserManagementPage from '@/pages/operator/UserManagementPage.vue';
+import UsersManagementPage from '@/pages/operator/UsersManagementPage.vue';
+import TeamsManagementPage from '@/pages/operator/TeamsManagementPage.vue';
 import Error403Page from '@/pages/errors/Error403Page.vue';
 import Error404Page from '@/pages/errors/Error404Page.vue';
 import i18n from '@/plugins/i18n';
@@ -116,10 +117,23 @@ const routes = [
         meta: { title: 'secretsSecurity.title', requiresAuth: true, roles: ['admin'] },
     },
     {
-        path: '/user-management',
-        name: 'user-management',
-        component: UserManagementPage,
-        meta: { title: 'userManagement.title', requiresAuth: true, roles: ['admin'] },
+        path: '/administration',
+        name: 'administration',
+        meta: { title: 'administration.title' },
+        children: [
+            {
+                path: 'users',
+                name: 'administration-users',
+                component: UsersManagementPage,
+                meta: { title: 'administration.users.title', requiresAuth: true, roles: ['admin'] },
+            },
+            {
+                path: 'teams',
+                name: 'administration-teams',
+                component: TeamsManagementPage,
+                meta: { title: 'administration.teams.title', requiresAuth: true, roles: ['admin'] },
+            },
+        ],
     },
     {
         path: '/policies-compliance',

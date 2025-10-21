@@ -9,7 +9,9 @@
         show-size
         prepend-icon=""
         prepend-inner-icon="mdi-paperclip"
-        class="mt-4"
+        hide-details="auto"
+        variant="outlined"
+        class="my-4"
     ></v-file-input>
 </template>
 
