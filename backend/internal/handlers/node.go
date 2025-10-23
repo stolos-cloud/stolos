@@ -20,11 +20,12 @@ type NodeHandlers struct {
 	wsManager    *wsservices.Manager
 }
 
-func NewNodeHandlers(db *gorm.DB, nodeService *node.NodeService, talosService *talos.TalosService) *NodeHandlers {
+func NewNodeHandlers(db *gorm.DB, nodeService *node.NodeService, talosService *talos.TalosService, wsManager *wsservices.Manager) *NodeHandlers {
 	return &NodeHandlers{
 		db:           db,
 		nodeService:  nodeService,
 		talosService: talosService,
+		wsManager:    wsManager,
 	}
 }
 
