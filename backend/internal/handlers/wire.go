@@ -28,8 +28,8 @@ func RegisterHandlers() []any {
 		gontainer.NewFactory(func(db *gorm.DB, ts *talosservice.TalosService) *ISOHandlers {
 			return NewISOHandlers(db, ts)
 		}),
-		gontainer.NewFactory(func(db *gorm.DB, ns *node.NodeService, ts *talosservice.TalosService) *NodeHandlers {
-			return NewNodeHandlers(db, ns, ts)
+		gontainer.NewFactory(func(db *gorm.DB, ns *node.NodeService, ts *talosservice.TalosService, wsManager *wsservices.Manager) *NodeHandlers {
+			return NewNodeHandlers(db, ns, ts, wsManager)
 		}),
 		gontainer.NewFactory(func(
 			db *gorm.DB,

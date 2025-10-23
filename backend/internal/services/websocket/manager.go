@@ -1,11 +1,8 @@
 package websocket
 
 import (
-	"context"
-	"fmt"
 	"log"
 	"sync"
-	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -37,7 +34,7 @@ type Client struct {
 	ID       string
 	conn     *websocket.Conn
 	send     chan Message
-	approval chan ApprovalResponse // Channel for approval responses
+	session  Session
 	manager  *Manager
 	mu       sync.Mutex
 	isClosed bool
@@ -45,10 +42,9 @@ type Client struct {
 
 // Manager manages all active WebSocket connections
 type Manager struct {
-	clients    map[string]*Client // requestID -> Client
+	clients    map[string]*Client
 	register   chan *Client
 	unregister chan *Client
-	broadcast  map[string]chan Message // requestID -> message channel
 	mu         sync.RWMutex
 }
 
@@ -58,7 +54,6 @@ func NewManager() *Manager {
 		clients:    make(map[string]*Client),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
-		broadcast:  make(map[string]chan Message),
 	}
 }
 
@@ -84,14 +79,14 @@ func (m *Manager) Run() {
 	}
 }
 
-// RegisterClient registers a new WebSocket client for a provision request
-func (m *Manager) RegisterClient(requestID string, conn *websocket.Conn) *Client {
+// RegisterClient registers a new WebSocket client with a session
+func (m *Manager) RegisterClient(requestID string, conn *websocket.Conn, session Session) *Client {
 	client := &Client{
-		ID:       requestID,
-		conn:     conn,
-		send:     make(chan Message, 256),
-		approval: make(chan ApprovalResponse, 1), // Buffered channel for approval
-		manager:  m,
+		ID:      requestID,
+		conn:    conn,
+		send:    make(chan Message, 256),
+		session: session,
+		manager: m,
 	}
 
 	m.register <- client
@@ -146,11 +141,14 @@ func (c *Client) writePump() {
 	}
 }
 
-// readPump reads messages from the WebSocket (for approval responses)
+// readPump reads messages from the WebSocket and routes to session
 func (c *Client) readPump() {
 	defer func() {
 		c.manager.unregister <- c
 		c.Close()
+		if c.session != nil {
+			c.session.Close()
+		}
 	}()
 
 	for {
@@ -163,33 +161,14 @@ func (c *Client) readPump() {
 			break
 		}
 
-		// Handle approval messages
-		if action, ok := msg["action"].(string); ok {
-			log.Printf("Received action from client %s: %s", c.ID, action)
-
-			var response ApprovalResponse
-			switch action {
-			case "approve":
-				response.Approved = true
-				response.Message = "Approved by user"
-			case "reject":
-				response.Approved = false
-				if reason, ok := msg["reason"].(string); ok {
-					response.Message = reason
-				} else {
-					response.Message = "Rejected by user"
-				}
-			default:
-				log.Printf("Unknown action: %s", action)
-				continue
+		// Route message to session
+		if c.session != nil {
+			msgType := ""
+			if t, ok := msg["type"].(string); ok {
+				msgType = t
 			}
-
-			// Send approval response (non-blocking)
-			select {
-			case c.approval <- response:
-				log.Printf("Approval response sent for %s: approved=%v", c.ID, response.Approved)
-			default:
-				log.Printf("Warning: approval channel full for %s", c.ID)
+			if err := c.session.HandleMessage(msgType, msg); err != nil {
+				log.Printf("Session %s message handling error: %v", c.ID, err)
 			}
 		}
 	}
@@ -252,28 +231,4 @@ func (c *Client) SendError(err string) error {
 		Type:    MessageTypeError,
 		Payload: map[string]string{"error": err},
 	})
-}
-
-// WaitForApproval waits for user approval with timeout
-func (c *Client) WaitForApproval(timeout time.Duration) (bool, error) {
-	select {
-	case response := <-c.approval:
-		return response.Approved, nil
-	case <-time.After(timeout):
-		return false, fmt.Errorf("approval timeout after %v", timeout)
-	}
-}
-
-func (c *Client) WaitForApprovalCtx(ctx context.Context, timeout time.Duration) (bool, error) {
-	timer := time.NewTimer(timeout)
-	defer timer.Stop()
-
-	select {
-	case response := <-c.approval:
-		return response.Approved, nil
-	case <-timer.C:
-		return false, fmt.Errorf("approval timeout after %v", timeout)
-	case <-ctx.Done():
-		return false, ctx.Err()
-	}
 }

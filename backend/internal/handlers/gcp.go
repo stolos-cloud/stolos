@@ -471,9 +471,6 @@ func (h *GCPHandlers) ProvisionGCPNodes(c *gin.Context) {
 		"request_id": requestID.String(),
 		"message":    "Provision request created. Connect to WebSocket to monitor progress.",
 	})
-
-	// TODO: Start provision process in background
-	// For now, just return the request_id
 }
 
 // ProvisionGCPNodesStream godoc
@@ -507,7 +504,10 @@ func (h *GCPHandlers) ProvisionGCPNodesStream(c *gin.Context) {
 	}
 
 	// Register WebSocket client
-	client := h.wsManager.RegisterClient(requestID, conn)
+	client := h.wsManager.RegisterClient(requestID, conn, nil)
+
+	// Create approval session for GCP provisioning workflow
+	session := wsservices.NewApprovalSession(requestID, client)
 
 	// Start provisioning in a goroutine
 	go func() {
@@ -517,8 +517,8 @@ func (h *GCPHandlers) ProvisionGCPNodesStream(c *gin.Context) {
 		// Parse the provision request
 		var req models.GCPNodeProvisionRequest
 		if err := json.Unmarshal(provisionRequest.Request, &req); err != nil {
-			client.SendError(fmt.Sprintf("Failed to parse provision request: %v", err))
-			client.SendStatus("failed")
+			session.SendErrorString(fmt.Sprintf("Failed to parse provision request: %v", err))
+			session.SendStatus("failed")
 			return
 		}
 
@@ -526,9 +526,9 @@ func (h *GCPHandlers) ProvisionGCPNodesStream(c *gin.Context) {
 		// We use context.Background() instead of c.Request.Context() because the HTTP context
 		// is canceled after the WebSocket upgrade completes
 		requestUUID, _ := uuid.Parse(requestID)
-		if err := h.provisioningService.ProvisionNodes(context.Background(), requestUUID, req, client); err != nil {
-			client.SendError(fmt.Sprintf("Provisioning failed: %v", err))
-			client.SendStatus("failed")
+		if err := h.provisioningService.ProvisionNodes(context.Background(), requestUUID, req, session); err != nil {
+			session.SendErrorString(fmt.Sprintf("Provisioning failed: %v", err))
+			session.SendStatus("failed")
 
 			// Update provision request status
 			h.db.Model(&models.ProvisionRequest{}).

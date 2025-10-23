@@ -42,24 +42,24 @@ func (s *ProvisioningService) ProvisionNodes(
 	ctx context.Context,
 	requestID uuid.UUID,
 	req models.GCPNodeProvisionRequest,
-	wsClient *wsservices.Client,
+	session *wsservices.ApprovalSession,
 ) error {
 	// Update status to planning
 	if err := s.updateProvisionStatus(requestID, models.ProvisionStatusPlanning); err != nil {
 		return err
 	}
 
-	wsClient.SendStatus("planning")
-	wsClient.SendLog("Starting node provisioning workflow...")
+	session.SendStatus("planning")
+	session.SendLog("Starting node provisioning workflow...")
 
 	// Get GCP configuration
-	wsClient.SendLog("Fetching GCP configuration...")
+	session.SendLog("Fetching GCP configuration...")
 	gcpConfig, err := s.gcpService.GetCurrentConfig()
 	if err != nil {
 		return fmt.Errorf("failed to get GCP config: %w", err)
 	}
 
-	wsClient.SendLog("Fetching Talos cluster information...")
+	session.SendLog("Fetching Talos cluster information...")
 	var cluster models.Cluster
 	if err := s.db.First(&cluster).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -68,22 +68,22 @@ func (s *ProvisioningService) ProvisionNodes(
 		return fmt.Errorf("failed to fetch cluster: %w", err)
 	}
 	clusterID := cluster.ID
-	wsClient.SendLog(fmt.Sprintf("Using cluster: %s (ID: %s)", cluster.Name, cluster.ID))
+	session.SendLog(fmt.Sprintf("Using cluster: %s (ID: %s)", cluster.Name, cluster.ID))
 
 	// Generate node names and configs
-	wsClient.SendLog(fmt.Sprintf("Generating configurations for %d node(s)...", req.Number))
+	session.SendLog(fmt.Sprintf("Generating configurations for %d node(s)...", req.Number))
 	nodes := make([]NodeConfig, 0, req.Number)
 
 	for i := 0; i < req.Number; i++ {
 		nodeName := fmt.Sprintf("%s-%d", req.NamePrefix, i+1)
 
-		wsClient.SendLog(fmt.Sprintf("Generating Talos config for node: %s", nodeName))
+		session.SendLog(fmt.Sprintf("Generating Talos config for node: %s", nodeName))
 
 		// TODO: Generate Talos machine config
 		// This needs to be implemented using the factory and cluster config
 		// The node type should be determined from req.Role:
 		// "control-plane" -> "controlplane", "worker" -> "worker"
-		wsClient.SendLog(fmt.Sprintf("TODO: Generate Talos config for node: %s (placeholder)", nodeName))
+		session.SendLog(fmt.Sprintf("TODO: Generate Talos config for node: %s (placeholder)", nodeName))
 		machineConfig := "" // Placeholder
 
 		// Get Talos image information
@@ -107,18 +107,18 @@ func (s *ProvisioningService) ProvisionNodes(
 		})
 	}
 
-	wsClient.SendLog(fmt.Sprintf("Generated configurations for %d node(s)", len(nodes)))
+	session.SendLog(fmt.Sprintf("Generated configurations for %d node(s)", len(nodes)))
 
 	// Create terraform files in gitops repo
-	wsClient.SendLog("Creating Terraform configuration files...")
+	session.SendLog("Creating Terraform configuration files...")
 	if err := s.createTerraformFiles(gcpConfig, nodes); err != nil {
 		return fmt.Errorf("failed to create terraform files: %w", err)
 	}
 
-	wsClient.SendLog("Terraform files created successfully")
+	session.SendLog("Terraform files created successfully")
 
-	wsClient.SendLog("Running terraform plan...")
-	wsClient.SendStatus("planning")
+	session.SendLog("Running terraform plan...")
+	session.SendStatus("planning")
 
 	// TODO: Implement actual terraform plan
 	// should call: s.terraformService.RunTerraformPlan(ctx, "gcp", outputCallback)
@@ -126,8 +126,8 @@ func (s *ProvisioningService) ProvisionNodes(
 		fmt.Sprintf("Plan: %d to add, 0 to change, 0 to destroy\n", len(nodes)) +
 		"\nTODO: Implement actual terraform plan execution"
 
-	wsClient.SendLog("Terraform plan placeholder executed")
-	wsClient.SendLog(planOutput)
+	session.SendLog("Terraform plan placeholder executed")
+	session.SendLog(planOutput)
 
 	// Store plan output
 	if err := s.updatePlanOutput(requestID, planOutput); err != nil {
@@ -135,48 +135,48 @@ func (s *ProvisioningService) ProvisionNodes(
 	}
 
 	// Send plan to client and request approval
-	wsClient.SendLog("Terraform plan completed successfully")
-	wsClient.SendPlan(planOutput)
+	session.SendLog("Terraform plan completed successfully")
+	session.SendPlan(planOutput)
 
 	// Update status to awaiting approval
 	if err := s.updateProvisionStatus(requestID, models.ProvisionStatusAwaitingApproval); err != nil {
 		return err
 	}
 
-	wsClient.SendStatus("awaiting_approval")
-	wsClient.SendApprovalRequest(fmt.Sprintf("Ready to create %d node(s). Please review the plan and approve to continue.", req.Number))
+	session.SendStatus("awaiting_approval")
+	session.SendApprovalRequest(fmt.Sprintf("Ready to create %d node(s). Please review the plan and approve to continue.", req.Number))
 
 	// Wait for approval (with timeout)
-	wsClient.SendLog("Waiting for user approval...")
-	approved, err := wsClient.WaitForApprovalCtx(ctx, 30*time.Minute)
+	session.SendLog("Waiting for user approval...")
+	approved, err := session.WaitForApprovalCtx(ctx, 30*time.Minute)
 	if err != nil {
 		return fmt.Errorf("approval failed: %w", err)
 	}
 
 	if !approved {
-		wsClient.SendLog("Provisioning rejected by user")
+		session.SendLog("Provisioning rejected by user")
 		if err := s.updateProvisionStatus(requestID, models.ProvisionStatusFailed); err != nil {
 			log.Printf("Warning: failed to update status: %v", err)
 		}
 		return fmt.Errorf("provisioning rejected by user")
 	}
 
-	wsClient.SendLog("Provisioning approved by user")
+	session.SendLog("Provisioning approved by user")
 
 	// Commit terraform files to git repo after approval
-	wsClient.SendLog("Committing terraform files to GitOps repository...")
+	session.SendLog("Committing terraform files to GitOps repository...")
 	if err := s.commitTerraformFiles(nodes); err != nil {
 		return fmt.Errorf("failed to commit terraform files: %w", err)
 	}
-	wsClient.SendLog("Terraform files committed successfully")
+	session.SendLog("Terraform files committed successfully")
 
 	// Update status to applying
 	if err := s.updateProvisionStatus(requestID, models.ProvisionStatusApplying); err != nil {
 		return err
 	}
 
-	wsClient.SendStatus("applying")
-	wsClient.SendLog("Running terraform apply...")
+	session.SendStatus("applying")
+	session.SendLog("Running terraform apply...")
 
 	// TODO: Implement actual terraform apply
 	// This should call: s.terraformService.RunTerraformApply(ctx, "gcp", outputCallback)
@@ -184,12 +184,12 @@ func (s *ProvisioningService) ProvisionNodes(
 		fmt.Sprintf("Apply complete! Resources: %d added, 0 changed, 0 destroyed\n", len(nodes)) +
 		"\nTODO: Implement actual terraform apply execution"
 
-	wsClient.SendLog("Terraform apply placeholder executed")
-	wsClient.SendLog(applyOutput)
-	wsClient.SendLog("Terraform apply completed successfully")
+	session.SendLog("Terraform apply placeholder executed")
+	session.SendLog(applyOutput)
+	session.SendLog("Terraform apply completed successfully")
 
 	// Parse terraform output to get instance details
-	wsClient.SendLog("Fetching created instance information...")
+	session.SendLog("Fetching created instance information...")
 	instanceDetails, err := s.getTerraformOutputs("gcp", nodes)
 	if err != nil {
 		log.Printf("Warning: failed to get terraform outputs: %v", err)
@@ -197,7 +197,7 @@ func (s *ProvisioningService) ProvisionNodes(
 	}
 
 	// Create node records in database
-	wsClient.SendLog("Creating node records in database...")
+	session.SendLog("Creating node records in database...")
 	nodeIDs := make([]uuid.UUID, 0, len(nodes))
 
 	for i, nodeConfig := range nodes {
@@ -223,7 +223,7 @@ func (s *ProvisioningService) ProvisionNodes(
 		}
 
 		nodeIDs = append(nodeIDs, node.ID)
-		wsClient.SendLog(fmt.Sprintf("Created node record: %s (ID: %s)", node.Name, node.ID))
+		session.SendLog(fmt.Sprintf("Created node record: %s (ID: %s)", node.Name, node.ID))
 	}
 
 	// Update provision request with node IDs
@@ -237,11 +237,11 @@ func (s *ProvisioningService) ProvisionNodes(
 		log.Printf("Warning: failed to update provision request: %v", err)
 	}
 
-	wsClient.SendStatus("completed")
-	wsClient.SendLog(fmt.Sprintf("Successfully provisioned %d node(s)", len(nodeIDs)))
+	session.SendStatus("completed")
+	session.SendLog(fmt.Sprintf("Successfully provisioned %d node(s)", len(nodeIDs)))
 
 	// Send completion message with node details
-	wsClient.SendComplete(map[string]interface{}{
+	session.SendComplete(map[string]interface{}{
 		"node_ids":      nodeIDs,
 		"nodes":         len(nodeIDs),
 		"plan_output":   planOutput,
