@@ -4,19 +4,21 @@
     <div class="logs-container" :class="{ expanded: logsExpanded }">
       <v-expansion-panels
           v-model="logsExpanded"
-          flat
           class="logs-expander"
       >
         <v-expansion-panel>
-          <v-expansion-panel-title>
+          
+          <v-expansion-panel-title expand-icon="mdi-menu-down" collapse-icon="mdi-menu-">
             <div class="d-flex align-center justify-space-between w-100">
-              <span class="text-h6">Logs Console</span>
-              <v-icon>{{ logsExpanded ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
+              <span class="text-h6">>_ Logs Console ({{ logsExpanded ? 'hide' : 'show' }})</span>
             </div>
           </v-expansion-panel-title>
+          
           <v-expansion-panel-text>
             <LogsConsole :logs="logs" :initialAutoScroll="true" />
           </v-expansion-panel-text>
+
+
         </v-expansion-panel>
       </v-expansion-panels>
     </div>
@@ -25,7 +27,7 @@
     <div style="height: 64px;"></div>
 
     <!-- Vertical Stepper -->
-    <v-stepper-vertical v-model="activeStep" vertical class="px-4">
+    <v-stepper-vertical non-linear v-model="activeStep" vertical class="px-4">
       <template v-for="(s, i) in steps" :key="s.name">
         <v-stepper-vertical-item
             :title="s.title"
@@ -33,6 +35,14 @@
             :complete="s.isDone"
             class="mb-4"
         >
+
+          <!-- Disable builtin next/prev btns -->
+          <template v-slot:next="">
+          </template>
+          <template v-slot:prev="">
+          </template>
+
+
           <v-card outlined class="pa-4">
             <component :is="stepComponent(s)" :step="s" />
             <v-divider class="my-4" />
