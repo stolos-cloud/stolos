@@ -171,6 +171,41 @@ const docTemplate = `{
                 }
             }
         },
+        "/cluster/info": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get general cluster information including name and GitOps repository",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "cluster"
+                ],
+                "summary": "Get cluster info",
+                "responses": {
+                    "200": {
+                        "description": "cluster_name, gitops_repo_owner, gitops_repo_name, gitops_branch",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/gcp/bucket": {
             "post": {
                 "security": [
@@ -879,7 +914,7 @@ const docTemplate = `{
                                 "nodes": {
                                     "type": "array",
                                     "items": {
-                                        "$ref": "#/definitions/services.NodeConfigUpdate"
+                                        "$ref": "#/definitions/node.NodeConfigUpdate"
                                     }
                                 }
                             }
@@ -948,8 +983,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Returns provisioned count and nodes array",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/models.NodeProvisionRequest"
                         }
                     },
                     "400": {
@@ -2285,11 +2319,13 @@ const docTemplate = `{
             "type": "string",
             "enum": [
                 "pending",
+                "provisioning",
                 "active",
                 "failed"
             ],
             "x-enum-varnames": [
                 "StatusPending",
+                "StatusProvisioning",
                 "StatusActive",
                 "StatusFailed"
             ]
@@ -2315,7 +2351,7 @@ const docTemplate = `{
                 "RoleViewer"
             ]
         },
-        "services.NodeConfigUpdate": {
+        "node.NodeConfigUpdate": {
             "type": "object",
             "properties": {
                 "id": {

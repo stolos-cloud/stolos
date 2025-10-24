@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"time"
 
 	machineryClient "github.com/siderolabs/talos/pkg/machinery/client"
@@ -17,6 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
+	"os"
 )
 
 type TalosSecretData struct {
@@ -38,7 +38,7 @@ func NewBootstrapSecret(machines talos.Machines) (*TalosSecretData, error) {
 	files := make(map[string][]byte)
 
 	for _, path := range secretFilePaths {
-		data, err := ioutil.ReadFile(path)
+		data, err := os.ReadFile(path)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read %s: %w", path, err)
 		}

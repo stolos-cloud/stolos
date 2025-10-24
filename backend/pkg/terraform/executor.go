@@ -9,6 +9,15 @@ import (
 	"github.com/hashicorp/terraform-exec/tfexec"
 )
 
+// CheckTerraformInstalled verifies that Terraform is installed and available
+func CheckTerraformInstalled() error {
+	_, err := exec.LookPath("terraform")
+	if err != nil {
+		return fmt.Errorf("terraform binary not found in PATH - please install Terraform to use cloud provider features: %w", err)
+	}
+	return nil
+}
+
 type Executor struct {
 	workDir string
 	tf      *tfexec.Terraform

@@ -5,11 +5,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/stolos-cloud/stolos/backend/internal/config"
+	"github.com/gorilla/websocket"
 	"github.com/stolos-cloud/stolos/backend/internal/models"
-	"github.com/stolos-cloud/stolos/backend/internal/services"
 	"github.com/stolos-cloud/stolos/backend/internal/services/node"
 	talos "github.com/stolos-cloud/stolos/backend/internal/services/talos"
+	wsservices "github.com/stolos-cloud/stolos/backend/internal/services/websocket"
 	"gorm.io/gorm"
 )
 
@@ -17,13 +17,15 @@ type NodeHandlers struct {
 	db           *gorm.DB
 	nodeService  *node.NodeService
 	talosService *talos.TalosService
+	wsManager    *wsservices.Manager
 }
 
-func NewNodeHandlers(db *gorm.DB, cfg *config.Config, providerManager *services.ProviderManager, talosService *talos.TalosService) *NodeHandlers {
+func NewNodeHandlers(db *gorm.DB, nodeService *node.NodeService, talosService *talos.TalosService, wsManager *wsservices.Manager) *NodeHandlers {
 	return &NodeHandlers{
 		db:           db,
-		nodeService:  node.NewNodeService(db, cfg, providerManager, talosService),
-		talosService: talos.NewTalosService(db, cfg),
+		nodeService:  nodeService,
+		talosService: talosService,
+		wsManager:    wsManager,
 	}
 }
 
@@ -107,7 +109,7 @@ func (h *NodeHandlers) UpdateActiveNodeConfig(c *gin.Context) {
 // @Tags nodes
 // @Accept json
 // @Produce json
-// @Param request body object{nodes=[]services.NodeConfigUpdate} true "Array of node label updates"
+// @Param request body object{nodes=[]node.NodeConfigUpdate} true "Array of node label updates"
 // @Success 200 {object} map[string]interface{} "Returns updated count and nodes array"
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
@@ -189,6 +191,38 @@ func (h *NodeHandlers) ProvisionNodes(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, nodes)
+}
+
+// ProvisionNodesStream todo : Example with refactored websocket
+func (h *NodeHandlers) ProvisionNodesStream(c *gin.Context) {
+
+	// example to upgrade connection and create base session
+	requestID := c.Query("request_id")
+	if requestID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "request_id query parameter is required"})
+		return
+	}
+
+	upgrader := websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+		CheckOrigin: func(r *http.Request) bool {
+			return true
+		},
+	}
+
+	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to upgrade to websocket"})
+		return
+	}
+
+	client := h.wsManager.RegisterClient(requestID, conn, nil)
+
+	// Create base session for on-prem provisioning workflow
+	session := wsservices.NewBaseSession(requestID, client)
+
+	session.SendStatus("provisioning")
 }
 
 // GetTalosconfig godoc

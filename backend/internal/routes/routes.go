@@ -27,11 +27,19 @@ func SetupRoutes(r *gin.Engine, h *handlers.Handlers) {
 		protected := api.Group("")
 		protected.Use(middleware.JWTAuthMiddleware(h.JWTService(), h.DB()))
 		{
+			setupClusterRoutes(protected, h)
 			setupISORoutes(protected, h)
 			setupGCPRoutes(api, protected, h)
 			setupTeamRoutes(protected, h)
 			setupUserRoutes(protected, h)
 		}
+	}
+}
+
+func setupClusterRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
+	cluster := api.Group("/cluster")
+	{
+		cluster.GET("/info", h.GetClusterInfo)
 	}
 }
 

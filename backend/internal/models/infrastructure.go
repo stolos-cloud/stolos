@@ -52,6 +52,20 @@ type Cluster struct {
 	ID        uuid.UUID      `json:"id" gorm:"type:uuid;primary_key"`
 	Name      string         `json:"name" gorm:"not null;uniqueIndex"`
 	Nodes     []Node         `json:"nodes" gorm:"foreignKey:ClusterID"`
+
+	// Talos configuration fields
+	TalosVersion string `json:"talos_version,omitempty"`
+	KubeVersion  string `json:"kube_version,omitempty"`
+
+	TalosConfig []byte `json:"-" gorm:"type:bytea"`
+
+	// Machine config templates for provisioning new nodes
+	ControlPlaneConfig []byte `json:"-" gorm:"type:bytea"` // controlplane.yaml
+	WorkerConfig       []byte `json:"-" gorm:"type:bytea"` // worker.yaml
+
+	// Full config bundle backup
+	ConfigBundle []byte `json:"-" gorm:"type:bytea"`
+
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
