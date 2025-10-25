@@ -989,11 +989,6 @@ func DeployArgoCD(loggerRef *tui.UILogger) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	//valuesPath := filepath.Join(tmpDir, "values.yaml")
-	//if err := os.WriteFile(valuesPath, manifests.ArgoValuesYaml, 0644); err != nil {
-	//	panic(err)
-	//}
-
 	release, err := helm.HelmInstallArgo(helmClient, "argocd", "argocd", []string{})
 	if err != nil {
 		loggerRef.Errorf("Failed to deploy ArgoCD: %s", err)
