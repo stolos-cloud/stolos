@@ -16,6 +16,7 @@ import (
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/logger"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/oauth"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/oauth/providers"
+	"github.com/stolos-cloud/stolos/stolos-yoke/flight/pkg/types"
 
 	"github.com/goccy/go-yaml"
 	"github.com/google/go-github/v74/github"
@@ -172,24 +173,17 @@ func (client *OauthClient) InitRepo(info *GitHubInfo, isPrivate bool) (*github.R
 	time.Sleep(5 * time.Second) // Wait for github to init repo, as createfile can happen before it is fully initialized
 
 	// Create initial config file
-	if err := client.createInitialConfig(info); err != nil {
-		return nil, fmt.Errorf("failed to create initial config: %w", err)
-	}
+	//if err := client.createInitialConfig(info); err != nil {
+	//	return nil, fmt.Errorf("failed to create initial config: %w", err)
+	//}
 
 	return repo, nil
 }
 
 // createInitialConfig creates the initial common.yml configuration file
-func (c *OauthClient) createInitialConfig(info *GitHubInfo) error {
-	commonConfig := struct {
-		BaseDomain string `yaml:"base_domain"`
-		LbIP       string `yaml:"lb_ip"`
-	}{
-		BaseDomain: info.BaseDomain,
-		LbIP:       info.LoadBalancerIP,
-	}
+func (c *OauthClient) CreateInitialConfig(config *types.Stolos, info *GitHubInfo) error {
 
-	commonConfigYaml, err := yaml.Marshal(commonConfig)
+	yamlConfig, err := yaml.Marshal(config)
 	if err != nil {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
@@ -206,10 +200,10 @@ func (c *OauthClient) createInitialConfig(info *GitHubInfo) error {
 		context.Background(),
 		info.RepoOwner,
 		info.RepoName,
-		"common.yml",
+		"stolos/stolos-platform.yaml",
 		&github.RepositoryContentFileOptions{
 			Message:   github.Ptr("Initial config file"),
-			Content:   commonConfigYaml,
+			Content:   yamlConfig,
 			Branch:    github.Ptr("main"),
 			Committer: &author,
 		},
@@ -268,11 +262,11 @@ func NewGithubAppConfig(repoOwner, repoName, appID, appPEM, installationID strin
 // ToSecret serializes GitHub config to Kubernetes secret
 func (c *Config) ToSecret(namespace, secretName string) *corev1.Secret {
 	data := map[string][]byte{
-		"GITHUB_REPO_OWNER":            []byte(c.RepoOwner),
-		"GITHUB_REPO_NAME":             []byte(c.RepoName),
-		"GITHUB_APP_ID":                []byte(c.AppID),
-		"GITHUB_APP_PRIVATE_KEY":       []byte(c.AppPEM),
-		"GITHUB_APP_INSTALLATION_ID":   []byte(c.InstallationID),
+		"GITHUB_REPO_OWNER":          []byte(c.RepoOwner),
+		"GITHUB_REPO_NAME":           []byte(c.RepoName),
+		"GITHUB_APP_ID":              []byte(c.AppID),
+		"GITHUB_APP_PRIVATE_KEY":     []byte(c.AppPEM),
+		"GITHUB_APP_INSTALLATION_ID": []byte(c.InstallationID),
 	}
 
 	return &corev1.Secret{
@@ -300,10 +294,10 @@ func FromSecret(secret *corev1.Secret) (*Config, error) {
 	}
 
 	return &Config{
-		RepoOwner:   string(secret.Data["GITHUB_REPO_OWNER"]),
-		RepoName:    string(secret.Data["GITHUB_REPO_NAME"]),
-		AppID:       string(secret.Data["GITHUB_APP_ID"]),
-		AppPEM:      string(secret.Data["GITHUB_APP_PRIVATE_KEY"]),
+		RepoOwner:      string(secret.Data["GITHUB_REPO_OWNER"]),
+		RepoName:       string(secret.Data["GITHUB_REPO_NAME"]),
+		AppID:          string(secret.Data["GITHUB_APP_ID"]),
+		AppPEM:         string(secret.Data["GITHUB_APP_PRIVATE_KEY"]),
 		InstallationID: string(secret.Data["GITHUB_APP_INSTALLATION_ID"]),
 	}, nil
 }
