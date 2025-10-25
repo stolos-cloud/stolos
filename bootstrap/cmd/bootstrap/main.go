@@ -804,11 +804,15 @@ func RunPortalStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 		m.Logger.Debug("RunPortalStepInBackground")
 		CreateProviderSecrets(m.Logger)
 		cmdr, err := yoke.FromKubeConfig("kubeconfig")
+		if err != nil {
+			m.Logger.Errorf("Failed to load kubeconfig: %v", err)
+		}
 		err = cmdr.Takeoff(context.Background(), yoke.TakeoffParams{
 			Namespace:       "atc",
 			CreateNamespace: true,
 			Flight: yoke.FlightParams{
 				Path: "oci://ghcr.io/yokecd/atc-installer:0.15.0",
+				Args: []string{"--skip-version-check", "true"},
 			},
 			Release: "atc",
 		})
@@ -816,6 +820,13 @@ func RunPortalStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 		if err != nil {
 			m.Logger.Errorf("Failed to deploy yoke: %v", err)
 		}
+
+		err = cmdr.Takeoff(context.Background(), yoke.TakeoffParams{
+			Flight: yoke.FlightParams{
+				Path: "oci://ghcr.io/stolos-cloud/stolos/airway:v1-alpha.23",
+			},
+			Release: "stolos-airway",
+		})
 
 		s.IsDone = true
 	}()
