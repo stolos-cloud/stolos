@@ -284,7 +284,7 @@ func (s *TalosService) CreateExistingNodeFromIP(ctx context.Context, nodeIP stri
 	// version, err := GetTypedTalosResource[*runtime.Version](ctx, cli, runtime.NamespaceName, runtime.VersionType, "runtime")
 	// node.Architecture = version.TypedSpec().Version
 
-	node.MACAddress = GetMachineBestExternalMacCandidate(ctx, cli)
+	node.MACAddress = GetMachineBestExternalNetworkInterface(ctx, cli).Mac
 
 	return &node, nil
 }
@@ -405,7 +405,7 @@ func (s *TalosService) MigrateTalosConfigFromFiles() error {
 		return fmt.Errorf("failed to read worker.yaml: %w", err)
 	}
 
-	// default .. todo 
+	// default .. todo
 	talosVersion := "v1.11.1"
 	kubeVersion := "v1.32.1"
 

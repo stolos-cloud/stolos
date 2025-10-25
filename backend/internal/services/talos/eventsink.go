@@ -64,7 +64,7 @@ func (s *TalosService) StartEventSink() {
 					return errors.Wrapf(err, "Error connecting to node %s, skipping", ip)
 				}
 
-				mac := GetMachineBestExternalMacCandidate(ctx, cli)
+				mac := GetMachineBestExternalNetworkInterface(ctx, cli).Mac
 
 				log.Printf("Found machine at %s with stage %s", ip, status.Stage.String())
 

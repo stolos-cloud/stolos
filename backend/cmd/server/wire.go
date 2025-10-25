@@ -9,6 +9,7 @@ import (
 	discoveryservice "github.com/stolos-cloud/stolos/backend/internal/services/cluster"
 	gcpservices "github.com/stolos-cloud/stolos/backend/internal/services/gcp"
 	"github.com/stolos-cloud/stolos/backend/internal/services/gitops"
+	"github.com/stolos-cloud/stolos/backend/internal/services/job"
 	"github.com/stolos-cloud/stolos/backend/internal/services/node"
 	talosservice "github.com/stolos-cloud/stolos/backend/internal/services/talos"
 	wsservices "github.com/stolos-cloud/stolos/backend/internal/services/websocket"
@@ -89,6 +90,10 @@ func RegisterInfrastructureServices() []any {
 			gitopsService *gitops.GitOpsService,
 		) *services.ProviderManager {
 			return services.NewProviderManager(db, cfg, gcpService, gcpResourcesService, talosService, gitopsService)
+		}),
+		gontainer.NewFactory(func(resolver *gontainer.Resolver) *job.JobService {
+			s, _ := job.NewJobService(resolver)
+			return s
 		}),
 	}
 }

@@ -115,7 +115,7 @@ const canProvision = computed(() => {
     if (!nodes.value.length) return false
 
     return nodes.value.every(node =>
-        node.role && node.labels && node.labels.length > 0
+        node.role
     )
 });
 const actionsButtonForTable = computed(() => [
