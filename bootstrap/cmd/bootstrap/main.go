@@ -53,7 +53,7 @@ var gcpToken *oauth2.Token
 var gcpEnabled = gcp.GCPClientId != "" && gcp.GCPClientSecret != ""
 
 // var gitHubEnabled = github.GithubOauthClientId != "" && github.GithubOauthClientSecret != "" // legacy
-var gitHubEnabled = false
+var gitHubEnabled = true
 var gitHubUser *github.User
 var gitHubAppManifestParams *github.AppManifestParams
 var gitHubAppManifest *github.AppManifest
@@ -963,7 +963,6 @@ func RunPortalStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 		if err != nil {
 			m.Logger.Errorf("Failed to create stolos platforms: %v", err)
 		}
-
 
 		s.IsDone = true
 	}()
