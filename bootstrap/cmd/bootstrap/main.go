@@ -28,10 +28,14 @@ import (
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/oauth"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/platform"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/talos"
+	"github.com/stolos-cloud/stolos/stolos-yoke/flight/pkg/types"
 	"github.com/yokecd/yoke/pkg/yoke"
 	"golang.org/x/oauth2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 var bootstrapInfos = &BootstrapInfo{}
@@ -803,13 +807,23 @@ func RunPortalStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 	go func() {
 		m.Logger.Debug("RunPortalStepInBackground")
 		CreateProviderSecrets(m.Logger)
+
+		k8sClient, err := k8s.NewClientFromKubeconfig(kubeconfig)
+		k8sClient.CoreV1().Namespaces().Create(context.Background(), &corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "atc",
+				Labels: map[string]string{
+					"pod-security.kubernetes.io/enforce": "privileged",
+				},
+			},
+		}, metav1.CreateOptions{})
+
 		cmdr, err := yoke.FromKubeConfig("kubeconfig")
 		if err != nil {
 			m.Logger.Errorf("Failed to load kubeconfig: %v", err)
 		}
 		err = cmdr.Takeoff(context.Background(), yoke.TakeoffParams{
-			Namespace:       "atc",
-			CreateNamespace: true,
+			Namespace: "atc",
 			Flight: yoke.FlightParams{
 				Path: "oci://ghcr.io/yokecd/atc-installer:0.15.0",
 				Args: []string{"--skip-version-check", "true"},
@@ -821,12 +835,120 @@ func RunPortalStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 			m.Logger.Errorf("Failed to deploy yoke: %v", err)
 		}
 
+		time.Sleep(30 * time.Second)
+
 		err = cmdr.Takeoff(context.Background(), yoke.TakeoffParams{
 			Flight: yoke.FlightParams{
 				Path: "oci://ghcr.io/stolos-cloud/stolos/airway:v1-alpha.23",
+				Args: []string{"--skip-version-check", "true"},
 			},
 			Release: "stolos-airway",
+			Wait:    120 * time.Second,
 		})
+
+		if err != nil {
+			m.Logger.Errorf("Failed to deploy airway: %v", err)
+		}
+
+		stolosCR := types.Stolos{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "StolosPlatform",
+				APIVersion: "stolos.cloud/v1alpha",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "stolos-platform",
+			},
+			Spec: types.StolosSpec{
+				ClusterName: bootstrapInfos.TalosInfo.ClusterName,
+				BaseDomain:  bootstrapInfos.GitHubInfo.BaseDomain,
+				MetalLB: types.MetalLB{
+					Deploy:       true,
+					Namespace:    "metallb-system",
+					Version:      "v0.15.2",
+					ArpIp:        bootstrapInfos.GitHubInfo.LoadBalancerIP,
+					ConfigureArp: true,
+				},
+				ArgoCD: types.ArgoCD{
+					Deploy:              true,
+					Namespace:           "argocd",
+					Version:             "7.8.26",
+					Subdomain:           "argocd",
+					ImageUpdaterVersion: "v0.13.1",
+					RepositoryOwner:     bootstrapInfos.GitHubInfo.RepoOwner,
+					RepositoryName:      bootstrapInfos.GitHubInfo.RepoName,
+					RepositoryRevision:  "feature/yoke",
+				},
+				Contour: types.Contour{
+					Deploy:    true,
+					Namespace: "projectcontour",
+					Version:   "release-1.33",
+				},
+				CertManager: types.CertManager{
+					Deploy:               true,
+					Namespace:            "cert-manager",
+					Version:              "v1.18.2",
+					ClusterIssuerProd:    "letsencrypt-prod",
+					ClusterIssuerStaging: "letsencrypt-staging",
+					DefaultClusterIssuer: "letsencrypt-staging",
+					Email:                "stolos@stolos.cloud",
+					SelfSigned:           true,
+				},
+				CNPG: types.CNPG{
+					Deploy:        true,
+					Namespace:     "cnpg-system",
+					Version:       "0.26.0",
+					BarmanVersion: "v0.6.0",
+				},
+				StolosPlatform: types.StolosPlatform{
+					Deploy:               true,
+					Namespace:            "stolos-system",
+					BackendSubdomain:     "api",
+					DefaultAdminEmail:    "admin@stolos.cloud",
+					DefaultAdminPassword: "Password1!",
+					FrontendSubdomain:    "k8s",
+					Database: types.CnpgDbConfig{
+						InstanceCount:    1,
+						SizeInGigabytes:  2,
+						Image:            "ghcr.io/cloudnative-pg/postgresql:17.6",
+						DBPassowrdSecret: "postgresql-stolos-app",
+						DBPasswordKey:    "password",
+					},
+				},
+			},
+		}
+
+		githubClient, err := github.NewClientFromApp(
+			context.Background(),
+			gitHubAppManifest.ID,
+			gitHubAppManifest.PEM,
+			saveState.GitHubAppInstallResult.InstallationID,
+		)
+		if err != nil {
+			m.Logger.Errorf("Failed to create GitHub client from app: %v", err)
+		}
+
+		err = githubClient.CreateInitialConfig(&stolosCR, &bootstrapInfos.GitHubInfo)
+		if err != nil {
+			m.Logger.Errorf("Failed to create stolos config on github: %v", err)
+		}
+
+		k8sClientDyn, err := k8s.NewDynamicClientFromKubeconfig(kubeconfig)
+		if err != nil {
+			m.Logger.Errorf("Failed to create Kubernetes client: %s", err)
+		}
+
+		mapStolosCR, err := runtime.DefaultUnstructuredConverter.ToUnstructured(&stolosCR)
+		unstructuredStolosCR := unstructured.Unstructured{Object: mapStolosCR}
+
+		_, err = k8sClientDyn.Resource(schema.GroupVersionResource{
+			Group:    "stolos.cloud",
+			Version:  "v1alpha",
+			Resource: "stolosplatforms",
+		}).Create(context.Background(), &unstructuredStolosCR, metav1.CreateOptions{})
+
+		if err != nil {
+			m.Logger.Errorf("Failed to create stolos platforms: %v", err)
+		}
 
 		s.IsDone = true
 	}()
@@ -858,7 +980,7 @@ func DeployArgoCD(loggerRef *tui.UILogger) {
 	//	panic(err)
 	//}
 
-	release, err := helm.HelmInstallArgo(helmClient, "stolos-argocd", "stolos-argocd", []string{})
+	release, err := helm.HelmInstallArgo(helmClient, "argocd", "argocd", []string{})
 	if err != nil {
 		loggerRef.Errorf("Failed to deploy ArgoCD: %s", err)
 		return
@@ -919,7 +1041,7 @@ func CreateProviderSecrets(loggerRef *tui.UILogger) {
 				loggerRef.Success("GitHub credentials secret created successfully")
 			}
 			repoUrl := "https://github.com/" + bootstrapInfos.GitHubInfo.RepoOwner + "/" + bootstrapInfos.GitHubInfo.RepoName
-			err = github.CreateOrUpdateArgoCDGitHubSecrets(ctx, k8sClient, "stolos-argocd", "stolos-github-repo", strconv.FormatInt(gitHubAppManifest.ID, 10), gitHubAppManifest.PEM, repoUrl, saveState.GitHubAppInstallResult.InstallationID)
+			err = github.CreateOrUpdateArgoCDGitHubSecrets(ctx, k8sClient, "argocd", "stolos-github-repo", strconv.FormatInt(gitHubAppManifest.ID, 10), gitHubAppManifest.PEM, repoUrl, saveState.GitHubAppInstallResult.InstallationID)
 			if err != nil {
 				loggerRef.Errorf("Failed to create GitHub Argo Repo secret: %s", err)
 			} else {

@@ -32,7 +32,7 @@ func run() error {
 		Spec: v1alpha1.AirwaySpec{
 			Mode: v1alpha1.AirwayModeStandard,
 			WasmURLs: v1alpha1.WasmURLs{
-				Flight: "oci://ghcr.io/stolos-cloud/stolos/flight:v1-alpha.20",
+				Flight: "oci://ghcr.io/stolos-cloud/stolos/flight:v1-alpha.21",
 			},
 			CrossNamespace:         true,
 			FixDriftInterval:       metav1.Duration{Duration: 5 * time.Minute},

@@ -33,6 +33,9 @@ type ArgoCD struct {
 	Version             string `json:"version"`
 	Subdomain           string `json:"subdomain"`
 	ImageUpdaterVersion string `json:"imageUpdaterVersion"`
+	RepositoryOwner     string `json:"repositoryOwner"`
+	RepositoryName      string `json:"repositoryName"`
+	RepositoryRevision  string `json:"repositoryRevision"`
 }
 
 type Contour struct {
@@ -67,6 +70,7 @@ type StolosPlatform struct {
 	Database             CnpgDbConfig `json:"database"`
 	DefaultAdminPassword string       `json:"defaultAdminPassword"`
 	DefaultAdminEmail    string       `json:"defaultAdminEmail"`
+	PathToYaml           string       `json:"pathToYaml"`
 }
 
 type CnpgDbConfig struct {
