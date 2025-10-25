@@ -924,7 +924,7 @@ func RunPortalStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 						InstanceCount:    1,
 						SizeInGigabytes:  2,
 						Image:            "ghcr.io/cloudnative-pg/postgresql:17.6",
-						DBPassowrdSecret: "postgresql-stolos-app",
+						DBPasswordSecret: "postgresql-stolos-app",
 						DBPasswordKey:    "password",
 					},
 				},

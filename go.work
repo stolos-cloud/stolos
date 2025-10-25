@@ -4,6 +4,5 @@ use (
 	stolos-yoke/flight
 	backend
 	bootstrap
-	k8s-manifests
 	stolos-yoke/airway
 )
