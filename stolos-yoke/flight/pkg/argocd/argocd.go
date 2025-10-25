@@ -224,6 +224,7 @@ func DeployArgoCDImageUpdaterResources(input types.Stolos) []flight.Resource {
 	var results []flight.Resource
 	resources := utils.ReadMultiDocument(ImageUpdaterYaml)
 	for _, res := range resources {
+		res.SetNamespace(input.Spec.ArgoCD.Namespace)
 		if res.GetKind() == "Deployment" {
 			dep := utils.ConvertUnstructured[appsv1.Deployment](res)
 			dep.Spec.Template.Spec.Containers[0].Image = "quay.io/argoprojlabs/argocd-image-updater:" + input.Spec.ArgoCD.ImageUpdaterVersion

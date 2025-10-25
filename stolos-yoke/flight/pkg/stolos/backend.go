@@ -69,9 +69,9 @@ func CreateDeployment(input types.Stolos) *appsv1.Deployment {
 									ValueFrom: &corev1.EnvVarSource{
 										SecretKeyRef: &corev1.SecretKeySelector{
 											LocalObjectReference: corev1.LocalObjectReference{
-												Name: input.Spec.StolosPlatform.Database.DBPassowrdSecret,
+												Name: "postgresql-stolos-app",
 											},
-											Key: input.Spec.StolosPlatform.Database.DBPasswordKey,
+											Key: "password",
 										},
 									},
 								},
@@ -269,6 +269,7 @@ func CreateBackendCertificate(input types.Stolos) *certmanagerv1.Certificate {
 }
 
 func CreateDatabase(input types.Stolos) *cnpg.Cluster {
+
 	return &cnpg.Cluster{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "postgresql.cnpg.io/v1",

@@ -30,9 +30,9 @@ func run() error {
 			Name: "stolosplatforms.stolos.cloud",
 		},
 		Spec: v1alpha1.AirwaySpec{
-			Mode: v1alpha1.AirwayModeStandard,
+			Mode: v1alpha1.AirwayModeSubscription,
 			WasmURLs: v1alpha1.WasmURLs{
-				Flight: "oci://ghcr.io/stolos-cloud/stolos/flight:v1-alpha.21",
+				Flight: "oci://ghcr.io/stolos-cloud/stolos/flight:v1-alpha.25",
 			},
 			CrossNamespace:         true,
 			FixDriftInterval:       metav1.Duration{Duration: 5 * time.Minute},

@@ -921,12 +921,11 @@ func RunPortalStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 					DefaultAdminPassword: "Password1!",
 					FrontendSubdomain:    "k8s",
 					Database: types.CnpgDbConfig{
-						InstanceCount:    1,
-						SizeInGigabytes:  2,
-						Image:            "ghcr.io/cloudnative-pg/postgresql:17.6",
-						DBPasswordSecret: "postgresql-stolos-app",
-						DBPasswordKey:    "password",
+						InstanceCount:   1,
+						SizeInGigabytes: 2,
+						Image:           "ghcr.io/cloudnative-pg/postgresql:17.6",
 					},
+					PathToYaml: "stolos/stolos-platform.yaml",
 				},
 			},
 		}

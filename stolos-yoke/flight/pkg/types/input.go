@@ -74,9 +74,7 @@ type StolosPlatform struct {
 }
 
 type CnpgDbConfig struct {
-	DBPasswordSecret string `json:"dbPasswordSecret"`
-	DBPasswordKey    string `json:"dbPasswordKey"`
-	Image            string `json:"image"`
-	InstanceCount    int    `json:"instanceCount"`
-	SizeInGigabytes  int    `json:"sizeInGigabytes"`
+	Image           string `json:"image"`
+	InstanceCount   int    `json:"instanceCount"`
+	SizeInGigabytes int    `json:"sizeInGigabytes"`
 }

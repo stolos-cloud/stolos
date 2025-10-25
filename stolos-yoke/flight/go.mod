@@ -7,7 +7,7 @@ require (
 	github.com/cloudnative-pg/cloudnative-pg v1.27.0
 	github.com/invopop/jsonschema v0.13.0
 	github.com/projectcontour/contour v1.33.0
-	github.com/yokecd/yoke v0.17.0
+	github.com/yokecd/yoke v0.17.3
 	go.universe.tf/metallb v0.15.2
 	k8s.io/api v0.34.1
 	k8s.io/apiextensions-apiserver v0.34.1

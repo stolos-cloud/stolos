@@ -3633,6 +3633,8 @@ github.com/yashtewari/glob-intersection v0.2.0 h1:8iuHdN88yYuCzCdjt0gDe+6bAhUwBe
 github.com/yashtewari/glob-intersection v0.2.0/go.mod h1:LK7pIC3piUjovexikBbJ26Yml7g8xa5bsjfx2v1fwok=
 github.com/yokecd/lipgloss v1.0.2 h1:j6R4Bt1zc6P3a6mDEZSkr654K6y7ddUchSHdiZORDQg=
 github.com/yokecd/lipgloss v1.0.2/go.mod h1:0HWdCWjT8R0UmIBu3ZEHXH/X6W2RH41Aq2dQbutdBpw=
+github.com/yokecd/yoke v0.17.3 h1:zjc6ZJiM+rg7Xj4SYePfly8alpTjiqjBAu9B0GVnYQ4=
+github.com/yokecd/yoke v0.17.3/go.mod h1:yaNQBGvUs31qg9ZDoZnWwKjnbVfojNFiLQH20A3OQ/Y=
 github.com/youmark/pkcs8 v0.0.0-20240424034433-3c2c7870ae76 h1:tBiBTKHnIjovYoLX/TPkcf+OjqqKGQrPtGT3Foz+Pgo=
 github.com/youmark/pkcs8 v0.0.0-20240424034433-3c2c7870ae76/go.mod h1:SQliXeA7Dhkt//vS29v3zpbEwoa+zb2Cn5xj5uO4K5U=
 github.com/yuin/goldmark v1.1.25/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=

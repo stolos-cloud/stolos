@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 
 	"github.com/invopop/jsonschema"
@@ -32,7 +33,6 @@ func main() {
 	}
 	if err := run(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
 	}
 }
 
@@ -92,6 +92,7 @@ func run() error {
 				existingCrds[res.GroupVersionKind()] = true
 			} else {
 				fmt.Fprint(os.Stderr, err.Error())
+				os.Exit(1)
 			}
 
 		}
@@ -112,11 +113,11 @@ func selfArgoApp(input types.Stolos) *types.Application {
 		},
 		Spec: types.ApplicationSpec{
 			Source: &types.ApplicationSource{
-				RepoURL:        "https://github.com/stolos-cloud/stolos",
-				TargetRevision: "feature/yoke",
-				Path:           "stolos-yoke",
+				RepoURL:        fmt.Sprintf("https://github.com/%s/%s", input.Spec.ArgoCD.RepositoryOwner, input.Spec.ArgoCD.RepositoryName),
+				TargetRevision: input.Spec.ArgoCD.RepositoryRevision,
+				Path:           filepath.Dir(input.Spec.StolosPlatform.PathToYaml),
 				Directory: &types.ApplicationSourceDirectory{
-					Include: "stolos-platform.yaml",
+					Include: filepath.Base(input.Spec.StolosPlatform.PathToYaml),
 				},
 			},
 			Destination: types.ApplicationDestination{
