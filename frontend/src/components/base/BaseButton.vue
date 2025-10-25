@@ -4,17 +4,26 @@
         :variant="variant"
         :size="size"
         :disabled="props.disabled"
+        :elevation="elevation"
         class="d-flex align-center text-none"
     >
-        <v-icon v-if="props.icon" :start="!!props.text">{{ props.icon }}</v-icon>
-        <span>{{ props.text }}</span>
+        <v-tooltip v-if="showTooltip" activator="parent">{{ props.tooltip }}</v-tooltip>
+        <v-icon v-if="props.icon" :start="showText">{{ props.icon }}</v-icon>
+        <span v-if="showText">{{ props.text }}</span>
     </v-btn>
 </template>
 
 <script setup>
+import { computed } from 'vue';
+import { useDisplay } from 'vuetify/lib/composables/display';
+
 // Props
 const props = defineProps({
     text: {
+        type: String,
+        default: ""
+    },
+    tooltip: {
         type: String,
         default: ""
     },
@@ -32,13 +41,21 @@ const props = defineProps({
     },
     size: {
         type: String,
-        default: "default"
+        default: "small"
+    },
+    elevation: {
+        type: [String, Number],
+        default: 0
     },
     disabled: {
         type: Boolean,
         default: false
     }
 });
+
+const display = useDisplay();
+const showText = computed(() => !props.icon || display.mdAndUp.value);
+const showTooltip = computed(() => !!props.icon && !display.mdAndUp.value && !!props.tooltip);
 </script>
 
 <style scoped>

@@ -26,7 +26,8 @@ export const referenceLists = {
     },
     actions: {
         setCloudResources({ commit }, gcpResources) {
-            commit('SET_CLOUD_ZONES', gcpResources.zones);
+            //Il faut mettre label et value pour chaque zone
+            commit('SET_CLOUD_ZONES', gcpResources.zones.map(zone => ({ label: zone, value: zone })));
             commit('SET_MACHINE_TYPES_BY_ZONE', gcpResources.machine_types_by_zone);
         },
     },

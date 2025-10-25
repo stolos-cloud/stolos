@@ -6,11 +6,13 @@
         :rules="Textfield.rules"
         :readonly="Textfield.readonly" 
         :disabled="Textfield.readonly"
-        :min="Textfield.minDate"
-        :max="Textfield.maxDate"
+        :min="Textfield.min"
+        :max="Textfield.max"
         :append-inner-icon="iconAction"
         @click:append-inner="emit('clickIcon')"
-        class="mt-4"
+        hide-details="auto"
+        variant="outlined"
+        class="my-4"
     ></v-text-field>
 </template>
 

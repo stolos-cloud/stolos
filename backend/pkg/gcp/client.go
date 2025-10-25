@@ -9,6 +9,7 @@ import (
 	"os"
 
 	gcpconfig "github.com/stolos-cloud/stolos-bootstrap/pkg/gcp"
+	"github.com/stolos-cloud/stolos/backend/internal/helpers"
 	"golang.org/x/oauth2/google"
 	compute "google.golang.org/api/compute/v1"
 	"google.golang.org/api/option"
@@ -132,8 +133,9 @@ func (c *Client) getZonesInRegion(ctx context.Context) ([]*compute.Zone, error) 
 	return resp.Items, nil
 }
 
-func (c *Client) CreateTerraformBucket(ctx context.Context) (string, error) {
-	bucketName := fmt.Sprintf("stolos-tf-state-%s", generateRandomString(8))
+func (c *Client) CreateTerraformBucket(ctx context.Context, clusterName string) (string, error) {
+	// Use cluster name as prefix for bucket name
+	bucketName := fmt.Sprintf("%s-tf-state-%s", helpers.SanitizeResourceName(clusterName), generateRandomString(8))
 
 	bucket := &storage.Bucket{
 		Name:     bucketName,

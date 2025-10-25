@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/stolos-cloud/stolos/backend/internal/config"
 	"github.com/stolos-cloud/stolos/backend/internal/models"
 	talosservices "github.com/stolos-cloud/stolos/backend/internal/services/talos"
 	"gorm.io/gorm"
@@ -15,10 +14,10 @@ type ISOHandlers struct {
 	talosService *talosservices.TalosService
 }
 
-func NewISOHandlers(db *gorm.DB, cfg *config.Config) *ISOHandlers {
+func NewISOHandlers(db *gorm.DB, talosService *talosservices.TalosService) *ISOHandlers {
 	return &ISOHandlers{
 		db:           db,
-		talosService: talosservices.NewTalosService(db, cfg),
+		talosService: talosService,
 	}
 }
 

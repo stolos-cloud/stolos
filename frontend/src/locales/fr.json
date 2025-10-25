@@ -44,34 +44,34 @@
     "dashboard": {
         "title": "Tableau de Bord",
         "subheading": "Bienvenue sur Stolos",
-        "onPremises": {
+        "provision": {
             "table": {
-                "title": "Noeuds connectés actifs",
+                "title": "Noeuds connectés",
                 "loadingText": "Chargement des nœuds connectés...",
-                "noDataText": "Aucun noeud connecté actif trouvé.",
+                "noDataText": "Aucun noeud connecté trouvé.",
                 "itemsPerPageText": "Articles par page :",
                 "headers": {
                     "nodename": "Nom du noeud",
+                    "role": "Rôle",
+                    "provider": "Fournisseur",
                     "status": "Statut",
-                    "role": "Rôle"
+                    "labels": "Étiquettes"
+                }
+            },
+            "dialogs": {
+                "viewDetailsNode": {
+                    "title": "Détails du noeud",
+                    "subheading": "Informations générales",
+                    "nodeInfo": {
+                        "ipAddress": "Adresse IP",
+                        "macAddress": "Adresse MAC",
+                        "instanceId": "ID d'instance",
+                        "architecture": "Architecture",
+                        "createdAt": "Créé le",
+                        "updatedAt": "Mis à jour le"
+                    }
                 }
             }
-        },
-        "dialogs": {
-            "downloadISOOnPremise":  {
-                "title": "Télécharger l'ISO On-Premise",
-                "noticeText": "Pour utiliser le mode On-Prem, commencez par télécharger l'ISO (AMD ou ARM) et installez-le sur vos serveurs physiques. Une fois que les serveurs sont démarrés avec l'ISO, ils apparaîtront dans la page de Provisionnement pour être configurés."
-            },
-            "downloadISOOnCloud": {
-                "title": "Télécharger l'ISO Cloud",
-                "noticeText": "Pour utiliser le mode Cloud, commencez par télécharger l'ISO (AMD ou ARM) et créez une VM sur votre fournisseur de cloud avec. Une fois la VM démarrée avec l'ISO, elle apparaîtra dans la page de Provisionnement pour être configurée."
-            }
-        },
-        "buttons": {
-            "downloadISOOnPremise": "Télécharger l'ISO On-Premise",
-            "downloadISOOnCloud": "Télécharger l'ISO Cloud",
-            "cancel": "Annuler",
-            "download": "Télécharger"
         }
     },
     "applications": {
@@ -123,7 +123,14 @@
         "cloud": {
             "sidemenuTitle": "Cloud",
             "title": "Provisionnement Cloud",
-            "subheading": "Gérez vos ressources cloud"
+            "subheading": "Gérez vos ressources cloud",
+            "nodeFormfields": {
+                "namePrefix": "Préfixe de nom",
+                "numberOfNodes": "Nombre de noeuds",
+                "role": "Rôle",
+                "zone": "Zone",
+                "machineType": "Type de machine"
+            }
         }
     },
     "cloudProvider": {
@@ -131,8 +138,8 @@
         "subheading": "Gérez la configuration de votre fournisseur de cloud",
         "table": {
             "title": "Configuration du fournisseur GCP",
-            "loadingText": "Chargement des noeuds connectés...",
-            "noDataText": "Aucun noeud connecté trouvé.",
+            "loadingText": "Chargement de la configuration GCP...",
+            "noDataText": "Aucun fournisseur GCP configuré.",
             "itemsPerPageText": "Articles par page :",
             "headers": {
                 "projectId": "ID de projet",
@@ -176,49 +183,137 @@
     "gitopsSynchronization": {
         "title": "GitOps Synchronisation"
     },
-    "userManagement": {
-        "title": "Gestion des utilisateurs",
-        "subheading": "Gérer les utilisateurs et leurs rôles",
-        "table": {
-            "title": "Utilisateurs",
-            "loadingText": "Chargement des utilisateurs...",
-            "noDataText": "Aucun utilisateur trouvé.",
-            "itemsPerPageText": "Articles par page :",
-            "headers": {
+    "administration": {
+        "title": "Administration",
+        "users": {
+            "title": "Gestion des utilisateurs",
+            "subheading": "Gérer les utilisateurs et leurs rôles",
+            "table": {
+                "title": "Utilisateurs",
+                "loadingText": "Chargement des utilisateurs...",
+                "noDataText": "Aucun utilisateur trouvé.",
+                "itemsPerPageText": "Articles par page :",
+                "headers": {
+                    "email": "Courriel",
+                    "role": "Rôle",
+                    "actions": "Actions"
+                }
+            },
+            "dialogs": {
+                "addUser":  {
+                    "title": "Ajouter un nouvel utilisateur"
+                },
+                "editUser": {
+                    "title": "Modifier l'utilisateur"
+                },
+                "deleteUser": {
+                    "title": "Supprimer l'utilisateur",
+                    "confirmationText": "Êtes-vous sûr de vouloir supprimer {email} ? Cette action ne peut pas être annulée."
+                }
+            },
+            "formfields": {
                 "email": "Courriel",
-                "role": "Rôle",
-                "actions": "Actions"
+                "password": "Mot de passe",
+                "confirmPassword": "Confirmer le mot de passe",
+                "role": "Rôle"
+            },
+            "notifications": {
+                "addSuccess": "Utilisateur {email} ajouté avec succès",
+                "updateSuccess": "Rôle de l'utilisateur {email} mis à jour avec succès",
+                "deleteSuccess": "Utilisateur {email} supprimé avec succès",
+                "addError": "Échec de l'ajout de l'utilisateur",
+                "updateError": "Échec de la mise à jour de l'utilisateur",
+                "deleteError": "Échec de la suppression de l'utilisateur"
+            },
+            "buttons": {
+                "addUser": "Ajouter un nouvel utilisateur",
+                "deleteUser": "Supprimer un utilisateur"
             }
         },
-        "dialogs": {
-            "addUser":  {
-                "title": "Ajouter un nouvel utilisateur"
+        "teams": {
+            "title": "Gestion des équipes",
+            "subheading": "Gérer les équipes des développeurs et leurs membres",
+            "table": {
+                "title": "Équipes",
+                "loadingText": "Chargement des équipes...",
+                "noDataText": "Aucune équipe trouvée.",
+                "itemsPerPageText": "Articles par page :",
+                "headers": {
+                    "teams": "Équipes",
+                    "numberOfMembers": "Nombre de membres",
+                    "actions": "Actions"
+                }
             },
-            "editUser": {
-                "title": "Modifier l'utilisateur"
+            "dialogs": {
+                "createNameTeam": {
+                    "title": "Créer une nouvelle équipe"
+                },
+                "addUserToTeam":  {
+                    "title": "Ajouter un nouvel utilisateur à l'équipe"
+                },
+                "deleteTeam": {
+                    "title": "Supprimer l'équipe",
+                    "confirmationText": "Êtes-vous sûr de vouloir supprimer l'équipe {teamName} ? Cette action ne peut pas être annulée."
+                },
+                "viewDetailsTeam": {
+                    "title": "Détails de l'équipe",
+                    "usersTitle": "Membres de l'équipe",
+                    "totalMembersLabel": "Aucun membre | 1 membre au total | {count} membres au total",
+                    "messages": {
+                        "noMembers": "Cette équipe n'a pas de membres."
+                    }
+                },
+                "deleteUserFromTeam": {
+                    "title": "Supprimer l'utilisateur de l'équipe",
+                    "confirmationText": "Êtes-vous sûr de vouloir supprimer {email} de l'équipe ? Cette action ne peut pas être annulée."
+                }
             },
-            "deleteUser": {
-                "title": "Supprimer l'utilisateur",
-                "confirmationText": "Êtes-vous sûr de vouloir supprimer {email} ? Cette action ne peut pas être annulée."
+            "formfields": {
+                "teamName": "Nom de l'équipe",
+                "emailList": "Liste des utilisateurs par courriel",
+                "noDataText": "Aucun utilisateur disponible à ajouter"
+            },
+            "notifications": {
+                "createTeamSuccess": "Équipe créée avec succès",
+                "addUserSuccess": "Utilisateur ajouté à l'équipe avec succès",
+                "deleteUserSuccess": "Utilisateur supprimé de l'équipe avec succès",
+                "deleteTeamSuccess": "Équipe supprimée avec succès",
+                "deleteTeamError": "Échec de la suppression de l'équipe"
+            },
+            "buttons": {
+                "createNewTeam": "Créer une nouvelle équipe",
+                "addUserToTeam": "Ajouter un utilisateur",
+                "deleteUserFromTeam": "Supprimer un utilisateur",
+                "deleteTeam": "Supprimer l'équipe"
             }
-        },
-        "formfields": {
-            "email": "Courriel",
-            "password": "Mot de passe",
-            "confirmPassword": "Confirmer le mot de passe",
-            "role": "Rôle"
-        },
-        "notifications": {
-            "addSuccess": "Utilisateur {email} ajouté avec succès",
-            "updateSuccess": "Rôle de l'utilisateur {email} mis à jour avec succès",
-            "deleteSuccess": "Utilisateur {email} supprimé avec succès",
-            "addError": "Échec de l'ajout de l'utilisateur",
-            "updateError": "Échec de la mise à jour de l'utilisateur",
-            "deleteError": "Échec de la suppression de l'utilisateur"
-        },
-        "buttons": {
-            "addUser": "Ajouter un utilisateur"
         }
+    },
+    "dialogs": {
+        "downloadISOOnPremise":  {
+            "title": "Télécharger l'ISO On-Premise",
+            "noticeText": "Pour utiliser le mode On-Prem, commencez par télécharger l'ISO (AMD ou ARM) et installez-le sur vos serveurs physiques. Une fois les serveurs démarrés avec l'ISO, ils apparaîtront dans la page de Provisioning pour être configurés.",
+            "label": "Choix de l'ISO",
+            "precision": "Choisissez l'architecture de l'ISO que vous souhaitez télécharger"
+        }
+    },
+    "actionButtons": {
+        "add": "Ajouter",
+        "edit": "Modifier",
+        "delete": "Supprimer",
+        "save": "Enregistrer",
+        "cancel": "Annuler",
+        "confirm": "Confirmer",
+        "back": "Retour",
+        "next": "Suivant",
+        "finish": "Terminer",
+        "create": "Créer",
+        "viewDetails": "Voir les détails",
+        "refresh": "Rafraîchir",
+        "search": "Rechercher",
+        "goHome": "Aller à l'accueil",
+        "download": "Télécharger",
+        "downloadISOOnPremise": "Télécharger l'ISO On-Premise",
+        "viewRepo": "Voir le répertoire"
     },
     "rules": {
         "validation": {
@@ -237,25 +332,17 @@
             },
             "textfield": {
                 "required": "Ce champ est requis"
+            },
+            "autoComplete": {
+                "required": "Ce champ est requis"
+            },
+            "radioGroup": {
+                "required": "Ce champ est requis"
             }
         }
     },
-    "actionButtons": {
-        "add": "Ajouter",
-        "edit": "Modifier",
-        "delete": "Supprimer",
-        "save": "Enregistrer",
-        "cancel": "Annuler",
-        "confirm": "Confirmer",
-        "back": "Retour",
-        "next": "Suivant",
-        "finish": "Terminer",
-        "viewDetails": "Voir les détails",
-        "refresh": "Rafraîchir",
-        "search": "Rechercher",
-        "goHome": "Aller à l'accueil"
-    },
     "errors": {
+        "noData": "Aucune donnée disponible",
         "sessionExpired": "Votre session a expiré ou est invalide. Veuillez vous reconnecter.",
         "failedLogin": "Échec de la connexion. Veuillez vérifier vos identifiants et réessayer.",
         "failedFetchProfile": "Échec de la récupération du profil utilisateur. Veuillez réessayer.",

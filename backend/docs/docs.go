@@ -171,6 +171,41 @@ const docTemplate = `{
                 }
             }
         },
+        "/cluster/info": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get general cluster information including name and GitOps repository",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "cluster"
+                ],
+                "summary": "Get cluster info",
+                "responses": {
+                    "200": {
+                        "description": "cluster_name, gitops_repo_owner, gitops_repo_name, gitops_branch",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/gcp/bucket": {
             "post": {
                 "security": [
@@ -444,6 +479,92 @@ const docTemplate = `{
                         }
                     }
                 }
+            }
+        },
+        "/gcp/nodes/provision": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a provision request and return request_id for WebSocket connection",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "gcp"
+                ],
+                "summary": "Provision GCP nodes with Talos",
+                "parameters": [
+                    {
+                        "description": "Node provision request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.GCPNodeProvisionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/gcp/nodes/provision/{request_id}/stream": {
+            "get": {
+                "description": "Connect to this WebSocket endpoint to receive real-time logs and approval requests",
+                "tags": [
+                    "gcp"
+                ],
+                "summary": "WebSocket stream for GCP node provisioning",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Provision request ID",
+                        "name": "request_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "JWT token",
+                        "name": "token",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {}
             }
         },
         "/gcp/query-instances": {
@@ -793,7 +914,7 @@ const docTemplate = `{
                                 "nodes": {
                                     "type": "array",
                                     "items": {
-                                        "$ref": "#/definitions/services.NodeConfigUpdate"
+                                        "$ref": "#/definitions/node.NodeConfigUpdate"
                                     }
                                 }
                             }
@@ -862,8 +983,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Returns provisioned count and nodes array",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/models.NodeProvisionRequest"
                         }
                     },
                     "400": {
@@ -1981,6 +2101,10 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
+                "infrastructure_status": {
+                    "description": "unconfigured, pending, initializing, ready, failed",
+                    "type": "string"
+                },
                 "is_configured": {
                     "type": "boolean"
                 },
@@ -1993,8 +2117,68 @@ const docTemplate = `{
                 "service_account_email": {
                     "type": "string"
                 },
+                "talos_image_amd64": {
+                    "type": "string"
+                },
+                "talos_image_arm64": {
+                    "type": "string"
+                },
+                "talos_version": {
+                    "type": "string"
+                },
                 "updated_at": {
                     "type": "string"
+                }
+            }
+        },
+        "models.GCPNodeProvisionRequest": {
+            "type": "object",
+            "required": [
+                "machine_type",
+                "name_prefix",
+                "number",
+                "role",
+                "zone"
+            ],
+            "properties": {
+                "disk_size_gb": {
+                    "type": "integer",
+                    "example": 100
+                },
+                "disk_type": {
+                    "type": "string",
+                    "example": "pd-standard"
+                },
+                "labels": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "zone=us-central1"
+                    ]
+                },
+                "machine_type": {
+                    "type": "string",
+                    "example": "n1-standard-2"
+                },
+                "name_prefix": {
+                    "type": "string",
+                    "example": "worker"
+                },
+                "number": {
+                    "type": "integer",
+                    "maximum": 20,
+                    "minimum": 1,
+                    "example": 5
+                },
+                "role": {
+                    "type": "string",
+                    "example": "worker"
+                },
+                "zone": {
+                    "type": "string",
+                    "example": "us-central1-a"
                 }
             }
         },
@@ -2135,11 +2319,13 @@ const docTemplate = `{
             "type": "string",
             "enum": [
                 "pending",
+                "provisioning",
                 "active",
                 "failed"
             ],
             "x-enum-varnames": [
                 "StatusPending",
+                "StatusProvisioning",
                 "StatusActive",
                 "StatusFailed"
             ]
@@ -2165,7 +2351,7 @@ const docTemplate = `{
                 "RoleViewer"
             ]
         },
-        "services.NodeConfigUpdate": {
+        "node.NodeConfigUpdate": {
             "type": "object",
             "properties": {
                 "id": {

@@ -1,9 +1,8 @@
 package handlers
 
 import (
-	"github.com/stolos-cloud/stolos/backend/internal/config"
 	"github.com/stolos-cloud/stolos/backend/internal/middleware"
-	"github.com/stolos-cloud/stolos/backend/internal/services"
+	wsservices "github.com/stolos-cloud/stolos/backend/internal/services/websocket"
 	"gorm.io/gorm"
 )
 
@@ -16,20 +15,30 @@ type Handlers struct {
 	gcpHandlers  *GCPHandlers
 	jwtService   *middleware.JWTService
 	db           *gorm.DB
+	wsManager    *wsservices.Manager
 }
 
-func NewHandlers(db *gorm.DB, cfg *config.Config, providerManager *services.ProviderManager) *Handlers {
-	jwtService := middleware.NewJWTService(cfg)
-
+func NewHandlers(
+	authHandlers *AuthHandlers,
+	teamHandlers *TeamHandlers,
+	userHandlers *UserHandlers,
+	isoHandlers *ISOHandlers,
+	nodeHandlers *NodeHandlers,
+	gcpHandlers *GCPHandlers,
+	jwtService *middleware.JWTService,
+	db *gorm.DB,
+	wsManager *wsservices.Manager,
+) *Handlers {
 	return &Handlers{
-		authHandlers: NewAuthHandlers(db, jwtService),
-		teamHandlers: NewTeamHandlers(db),
-		userHandlers: NewUserHandlers(db),
-		isoHandlers:  NewISOHandlers(db, cfg),
-		nodeHandlers: NewNodeHandlers(db, cfg, providerManager),
-		gcpHandlers:  NewGCPHandlers(db, cfg, providerManager),
+		authHandlers: authHandlers,
+		teamHandlers: teamHandlers,
+		userHandlers: userHandlers,
+		isoHandlers:  isoHandlers,
+		nodeHandlers: nodeHandlers,
+		gcpHandlers:  gcpHandlers,
 		jwtService:   jwtService,
 		db:           db,
+		wsManager:    wsManager,
 	}
 }
 

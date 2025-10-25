@@ -5,24 +5,27 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/stolos-cloud/stolos/backend/internal/config"
+	"github.com/gorilla/websocket"
 	"github.com/stolos-cloud/stolos/backend/internal/models"
-	"github.com/stolos-cloud/stolos/backend/internal/services"
-	talosservices "github.com/stolos-cloud/stolos/backend/internal/services/talos"
+	"github.com/stolos-cloud/stolos/backend/internal/services/node"
+	talos "github.com/stolos-cloud/stolos/backend/internal/services/talos"
+	wsservices "github.com/stolos-cloud/stolos/backend/internal/services/websocket"
 	"gorm.io/gorm"
 )
 
 type NodeHandlers struct {
 	db           *gorm.DB
-	nodeService  *services.NodeService
-	talosService *talosservices.TalosService
+	nodeService  *node.NodeService
+	talosService *talos.TalosService
+	wsManager    *wsservices.Manager
 }
 
-func NewNodeHandlers(db *gorm.DB, cfg *config.Config, providerManager *services.ProviderManager) *NodeHandlers {
+func NewNodeHandlers(db *gorm.DB, nodeService *node.NodeService, talosService *talos.TalosService, wsManager *wsservices.Manager) *NodeHandlers {
 	return &NodeHandlers{
 		db:           db,
-		nodeService:  services.NewNodeService(db, cfg, providerManager),
-		talosService: talosservices.NewTalosService(db, cfg),
+		nodeService:  nodeService,
+		talosService: talosService,
+		wsManager:    wsManager,
 	}
 }
 
@@ -106,14 +109,14 @@ func (h *NodeHandlers) UpdateActiveNodeConfig(c *gin.Context) {
 // @Tags nodes
 // @Accept json
 // @Produce json
-// @Param request body object{nodes=[]services.NodeConfigUpdate} true "Array of node label updates"
+// @Param request body object{nodes=[]node.NodeConfigUpdate} true "Array of node label updates"
 // @Success 200 {object} map[string]interface{} "Returns updated count and nodes array"
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /nodes/config [put]
 func (h *NodeHandlers) UpdateActiveNodesConfig(c *gin.Context) {
 	var req struct {
-		Nodes []services.NodeConfigUpdate `json:"nodes" binding:"required"`
+		Nodes []node.NodeConfigUpdate `json:"nodes" binding:"required"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -164,7 +167,7 @@ func (h *NodeHandlers) CreateSampleNodes(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param request body models.NodeProvisionRequest true "Array of nodes to provision with role and labels"
-// @Success 200 {object} map[string]interface{} "Returns provisioned count and nodes array"
+// @Success 200 {object} models.NodeProvisionRequest "Returns provisioned count and nodes array"
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /nodes/provision [post]
@@ -187,9 +190,55 @@ func (h *NodeHandlers) ProvisionNodes(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message":     "Nodes provisioned successfully",
-		"provisioned": len(nodes),
-		"nodes":       nodes,
-	})
+	c.JSON(http.StatusOK, nodes)
 }
+
+// ProvisionNodesStream todo : Example with refactored websocket
+func (h *NodeHandlers) ProvisionNodesStream(c *gin.Context) {
+
+	// example to upgrade connection and create base session
+	requestID := c.Query("request_id")
+	if requestID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "request_id query parameter is required"})
+		return
+	}
+
+	upgrader := websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+		CheckOrigin: func(r *http.Request) bool {
+			return true
+		},
+	}
+
+	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to upgrade to websocket"})
+		return
+	}
+
+	client := h.wsManager.RegisterClient(requestID, conn, nil)
+
+	// Create base session for on-prem provisioning workflow
+	session := wsservices.NewBaseSession(requestID, client)
+
+	session.SendStatus("provisioning")
+}
+
+// GetTalosconfig godoc
+// @Summary Returns talosconfig File in TALOS_FOLDER
+// @Description Returns the talosconfig file in TALOS_FOLDER, destined for operators to do manual talosctl operations.
+// @Tags nodes
+// @Accept json
+// @Produce yaml
+// @Success 200 {object} []byte "Message indicating success"
+// @Failure 500 {object}
+// @Router /nodes/talosconfig [get]
+//func (h *NodeHandlers) GetTalosconfig(c *gin.Context) {
+//	err := h.nodeService.GetTalosconfig()
+//	if err != nil {
+//		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+//		return
+//	}
+//	c.JSON(http.StatusOK, gin.H{"message": "Sample nodes created"})
+//}

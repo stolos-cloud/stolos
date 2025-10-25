@@ -40,16 +40,16 @@ import { useRouter } from "vue-router";
 import { useStore } from "vuex";
 
 const { t } = useI18n();
-const { emailRules, passwordRules } = FormValidationRules();
+const { emailRules, textfieldRules } = FormValidationRules();
 const { handleLoginError } = ErrorHandler();
 const router = useRouter();
 const store = useStore();
 
 const props = defineProps({
-  message: {
-    type: String,
-    default: ''
-  }
+    message: {
+        type: String,
+        default: ''
+    }
 });
 
 // Validation state
@@ -65,41 +65,38 @@ const sessionExpired = computed(() => props.message === 'sessionExpired');
 
 // Form state
 const textfields = reactive({
-  email: new TextField({
-    label: t('login.email'),
-    type: "email",
-    required: true,
-    rules: emailRules
-  }),
-  password: new TextField({
-    label: t('login.password'),
-    type: passwordType.value,
-    required: true,
-    rules: passwordRules
-  }),
+    email: new TextField({
+        label: t('login.email'),
+        type: "email",
+        required: true,
+        rules: emailRules
+    }),
+    password: new TextField({
+        label: t('login.password'),
+        type: passwordType.value,
+        required: true,
+        rules: textfieldRules
+    }),
 });
 
 // Methods
 function loginUser() {
-  if (!isValid.value) return;
+    if (!isValid.value) return;
 
-  isLoading.value = true;
-  errorMessage.value = '';
-  
-  store.dispatch('user/loginUser', {
-    email: textfields.email.value,
-    password: textfields.password.value
-  })
-  .then(() => {
-    router.push('/dashboard');
-  })
-  .catch((error) => {
-    errorMessage.value = handleLoginError(error);
-  })
-  .finally(() => {
-    isLoading.value = false;
+    isLoading.value = true;
     errorMessage.value = '';
-  });
+    
+    store.dispatch('user/loginUser', { email: textfields.email.value, password: textfields.password.value })
+        .then(() => {
+            router.push('/dashboard');
+        })
+        .catch((error) => {
+            errorMessage.value = handleLoginError(error);
+        })
+        .finally(() => {
+            isLoading.value = false;
+            errorMessage.value = '';
+        });
 }
 </script>
 

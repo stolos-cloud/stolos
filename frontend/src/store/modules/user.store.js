@@ -70,7 +70,8 @@ export const user = {
             commit('SET_LANGUAGE', language);
         },
         async initAuth({ commit }) {
-            await initAuthenticationExistingToken().then(response => {
+            try {
+                const response = await initAuthenticationExistingToken();
                 if (response == null) {
                     commit('CLEAR_USER');
                     return;
@@ -83,7 +84,9 @@ export const user = {
                     teams: user.teams,
                     token,
                 });
-            });
+            } catch (error) {
+                commit('CLEAR_USER');
+            }
         },
         async loginUser({ commit }, { email, password }) {
             await login(email, password).then(({ token, user }) => {

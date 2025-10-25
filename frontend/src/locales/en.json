@@ -44,35 +44,35 @@
     "dashboard": {
         "title": "Dashboard",
         "subheading": "Welcome to Stolos",
-        "onPremises": {
+        "provision": {
             "table": {
-                "title": "Active connected nodes",
+                "title": "Connected nodes",
                 "loadingText": "Loading connected nodes...",
-                "noDataText": "No active connected nodes found.",
+                "noDataText": "No connected nodes found.",
                 "itemsPerPageText": "Items per page :",
                 "headers": {
                     "nodename": "Node name",
+                    "role": "Role",
+                    "provider": "Provider",
                     "status": "Status",
-                    "role": "Role"
+                    "labels": "Labels"
+                }
+            },
+            "dialogs": {
+                "viewDetailsNode": {
+                    "title": "Node details",
+                    "subheading": "General informations",
+                    "nodeInfo": {
+                        "ipAddress": "IP address",
+                        "macAddress": "MAC address",
+                        "instanceId": "Instance ID",
+                        "architecture": "Architecture",
+                        "createdAt": "Created at",
+                        "updatedAt": "Updated at"
+                    }
                 }
             }
-        },
-        "dialogs": {
-            "downloadISOOnPremise":  {
-                "title": "Download ISO On-Premise",
-                "noticeText": "For using the On-Prem mode, start by downloading the ISO (AMD or ARM) and install it on your physical servers. Once the servers are started with the ISO, they will appear in Provisioning page to be configured."
-            },
-            "downloadISOOnCloud": {
-                "title": "Download ISO Cloud",
-                "noticeText": "For using the Cloud mode, start by downloading the ISO (AMD or ARM) and create a VM on your cloud provider with it. Once the VM is started with the ISO, it will appear in Provisioning page to be configured."
-            }
-        },
-        "buttons": {
-            "downloadISOOnPremise": "Download ISO On-Premise",
-            "downloadISOOnCloud": "Download ISO Cloud",
-            "cancel": "Cancel",
-            "download": "Download"
-        }
+        }            
     },
     "applications": {
         "title": "Applications"
@@ -122,7 +122,14 @@
         "cloud": {
             "sidemenuTitle": "Cloud",
             "title": "Cloud provisioning",
-            "subheading": "Manage your cloud resources"
+            "subheading": "Manage your cloud resources",
+            "nodeFormfields": {
+                "namePrefix": "Name prefix",
+                "numberOfNodes": "Number of nodes",
+                "role": "Role",
+                "zone": "Zone",
+                "machineType": "Machine type"
+            }
         }
     },
     "cloudProvider": {
@@ -130,8 +137,8 @@
         "subheading": "Manage your cloud provider configuration",
         "table": {
             "title": "GCP provider configuration",
-            "loadingText": "Loading connected nodes...",
-            "noDataText": "No connected nodes found.",
+            "loadingText": "Loading GCP configuration...",
+            "noDataText": "No GCP provider configured.",
             "itemsPerPageText": "Items per page :",
             "headers": {
                 "projectId": "Project ID",
@@ -175,49 +182,137 @@
     "gitopsSynchronization": {
         "title": "GitOps Synchronization"
     },
-    "userManagement": {
-        "title": "User management",
-        "subheading": "Manage users and their roles",
-        "table": {
-            "title": "Users",
-            "loadingText": "Loading users...",
-            "noDataText": "No users found.",
-            "itemsPerPageText": "Items per page :",
-            "headers": {
+    "administration": {
+        "title": "Administration",
+        "users": {
+            "title": "Users management",
+            "subheading": "Manage users and their roles",
+            "table": {
+                "title": "Users",
+                "loadingText": "Loading users...",
+                "noDataText": "No users found.",
+                "itemsPerPageText": "Items per page :",
+                "headers": {
+                    "email": "Email",
+                    "role": "Role",
+                    "actions": "Actions"
+                }
+            },
+            "dialogs": {
+                "addUser":  {
+                    "title": "Add new user"
+                },
+                "editUser": {
+                    "title": "Edit user"
+                },
+                "deleteUser": {
+                    "title": "Delete user",
+                    "confirmationText": "Are you sure you want to delete {email} ? This action cannot be undone."
+                }
+            },
+            "formfields": {
                 "email": "Email",
-                "role": "Role",
-                "actions": "Actions"
+                "password": "Password",
+                "confirmPassword": "Confirm Password",
+                "role": "Role"
+            },
+            "notifications": {
+                "addSuccess": "User {email} added successfully",
+                "updateSuccess": "User {email} role updated successfully",
+                "deleteSuccess": "User {email} deleted successfully",
+                "addError": "Failed to add user",
+                "updateError": "Failed to update user",
+                "deleteError": "Failed to delete user"
+            },
+            "buttons": {
+                "addUser": "Add new user",
+                "deleteUser": "Delete user"
             }
         },
-        "dialogs": {
-            "addUser":  {
-                "title": "Add user"
+        "teams": {
+            "title": "Teams management",
+            "subheading": "Manage developer teams and their members",
+            "table": {
+                "title": "Teams",
+                "loadingText": "Loading teams...",
+                "noDataText": "No teams found.",
+                "itemsPerPageText": "Items per page :",
+                "headers": {
+                    "teams": "Teams",
+                    "numberOfMembers": "Number of members",
+                    "actions": "Actions"
+                }
             },
-            "editUser": {
-                "title": "Edit user"
+            "dialogs": {
+                "createTeam": {
+                    "title": "Create a new team"
+                },
+                "addUserToTeam":  {
+                    "title": "Add new user to team"
+                },
+                "deleteTeam": {
+                    "title": "Delete team",
+                    "confirmationText": "Are you sure you want to delete the team {teamName} ? This action cannot be undone."
+                },
+                "viewDetailsTeam": {
+                    "title": "Team details",
+                    "usersTitle": "Team members",
+                    "totalMembersLabel": "No members | 1 total member | {count} total members",
+                    "messages": {
+                        "noMembers": "This team has no members."
+                    }
+                },
+                "deleteUserFromTeam": {
+                    "title": "Delete user from team",
+                    "confirmationText": "Are you sure you want to delete {userEmail} from the team? This action cannot be undone."
+                }
             },
-            "deleteUser": {
-                "title": "Delete user",
-                "confirmationText": "Are you sure you want to delete {email} ? This action cannot be undone."
+            "formfields": {
+                "teamName": "Team name",
+                "emailList": "Email user list",
+                "noDataText": "No users available to add"
+            },
+            "notifications": {
+                "createTeamSuccess": "Team created successfully",
+                "addUserSuccess": "User added to team successfully",
+                "deleteUserSuccess": "User deleted from team successfully",
+                "deleteTeamSuccess": "Team deleted successfully",
+                "deleteTeamError": "Failed to delete team"
+            },
+            "buttons": {
+                "createNewTeam": "Create new team",
+                "addUserToTeam": "Add user",
+                "deleteUserFromTeam": "Delete user",
+                "deleteTeam": "Delete team"
             }
-        },
-        "formfields": {
-            "email": "Email",
-            "password": "Password",
-            "confirmPassword": "Confirm Password",
-            "role": "Role"
-        },
-        "notifications": {
-            "addSuccess": "User {email} added successfully",
-            "updateSuccess": "User {email} role updated successfully",
-            "deleteSuccess": "User {email} deleted successfully",
-            "addError": "Failed to add user",
-            "updateError": "Failed to update user",
-            "deleteError": "Failed to delete user"
-        },
-        "buttons": {
-            "addUser": "Add user"
         }
+    },
+    "dialogs": {
+        "downloadISOOnPremise":  {
+            "title": "Download ISO On-Premise",
+            "noticeText": "For using the On-Prem mode, start by downloading the ISO (AMD or ARM) and install it on your physical servers. Once the servers are started with the ISO, they will appear in Provisioning page to be configured.",
+            "label": "ISO Choice",
+            "precision": "Choose the architecture of the ISO you want to download"
+        }
+    },
+    "actionButtons": {
+        "add": "Add",
+        "edit": "Edit",
+        "delete": "Delete",
+        "save": "Save",
+        "cancel": "Cancel",
+        "confirm": "Confirm",
+        "back": "Back",
+        "next": "Next",
+        "finish": "Finish",
+        "create": "Create",
+        "viewDetails": "View Details",
+        "refresh": "Refresh",
+        "search": "Search",
+        "goHome": "Go to home",
+        "download": "Download",
+        "downloadISOOnPremise": "Download ISO On-Premise",
+        "viewRepo": "View repository"
     },
     "rules": {
         "validation": {
@@ -236,25 +331,17 @@
             },
             "textfield": {
                 "required": "This field is required"
+            },
+            "autoComplete": {
+                "required": "This field is required"
+            },
+            "radioGroup": {
+                "required": "This field is required"
             }
         }
     },
-    "actionButtons": {
-        "add": "Add",
-        "edit": "Edit",
-        "delete": "Delete",
-        "save": "Save",
-        "cancel": "Cancel",
-        "confirm": "Confirm",
-        "back": "Back",
-        "next": "Next",
-        "finish": "Finish",
-        "viewDetails": "View Details",
-        "refresh": "Refresh",
-        "search": "Search",
-        "goHome": "Go to home"
-    },
     "errors": {
+        "noData": "No data available",
         "sessionExpired": "Your session has expired or is invalid. Please log in again.",
         "failedLogin": "Login failed. Please check your credentials and try again.",
         "failedFetchProfile": "Failed to fetch user profile. Please try again.",

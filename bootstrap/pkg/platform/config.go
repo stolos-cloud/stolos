@@ -11,14 +11,16 @@ import (
 )
 
 type PlatformConfig struct {
+	ClusterName           string `json:"cluster_name"`
 	BaseDomain            string `json:"base_domain"`
 	TalosEventSinkHostname string `json:"talos_event_sink_hostname"`
 	TalosEventSinkPort     string `json:"talos_event_sink_port"`
 }
 
 // NewPlatformConfig creates a new platform configuration
-func NewPlatformConfig(baseDomain string) *PlatformConfig {
+func NewPlatformConfig(clusterName, baseDomain string) *PlatformConfig {
 	return &PlatformConfig{
+		ClusterName:           clusterName,
 		BaseDomain:            baseDomain,
 		TalosEventSinkHostname: fmt.Sprintf("grpc.backend.%s", baseDomain),
 		TalosEventSinkPort:     "8082",
@@ -28,6 +30,7 @@ func NewPlatformConfig(baseDomain string) *PlatformConfig {
 // ToSecret serializes platform config to Kubernetes secret data
 func (c *PlatformConfig) ToSecret(namespace, secretName string) *corev1.Secret {
 	data := map[string][]byte{
+		"CLUSTER_NAME":              []byte(c.ClusterName),
 		"BASE_DOMAIN":               []byte(c.BaseDomain),
 		"TALOS_EVENT_SINK_HOSTNAME": []byte(c.TalosEventSinkHostname),
 		"TALOS_EVENT_SINK_PORT":     []byte(c.TalosEventSinkPort),
@@ -58,6 +61,7 @@ func FromSecret(secret *corev1.Secret) (*PlatformConfig, error) {
 	}
 
 	return &PlatformConfig{
+		ClusterName:           string(secret.Data["CLUSTER_NAME"]),
 		BaseDomain:            string(secret.Data["BASE_DOMAIN"]),
 		TalosEventSinkHostname: string(secret.Data["TALOS_EVENT_SINK_HOSTNAME"]),
 		TalosEventSinkPort:     string(secret.Data["TALOS_EVENT_SINK_PORT"]),

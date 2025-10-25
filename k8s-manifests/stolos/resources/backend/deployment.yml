@@ -40,6 +40,8 @@ spec:
           value: Admin123!
         - name: DB_SSL_MODE
           value: disable
+        - name: TALOS_FOLDER
+          value: /etc/talos
         - name: DB_PASSWORD
           valueFrom:
             secretKeyRef:
@@ -49,8 +51,9 @@ spec:
         - secretRef:
             name: stolos-system-config
         volumeMounts:
-        - name: gitops-workspace
-          mountPath: /root/gitops-workspace
+        - name: talos-config
+          mountPath: /etc/talos
+          readOnly: true
         livenessProbe:
           httpGet:
             path: /health
@@ -71,5 +74,7 @@ spec:
             memory: "512Mi"
             cpu: "500m"
       volumes:
-      - name: gitops-workspace
-        emptyDir: {}
+      - name: talos-config
+        secret:
+          secretName: stolos-talos-config
+          optional: true  # Don't fail if secret doesn't exist yet

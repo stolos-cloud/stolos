@@ -1,10 +1,31 @@
-# GCP Compute Instance for Talos Node
-# Template variables: {{.Name}}, {{.Zone}}, {{.MachineType}}
+# GCP Talos Node: {{.Name}}
+# Managed by Stolos - Generated at {{.Timestamp}}
 
-resource "google_compute_instance" "{{.Name}}" {
+module "{{.Name}}" {
+  source = "../../modules/node"
+
   name         = "{{.Name}}"
   machine_type = "{{.MachineType}}"
   zone         = "{{.Zone}}"
+  region       = "{{.Region}}"
+  role         = "{{.Role}}"
+  architecture = "{{.Architecture}}"
+  talos_config = <<-EOT
+{{.TalosConfig}}
+EOT
 
-  ...
+  disk_size_gb = {{.DiskSizeGB}}
+  disk_type    = "{{.DiskType}}"
+}
+
+output "{{.Name}}_info" {
+  value = {
+    instance_id   = module.{{.Name}}.instance_id
+    instance_name = module.{{.Name}}.instance_name
+    internal_ip   = module.{{.Name}}.internal_ip
+    external_ip   = module.{{.Name}}.external_ip
+    zone          = module.{{.Name}}.zone
+    status        = module.{{.Name}}.status
+  }
+  description = "Node information for {{.Name}}"
 }
