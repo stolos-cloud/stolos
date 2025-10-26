@@ -29,7 +29,7 @@ export default createVuetify({
                     error: '#cf6679',
                     info: '#2196f3',
                     success: '#4caf50',
-                    warning: '#fb8c00',
+                    warning: '#fbe600ff',
                 },
             },
             light: {
@@ -43,7 +43,7 @@ export default createVuetify({
                     error: '#b00020',
                     info: '#2196f3',
                     success: '#4caf50',
-                    warning: '#fb8c00',
+                    warning: '#fbe600ff',
                 },
             },
         },

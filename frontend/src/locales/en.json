@@ -295,6 +295,21 @@
             "precision": "Choose the architecture of the ISO you want to download"
         }
     },
+    "charts": {
+        "onPremises": {
+            "title": "On-Premises nodes"
+        },
+        "gcp": {
+            "title": "GCP nodes"
+        }
+    },
+    "status": {
+        "active": "Active",
+        "provisioning": "Provisioning",
+        "failed": "Failed",
+        "pending": "Pending",
+        "unknown": "Unknown"
+    },
     "actionButtons": {
         "add": "Add",
         "edit": "Edit",

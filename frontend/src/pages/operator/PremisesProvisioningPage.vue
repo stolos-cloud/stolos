@@ -17,7 +17,7 @@
         >
             <!-- Slot for status -->
             <template #[`item.status`]="{ item }">
-                <v-chip color="yellow">
+                <v-chip :color="getStatusColor(item.status)">
                     {{ item.status }}
                 </v-chip>
             </template>
@@ -82,12 +82,14 @@ import { useI18n } from 'vue-i18n';
 import { useStore } from 'vuex';
 import { GlobalNotificationHandler } from "@/composables/GlobalNotificationHandler";
 import { GlobalOverlayHandler } from "@/composables/GlobalOverlayHandler";
+import { StatusColorHandler } from '@/composables/StatusColorHandler';
 import DownloadISOOnPremDialog from '@/pages/operator/dialogs/download/DownloadISOOnPremDialog.vue';
 
 const { t } = useI18n();
 const store = useStore();
 const { showNotification } = GlobalNotificationHandler();
 const { showOverlay, hideOverlay } = GlobalOverlayHandler();
+const { getStatusColor } = StatusColorHandler();
 
 // State
 const loading = ref(false);
