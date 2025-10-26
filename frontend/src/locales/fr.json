@@ -296,6 +296,21 @@
             "precision": "Choisissez l'architecture de l'ISO que vous souhaitez télécharger"
         }
     },
+    "charts": {
+        "onPremises": {
+            "title": "Noeuds sur site"
+        },
+        "gcp": {
+            "title": "Noeuds GCP"
+        }
+    },
+    "status": {
+        "active": "Actif",
+        "provisioning": "Provisionnement",
+        "failed": "Échoué",
+        "pending": "En attente",
+        "unknown": "Inconnu"
+    },
     "actionButtons": {
         "add": "Ajouter",
         "edit": "Modifier",

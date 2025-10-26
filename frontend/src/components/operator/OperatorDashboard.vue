@@ -1,5 +1,6 @@
 <template>
     <div>
+        <NodesCharts :nodes="nodesChart"></NodesCharts>
         <BaseDataTable
             v-model="search"
             :headers="nodeHeaders"
@@ -36,14 +37,17 @@
 import { getConnectedNodes } from '@/services/provisioning.service';
 import { computed, ref , onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
-import ViewDetailsNodeDialog from './dialogs/node/ViewDetailsNodeDialog.vue';
+import { StatusColorHandler } from '@/composables/StatusColorHandler';
+import ViewDetailsNodeDialog from '../../pages/operator/dialogs/node/ViewDetailsNodeDialog.vue';
 
 const { t } = useI18n();
+const { getStatusColor } = StatusColorHandler();
 
 // State
 const search = ref('');
 const loading = ref(false);
 const nodes = ref([]);
+const nodesChart = ref([]);
 const dialogViewDetailsNode = ref(false);
 const selectedNode = ref(null);
 
@@ -75,8 +79,7 @@ function fetchConnectedNodes() {
 
     getConnectedNodes()
         .then(response => {
-            nodes.value = response
-                .filter(node => node.status?.toLowerCase() !== "pending")
+            nodesChart.value = response
                 .map(node => ({
                     ...node,
                     status: node.status.charAt(0).toUpperCase() + node.status.slice(1),
@@ -84,6 +87,8 @@ function fetchConnectedNodes() {
                     provider: node.provider.charAt(0).toUpperCase() + node.provider.slice(1),
                     labels: JSON.parse(node.labels || '[]'),
                 }));
+            
+            nodes.value = nodesChart.value.filter(node => node.status?.toLowerCase() !== "pending");
         })
         .catch(error => {
             console.error('Error fetching connected nodes active:', error);
@@ -95,17 +100,5 @@ function fetchConnectedNodes() {
 function showDetailsNodeDialog(node) {
     selectedNode.value = node;
     dialogViewDetailsNode.value = true;
-}
-function getStatusColor(status) {
-    switch (status.toLowerCase()) {
-        case 'active':
-            return 'success';
-        case 'provisioning':
-            return 'warning';
-        case 'failed':
-            return 'error';
-        default:
-            return 'grey';
-    }
 }
 </script>
