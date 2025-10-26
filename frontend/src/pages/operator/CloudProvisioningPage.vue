@@ -14,6 +14,8 @@
                     <BaseSelect v-model="formFields.role.value" :Select="formFields.role" />
                     <BaseAutoComplete :AutoComplete="formFields.zone" />
                     <BaseAutoComplete :AutoComplete="formFields.machineType" />
+                    <BaseTextfield :Textfield="formFields.diskSizeGb" />
+                    <BaseSelect v-model="formFields.diskType.value" :Select="formFields.diskType" />
                 </v-form>
             </v-card-text>
             <v-card-actions>
@@ -49,6 +51,17 @@
                         >
                             Complete
                         </v-chip>
+                        <v-spacer></v-spacer>
+                        <v-btn
+                            v-if="provisioningPhase !== 'idle' && provisioningPhase !== 'plan'"
+                            color="primary"
+                            variant="outlined"
+                            size="small"
+                            @click="downloadPlan"
+                        >
+                            <v-icon left>mdi-download</v-icon>
+                            Download Plan
+                        </v-btn>
                     </v-card-title>
                     <v-card-text>
                         <v-sheet
@@ -169,7 +182,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted, watch } from 'vue';
 import api from '@/services/api';
 import { StorageService } from '@/services/storage.service';
 import { TextField } from '@/models/TextField.js';
@@ -192,13 +205,16 @@ const status = ref('');
 const ws = ref(null);
 const provisioningPhase = ref('idle'); // idle, plan, awaiting_approval, apply, complete, error
 const approvalSummary = ref('');
+const currentRequestId = ref('');
 
 const form = ref({
-    name_prefix: 'worker',
-    number: 2,
+    name_prefix: 'gcp-worker',
+    number: 1,
     zone: 'us-central1-a',
     machine_type: 'n1-standard-2',
     role: 'worker',
+    disk_size_gb: 100,
+    disk_type: 'pd-standard',
 });
 
 // Computed
@@ -213,6 +229,12 @@ const availableMachineTypes = computed(() => {
         value: machine.name
     }));
 });
+const diskTypes = computed(() => [
+    { label: 'Standard Persistent Disk (pd-standard)', value: 'pd-standard' },
+    { label: 'Balanced Persistent Disk (pd-balanced)', value: 'pd-balanced' },
+    { label: 'SSD Persistent Disk (pd-ssd)', value: 'pd-ssd' },
+    { label: 'Extreme Persistent Disk (pd-extreme)', value: 'pd-extreme' },
+]);
 
 // Mounted
 onMounted(() => {
@@ -221,6 +243,8 @@ onMounted(() => {
     formFields.zone.value = form.value.zone;
     formFields.machineType.value = form.value.machine_type;
     formFields.role.value = form.value.role;
+    formFields.diskSizeGb.value = form.value.disk_size_gb;
+    formFields.diskType.value = form.value.disk_type;
 });
 
 // Form state
@@ -257,8 +281,31 @@ const formFields = reactive({
         required: true,
         disabled: computed(() => !formFields.zone.value),
         rules: textfieldRules
+    }),
+    diskSizeGb: new TextField({
+        label: t('provisioning.cloud.nodeFormfields.diskSizeGb'),
+        type: "number",
+        min: 10,
+        max: 65536,
+        required: true,
+        rules: textfieldRules
+    }),
+    diskType: new Select({
+        label: t('provisioning.cloud.nodeFormfields.diskType'),
+        options: diskTypes.value,
+        required: true,
+        rules: textfieldRules
     })
 });
+
+// Watch form fields and sync back to form
+watch(() => formFields.namePrefix.value, (newVal) => { form.value.name_prefix = newVal; });
+watch(() => formFields.number.value, (newVal) => { form.value.number = parseInt(newVal) || 1; });
+watch(() => formFields.zone.value, (newVal) => { form.value.zone = newVal; });
+watch(() => formFields.machineType.value, (newVal) => { form.value.machine_type = newVal; });
+watch(() => formFields.role.value, (newVal) => { form.value.role = newVal; });
+watch(() => formFields.diskSizeGb.value, (newVal) => { form.value.disk_size_gb = parseInt(newVal) || 100; });
+watch(() => formFields.diskType.value, (newVal) => { form.value.disk_type = newVal; });
 
 const getLogColor = type => {
     switch (type) {
@@ -284,6 +331,7 @@ const submitProvisionRequest = async () => {
         // Step 1: POST to create provision request
         const response = await api.post('/api/gcp/nodes/provision', form.value);
         const requestId = response.data.request_id;
+        currentRequestId.value = requestId;
 
         status.value = 'Connecting to stream...';
         planLogs.value.push({
@@ -332,17 +380,25 @@ const connectWebSocket = requestId => {
         try {
             const message = JSON.parse(event.data);
 
-            // Determine which log array to use based on the current phase
-            const currentLogs = provisioningPhase.value === 'apply' ? applyLogs : planLogs;
-
             if (message.type === 'log') {
-                currentLogs.value.push({
+                // Route logs to apply section if we're applying or completed
+                // (completion logs should stay in apply section)
+                const targetLogs = (provisioningPhase.value === 'apply' || provisioningPhase.value === 'complete')
+                    ? applyLogs
+                    : planLogs;
+
+                targetLogs.value.push({
                     type: 'log',
                     message: message.payload.message,
                     timestamp: new Date(),
                 });
             } else if (message.type === 'status') {
                 status.value = message.payload.status;
+
+                // Determine which logs section to add status message to BEFORE updating phase
+                const targetLogs = (provisioningPhase.value === 'apply' || provisioningPhase.value === 'complete')
+                    ? applyLogs
+                    : planLogs;
 
                 // Update phase based on status
                 if (message.payload.status === 'planning') {
@@ -355,7 +411,7 @@ const connectWebSocket = requestId => {
                     provisioningPhase.value = 'complete';
                 }
 
-                currentLogs.value.push({
+                targetLogs.value.push({
                     type: 'status',
                     message: `Status: ${message.payload.status}`,
                     timestamp: new Date(),
@@ -385,7 +441,12 @@ const connectWebSocket = requestId => {
                 isProvisioning.value = false;
                 ws.value.close();
             } else if (message.type === 'error') {
-                currentLogs.value.push({
+                // Route error to apply logs if we're in apply phase, otherwise to plan logs
+                const targetLogs = (provisioningPhase.value === 'apply' || provisioningPhase.value === 'complete')
+                    ? applyLogs
+                    : planLogs;
+
+                targetLogs.value.push({
                     type: 'error',
                     message: `Error: ${message.payload.error}`,
                     timestamp: new Date(),
@@ -400,8 +461,12 @@ const connectWebSocket = requestId => {
     };
 
     ws.value.onerror = error => {
-        const currentLogs = provisioningPhase.value === 'apply' ? applyLogs : planLogs;
-        currentLogs.value.push({
+        // Route to apply logs if we're in apply/complete phase
+        const targetLogs = (provisioningPhase.value === 'apply' || provisioningPhase.value === 'complete')
+            ? applyLogs
+            : planLogs;
+
+        targetLogs.value.push({
             type: 'error',
             message: `WebSocket error: ${error}`,
             timestamp: new Date(),
@@ -411,8 +476,12 @@ const connectWebSocket = requestId => {
     };
 
     ws.value.onclose = () => {
-        const currentLogs = provisioningPhase.value === 'apply' ? applyLogs : planLogs;
-        currentLogs.value.push({
+        // Route to apply logs if we're in apply/complete phase
+        const targetLogs = (provisioningPhase.value === 'apply' || provisioningPhase.value === 'complete')
+            ? applyLogs
+            : planLogs;
+
+        targetLogs.value.push({
             type: 'status',
             message: 'WebSocket connection closed',
             timestamp: new Date(),
@@ -443,6 +512,35 @@ const rejectProvisioning = () => {
             timestamp: new Date(),
         });
         isProvisioning.value = false;
+    }
+};
+
+const downloadPlan = async () => {
+    try {
+        const token = StorageService.get('token');
+        const url = `/api/gcp/nodes/provision/${currentRequestId.value}/plan`;
+
+        const response = await fetch(url, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to download plan');
+        }
+
+        const blob = await response.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = `plan-${currentRequestId.value}.txt`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(downloadUrl);
+    } catch (error) {
+        console.error('Failed to download plan:', error);
     }
 };
 </script>

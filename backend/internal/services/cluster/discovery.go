@@ -76,12 +76,6 @@ func (s *DiscoveryService) InitializeCluster(ctx context.Context) error {
 func (s *DiscoveryService) discoverNodes(ctx context.Context, clusterID uuid.UUID) error {
 	log.Println("Discovering existing cluster nodes from TALOS_FOLDER ...")
 
-	// TODO: Implement actual node discovery
-	// potentially
-	// Connect to the Talos cluster using talosctl
-	// List initial nodes in the cluster
-	// Create node records in the database
-
 	nodes, err := s.ts.GetBootstrapCachedNodes(clusterID)
 
 	if err != nil {

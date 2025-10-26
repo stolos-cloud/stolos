@@ -541,6 +541,49 @@ const docTemplate = `{
                 }
             }
         },
+        "/gcp/nodes/provision/{request_id}/plan": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Download the terraform plan output as a text file",
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "gcp"
+                ],
+                "summary": "Download terraform plan output",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Provision request ID",
+                        "name": "request_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/gcp/nodes/provision/{request_id}/stream": {
             "get": {
                 "description": "Connect to this WebSocket endpoint to receive real-time logs and approval requests",

@@ -109,8 +109,9 @@ func setupGCPRoutes(public *gin.RouterGroup, protected *gin.RouterGroup, h *hand
 
 	public.GET("/gcp/resources", h.GCPHandlers().GetGCPResources)
 
-	// WebSocket endpoint - public but validates token from query param
+	// Provisioning endpoints
 	public.GET("/gcp/nodes/provision/:request_id/stream", h.GCPHandlers().ProvisionGCPNodesStream)
+	protected.GET("/gcp/nodes/provision/:request_id/plan", h.GCPHandlers().GetProvisionPlan)
 
 	// Protected routes
 	gcp := protected.Group("/gcp")

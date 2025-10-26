@@ -79,6 +79,10 @@ func (o *Orchestrator) Plan(ctx context.Context) (bool, error) {
 	return o.executor.Plan(ctx)
 }
 
+func (o *Orchestrator) PlanWithOutput(ctx context.Context) (bool, string, error) {
+	return o.executor.PlanWithOutput(ctx)
+}
+
 func (o *Orchestrator) Apply(ctx context.Context) error {
 	return o.executor.Apply(ctx)
 }
