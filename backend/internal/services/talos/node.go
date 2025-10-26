@@ -25,7 +25,7 @@ func BuildNodeModelFromResources(ctx context.Context, c *machineryClient.Client,
 		Status:    models.StatusPending,
 	}
 
-	node.MACAddress = GetMachineBestExternalMacCandidate(ctx, c)
+	node.MACAddress = GetMachineBestExternalNetworkInterface(ctx, c).Mac
 
 	return node, nil
 }
@@ -84,14 +84,17 @@ func GetTypedTalosResource[T resource.Resource](
 	return res, nil
 }
 
-// GetMachineBestExternalMacCandidate tries to find the external mac address of primary net interface
-func GetMachineBestExternalMacCandidate(ctx context.Context, c *machineryClient.Client) string {
-	if linkList, err := GetTypedTalosResourceList[*netres.LinkStatus](ctx, c, netres.NamespaceName, "link"); err == nil {
-		type cand struct {
-			mac   string
-			score int
-		}
-		var best cand
+type NodeNetworkIface struct {
+	Link  *netres.LinkStatus
+	Mac   string
+	Score int
+}
+
+// GetMachineBestExternalNetworkInterface tries to find the external Mac address of primary net interface
+func GetMachineBestExternalNetworkInterface(ctx context.Context, c *machineryClient.Client) *NodeNetworkIface {
+	if linkList, err := GetTypedTalosResourceList[*netres.LinkStatus](ctx, c, netres.NamespaceName, "Link"); err == nil {
+
+		var best NodeNetworkIface
 
 		for link := range linkList.All() {
 			spec := link.TypedSpec()
@@ -113,13 +116,13 @@ func GetMachineBestExternalMacCandidate(ctx context.Context, c *machineryClient.
 				score += 2
 			}
 
-			if score > best.score {
-				best = cand{mac: strings.ToLower(mac), score: score}
+			if score > best.Score {
+				best = NodeNetworkIface{Score: score, Link: link, Mac: mac}
 			}
 		}
-		return best.mac
+		return &best
 	}
-	return ""
+	return nil
 }
 
 // GetMachineStatus gets the COSI runtime machine status and stage
