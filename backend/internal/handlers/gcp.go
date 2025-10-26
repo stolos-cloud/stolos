@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"path/filepath"
 	"log"
 	"net/http"
 	"time"
@@ -487,21 +488,38 @@ func (h *GCPHandlers) GetProvisionPlan(c *gin.Context) {
 	requestID := c.Param("request_id")
 
 	// Validate request ID
-	if _, err := uuid.Parse(requestID); err != nil {
+	parsedUUID, err := uuid.Parse(requestID)
+	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request_id"})
 		return
 	}
+	canonicalRequestID := parsedUUID.String()
 
 	// Check if provision request exists
 	var provisionRequest models.ProvisionRequest
-	if err := h.db.Where("id = ?", requestID).First(&provisionRequest).Error; err != nil {
+	if err := h.db.Where("id = ?", canonicalRequestID).First(&provisionRequest).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "provision request not found"})
 		return
 	}
 
 	// Serve the plan file
-	planFilePath := fmt.Sprintf("plans/plan-%s.txt", requestID)
-	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=plan-%s.txt", requestID))
+	plansDir := "plans"
+	planFileName := fmt.Sprintf("plan-%s.txt", canonicalRequestID)
+	planFilePath := filepath.Join(plansDir, planFileName)
+
+	// Defensive: make sure the resolved path is within the plans directory
+	absPlansDir, err := filepath.Abs(plansDir)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return
+	}
+	absPlanFilePath, err := filepath.Abs(planFilePath)
+	if err != nil || len(absPlanFilePath) < len(absPlansDir) || absPlanFilePath[:len(absPlansDir)] != absPlansDir {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid file path"})
+		return
+	}
+
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", planFileName))
 	c.File(planFilePath)
 }
 
