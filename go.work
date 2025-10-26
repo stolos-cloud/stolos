@@ -1,7 +1,8 @@
-go 1.25
+go 1.25.0
 
 use (
+	stolos-yoke/flight
 	backend
 	bootstrap
-	k8s-manifests
+	stolos-yoke/airway
 )
