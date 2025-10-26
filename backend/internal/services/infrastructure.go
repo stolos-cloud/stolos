@@ -12,7 +12,6 @@ import (
 	gcpservices "github.com/stolos-cloud/stolos/backend/internal/services/gcp"
 	gitopsservices "github.com/stolos-cloud/stolos/backend/internal/services/gitops"
 	talosservices "github.com/stolos-cloud/stolos/backend/internal/services/talos"
-	githubpkg "github.com/stolos-cloud/stolos/backend/pkg/github"
 	tfpkg "github.com/stolos-cloud/stolos/backend/pkg/terraform"
 	"gorm.io/gorm"
 )
@@ -130,14 +129,7 @@ func (s *InfrastructureService) InitializeInfrastructure(ctx context.Context, pr
 			return fmt.Errorf("failed to get GitOps config: %w", err)
 		}
 
-		ghClient, err := githubpkg.NewClientFromConfig(
-			s.cfg.GitHub.AppID,
-			s.cfg.GitHub.InstallationID,
-			s.cfg.GitHub.PrivateKey,
-			gitopsConfig.RepoOwner,
-			gitopsConfig.RepoName,
-			gitopsConfig.Branch,
-		)
+		ghClient, err := s.gitopsService.GetGitHubClient()
 		if err != nil {
 			return fmt.Errorf("failed to create GitHub client: %w", err)
 		}
@@ -368,14 +360,7 @@ func (s *InfrastructureService) PublishNodeModuleToRepo(providerName, talosVersi
 	}
 
 	// Initialize GitHub client
-	ghClient, err := githubpkg.NewClientFromConfig(
-		s.cfg.GitHub.AppID,
-		s.cfg.GitHub.InstallationID,
-		s.cfg.GitHub.PrivateKey,
-		gitopsConfig.RepoOwner,
-		gitopsConfig.RepoName,
-		gitopsConfig.Branch,
-	)
+	ghClient, err := s.gitopsService.GetGitHubClient()
 	if err != nil {
 		return fmt.Errorf("failed to create GitHub client: %w", err)
 	}

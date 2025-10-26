@@ -128,7 +128,9 @@
                 "numberOfNodes": "Number of nodes",
                 "role": "Role",
                 "zone": "Zone",
-                "machineType": "Machine type"
+                "machineType": "Machine type",
+                "diskSizeGb": "Disk size (GB)",
+                "diskType": "Disk type"
             }
         }
     },

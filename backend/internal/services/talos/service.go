@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/google/uuid"
 	factoryClient "github.com/siderolabs/image-factory/pkg/client"
@@ -259,6 +260,7 @@ func (s *TalosService) CreateExistingNodeFromIP(ctx context.Context, nodeIP stri
 	var node models.Node
 
 	node.Role = role
+	node.IPAddress = nodeIP
 
 	cli, err := s.GetMachineryClient(nodeIP) //Get authenticated client.
 	if err != nil {
@@ -416,4 +418,51 @@ func (s *TalosService) MigrateTalosConfigFromFiles() error {
 
 	fmt.Printf("Successfully migrated Talos configs from %s to database\n", s.cfg.TalosFolder)
 	return nil
+}
+
+// InjectHostname sets the hostname in a machine config YAML
+func InjectHostname(machineConfigYAML, hostname string) (string, error) {
+
+	lines := strings.Split(machineConfigYAML, "\n")
+	for i, line := range lines {
+		// Look for hostname line in network section
+		if strings.Contains(line, "hostname:") && strings.Contains(line, "# Used to statically set the hostname") {
+			indent := strings.Repeat(" ", len(line)-len(strings.TrimLeft(line, " ")))
+			lines[i] = fmt.Sprintf("%shostname: %s # Used to statically set the hostname for the machine.", indent, hostname)
+			return strings.Join(lines, "\n"), nil
+		}
+	}
+
+	return "", fmt.Errorf("could not find hostname field in machine config")
+}
+
+// InjectNodeIPConfig adds nodeIP configuration to a machine config YAML
+// This ensures kubelet can select the correct node IP from valid subnets
+func InjectNodeIPConfig(machineConfigYAML string) (string, error) {
+	nodeIPConfig := `
+        # Configure kubelet node IP selection for hybrid cloud
+        nodeIP:
+            validSubnets:
+                - 10.0.0.0/8      # RFC 1918 Class A private networks
+                - 172.16.0.0/12   # RFC 1918 Class B private networks
+                - 192.168.0.0/16  # RFC 1918 Class C private networks
+                - fdd6::/16       # KubeSpan IPv6 overlay network
+`
+
+	// Find the kubelet section and inject nodeIP config before the network section
+	networkMarker := "    # Provides machine specific network configuration options.\n    network:"
+
+	if idx := strings.Index(machineConfigYAML, networkMarker); idx != -1 {
+		// Insert nodeIP config before the network section
+		return machineConfigYAML[:idx] + nodeIPConfig + "\n" + machineConfigYAML[idx:], nil
+	}
+
+	// Fallback: try to find just the network section
+	networkMarker = "    network:"
+	if idx := strings.Index(machineConfigYAML, networkMarker); idx != -1 {
+		return machineConfigYAML[:idx] + nodeIPConfig + "\n" + machineConfigYAML[idx:], nil
+	}
+
+	// If we can't find the insertion point, return error
+	return "", fmt.Errorf("could not find network section in machine config to inject nodeIP configuration")
 }

@@ -473,6 +473,38 @@ func (h *GCPHandlers) ProvisionGCPNodes(c *gin.Context) {
 	})
 }
 
+// GetProvisionPlan godoc
+// @Summary Download terraform plan output
+// @Description Download the terraform plan output as a text file
+// @Tags gcp
+// @Param request_id path string true "Provision request ID"
+// @Produce text/plain
+// @Success 200 {file} string
+// @Failure 404 {object} map[string]string
+// @Router /gcp/nodes/provision/{request_id}/plan [get]
+// @Security BearerAuth
+func (h *GCPHandlers) GetProvisionPlan(c *gin.Context) {
+	requestID := c.Param("request_id")
+
+	// Validate request ID
+	if _, err := uuid.Parse(requestID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request_id"})
+		return
+	}
+
+	// Check if provision request exists
+	var provisionRequest models.ProvisionRequest
+	if err := h.db.Where("id = ?", requestID).First(&provisionRequest).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "provision request not found"})
+		return
+	}
+
+	// Serve the plan file
+	planFilePath := fmt.Sprintf("plans/plan-%s.txt", requestID)
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=plan-%s.txt", requestID))
+	c.File(planFilePath)
+}
+
 // ProvisionGCPNodesStream godoc
 // @Summary WebSocket stream for GCP node provisioning
 // @Description Connect to this WebSocket endpoint to receive real-time logs and approval requests
@@ -508,6 +540,9 @@ func (h *GCPHandlers) ProvisionGCPNodesStream(c *gin.Context) {
 
 	// Create approval session for GCP provisioning workflow
 	session := wsservices.NewApprovalSession(requestID, client)
+
+	// Update client's session so it can route incoming messages
+	client.SetSession(session)
 
 	// Start provisioning in a goroutine
 	go func() {

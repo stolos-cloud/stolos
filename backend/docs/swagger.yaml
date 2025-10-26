@@ -644,6 +644,33 @@ paths:
       summary: Provision GCP nodes with Talos
       tags:
       - gcp
+  /gcp/nodes/provision/{request_id}/plan:
+    get:
+      description: Download the terraform plan output as a text file
+      parameters:
+      - description: Provision request ID
+        in: path
+        name: request_id
+        required: true
+        type: string
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Download terraform plan output
+      tags:
+      - gcp
   /gcp/nodes/provision/{request_id}/stream:
     get:
       description: Connect to this WebSocket endpoint to receive real-time logs and

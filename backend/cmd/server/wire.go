@@ -69,8 +69,8 @@ func RegisterGCPServices() []any {
 		gontainer.NewFactory(func(db *gorm.DB, gcpService *gcpservices.GCPService) *gcpservices.GCPResourcesService {
 			return gcpservices.NewGCPResourcesService(db, gcpService)
 		}),
-		gontainer.NewFactory(func(db *gorm.DB, cfg *config.Config, ts *talosservice.TalosService, gcpService *gcpservices.GCPService) *gcpservices.ProvisioningService {
-			return gcpservices.NewProvisioningService(db, cfg, ts, gcpService)
+		gontainer.NewFactory(func(db *gorm.DB, cfg *config.Config, ts *talosservice.TalosService, gcpService *gcpservices.GCPService, gitopsService *gitops.GitOpsService) *gcpservices.ProvisioningService {
+			return gcpservices.NewProvisioningService(db, cfg, ts, gcpService, gitopsService)
 		}),
 	}
 }
