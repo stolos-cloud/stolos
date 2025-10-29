@@ -15,7 +15,7 @@ type ApprovalSession struct {
 // NewApprovalSession creates a new approval session
 func NewApprovalSession(requestID string, client *Client) *ApprovalSession {
 	return &ApprovalSession{
-		BaseSession:  NewBaseSession(requestID, client),
+		BaseSession:  newBaseSession(requestID, client, SessionTypeApproval),
 		approvalChan: make(chan ApprovalResponse, 1),
 	}
 }

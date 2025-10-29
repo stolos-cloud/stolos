@@ -31,6 +31,9 @@ func RegisterHandlers() []any {
 		gontainer.NewFactory(func(db *gorm.DB, ns *node.NodeService, ts *talosservice.TalosService, wsManager *wsservices.Manager) *NodeHandlers {
 			return NewNodeHandlers(db, ns, ts, wsManager)
 		}),
+		gontainer.NewFactory(func(wsManager *wsservices.Manager) *EventHandlers {
+			return NewEventHandlers(wsManager)
+		}),
 		gontainer.NewFactory(func(
 			db *gorm.DB,
 			gcpService *gcpservices.GCPService,
@@ -61,6 +64,7 @@ func RegisterHandlers() []any {
 			isoHandlers *ISOHandlers,
 			nodeHandlers *NodeHandlers,
 			gcpHandlers *GCPHandlers,
+			eventHandlers *EventHandlers,
 			jwtService *middleware.JWTService,
 			db *gorm.DB,
 			wsManager *wsservices.Manager,
@@ -72,6 +76,7 @@ func RegisterHandlers() []any {
 				isoHandlers,
 				nodeHandlers,
 				gcpHandlers,
+				eventHandlers,
 				jwtService,
 				db,
 				wsManager,

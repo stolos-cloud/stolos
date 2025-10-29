@@ -23,6 +23,7 @@ func SetupRoutes(r *gin.Engine, h *handlers.Handlers) {
 
 		// temporary: don't require authentication for nodes routes
 		setupNodeRoutes(api, h)
+		setupEventRoutes(api, h)
 		// require authentication
 		protected := api.Group("")
 		protected.Use(middleware.JWTAuthMiddleware(h.JWTService(), h.DB()))
@@ -62,6 +63,13 @@ func setupNodeRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
 		nodes.POST("/samples", h.NodeHandlers().CreateSampleNodes) // TODO: remove in production
 		//nodes.GET("/talosconfig", h.NodeHandlers().GetTalosconfig)
 		//nodes.GET("/kubeconfig", h.NodeHandlers().GetKubeconfig)
+	}
+}
+
+func setupEventRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
+	events := api.Group("/events")
+	{
+		events.GET("/stream", h.EventHandlers().StreamEvents)
 	}
 }
 

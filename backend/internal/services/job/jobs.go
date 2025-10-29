@@ -14,6 +14,7 @@ import (
 	"github.com/stolos-cloud/stolos/backend/internal/models"
 	"github.com/stolos-cloud/stolos/backend/internal/services/node"
 	"github.com/stolos-cloud/stolos/backend/internal/services/talos"
+	wsservices "github.com/stolos-cloud/stolos/backend/internal/services/websocket"
 	"google.golang.org/grpc/codes"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -100,7 +101,7 @@ var ClusterHealthCheckJob = &StolosJob{
 var NodeStatusUpdateJob *StolosJob = &StolosJob{
 	Name:       "NodeStatusUpdateJob",
 	Definition: gocron.DurationJob(30 * time.Second),
-	JobFunc: func(ts *talos.TalosService, db *gorm.DB) {
+	JobFunc: func(ts *talos.TalosService, db *gorm.DB, wsManager *wsservices.Manager) {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 
@@ -163,10 +164,22 @@ var NodeStatusUpdateJob *StolosJob = &StolosJob{
 		}
 
 		log.Printf("NodeStatusUpdateJob: marked %d nodes as Active", len(hostnames))
+
+		if len(hostnames) > 0 && wsManager != nil {
+			wsManager.BroadcastToSessionType(wsservices.SessionTypeEvent, wsservices.Message{
+				Type: "NodeStatusUpdated",
+				Payload: map[string]any{
+					"nodes":     hostnames,
+					"status":    models.StatusActive,
+					"updatedAt": time.Now().UTC(),
+				},
+			})
+		}
 	},
 	JobArgs: []any{
 		(*talos.TalosService)(nil),
 		(*gorm.DB)(nil),
+		(*wsservices.Manager)(nil),
 	},
 	Options: nil,
 }

@@ -15,13 +15,6 @@
             :titleToolbar="$t('provisioning.onPremises.table.title')"
             :actionsButtonForTable="actionsButtonForTable"
         >
-            <!-- Slot for status -->
-            <template #[`item.status`]="{ item }">
-                <v-chip :color="getStatusColor(item.status)">
-                    {{ item.status }}
-                </v-chip>
-            </template>
-            
             <!-- Slot for roles -->
             <template #[`item.role`]="{ item }">
                 <v-select
@@ -82,14 +75,14 @@ import { useI18n } from 'vue-i18n';
 import { useStore } from 'vuex';
 import { GlobalNotificationHandler } from "@/composables/GlobalNotificationHandler";
 import { GlobalOverlayHandler } from "@/composables/GlobalOverlayHandler";
-import { StatusColorHandler } from '@/composables/StatusColorHandler';
 import DownloadISOOnPremDialog from '@/pages/operator/dialogs/download/DownloadISOOnPremDialog.vue';
+import { useRouter } from 'vue-router';
 
 const { t } = useI18n();
 const store = useStore();
+const router = useRouter();
 const { showNotification } = GlobalNotificationHandler();
 const { showOverlay, hideOverlay } = GlobalOverlayHandler();
-const { getStatusColor } = StatusColorHandler();
 
 // State
 const loading = ref(false);
@@ -179,6 +172,7 @@ function provisionConnectedNodes() {
     provisionNodes({ nodes: payloadNodes })
     .then(() => {
         showNotification(t('provisioning.onPremises.notifications.provisionSuccess'), 'success');
+        router.push({ name: 'dashboard' });
     })
     .catch(error => {
         console.error('Error provisioning connected nodes:', error);

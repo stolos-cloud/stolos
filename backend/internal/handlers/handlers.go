@@ -7,15 +7,16 @@ import (
 )
 
 type Handlers struct {
-	authHandlers *AuthHandlers
-	teamHandlers *TeamHandlers
-	userHandlers *UserHandlers
-	isoHandlers  *ISOHandlers
-	nodeHandlers *NodeHandlers
-	gcpHandlers  *GCPHandlers
-	jwtService   *middleware.JWTService
-	db           *gorm.DB
-	wsManager    *wsservices.Manager
+	authHandlers  *AuthHandlers
+	teamHandlers  *TeamHandlers
+	userHandlers  *UserHandlers
+	isoHandlers   *ISOHandlers
+	nodeHandlers  *NodeHandlers
+	gcpHandlers   *GCPHandlers
+	eventHandlers *EventHandlers
+	jwtService    *middleware.JWTService
+	db            *gorm.DB
+	wsManager     *wsservices.Manager
 }
 
 func NewHandlers(
@@ -25,20 +26,22 @@ func NewHandlers(
 	isoHandlers *ISOHandlers,
 	nodeHandlers *NodeHandlers,
 	gcpHandlers *GCPHandlers,
+	eventHandlers *EventHandlers,
 	jwtService *middleware.JWTService,
 	db *gorm.DB,
 	wsManager *wsservices.Manager,
 ) *Handlers {
 	return &Handlers{
-		authHandlers: authHandlers,
-		teamHandlers: teamHandlers,
-		userHandlers: userHandlers,
-		isoHandlers:  isoHandlers,
-		nodeHandlers: nodeHandlers,
-		gcpHandlers:  gcpHandlers,
-		jwtService:   jwtService,
-		db:           db,
-		wsManager:    wsManager,
+		authHandlers:  authHandlers,
+		teamHandlers:  teamHandlers,
+		userHandlers:  userHandlers,
+		isoHandlers:   isoHandlers,
+		nodeHandlers:  nodeHandlers,
+		gcpHandlers:   gcpHandlers,
+		eventHandlers: eventHandlers,
+		jwtService:    jwtService,
+		db:            db,
+		wsManager:     wsManager,
 	}
 }
 
@@ -64,6 +67,10 @@ func (h *Handlers) NodeHandlers() *NodeHandlers {
 
 func (h *Handlers) GCPHandlers() *GCPHandlers {
 	return h.gcpHandlers
+}
+
+func (h *Handlers) EventHandlers() *EventHandlers {
+	return h.eventHandlers
 }
 
 func (h *Handlers) JWTService() *middleware.JWTService {

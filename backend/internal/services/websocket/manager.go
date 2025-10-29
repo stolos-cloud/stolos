@@ -19,8 +19,8 @@ const (
 
 // WebSocket message structure
 type Message struct {
-	Type    string      `json:"type"`
-	Payload any         `json:"payload"`
+	Type    string `json:"type"`
+	Payload any    `json:"payload"`
 }
 
 // ApprovalResponse represents a user's response to an approval request
@@ -31,13 +31,14 @@ type ApprovalResponse struct {
 
 // Client represents a WebSocket connection for a specific provision request
 type Client struct {
-	ID       string
-	conn     *websocket.Conn
-	send     chan Message
-	session  Session
-	manager  *Manager
-	mu       sync.Mutex
-	isClosed bool
+	ID          string
+	conn        *websocket.Conn
+	send        chan Message
+	session     Session
+	sessionType string
+	manager     *Manager
+	mu          sync.Mutex
+	isClosed    bool
 }
 
 // Manager manages all active WebSocket connections
@@ -85,8 +86,11 @@ func (m *Manager) RegisterClient(requestID string, conn *websocket.Conn, session
 		ID:      requestID,
 		conn:    conn,
 		send:    make(chan Message, 256),
-		session: session,
 		manager: m,
+	}
+
+	if session != nil {
+		client.attachSession(session)
 	}
 
 	m.register <- client
@@ -115,6 +119,22 @@ func (m *Manager) SendMessage(requestID string, message Message) error {
 		// Channel full, close client
 		m.unregister <- client
 		return nil
+	}
+}
+
+// BroadcastToSessionType sends a message to all clients with the provided session type.
+func (m *Manager) BroadcastToSessionType(sessionType string, message Message) {
+	m.mu.RLock()
+	targets := make([]*Client, 0, len(m.clients))
+	for _, client := range m.clients {
+		if client.SessionType() == sessionType {
+			targets = append(targets, client)
+		}
+	}
+	m.mu.RUnlock()
+
+	for _, client := range targets {
+		_ = m.SendMessage(client.ID, message)
 	}
 }
 
@@ -183,6 +203,24 @@ func (c *Client) Close() {
 		c.isClosed = true
 		c.conn.Close()
 	}
+}
+
+// SessionType returns the client's session type.
+func (c *Client) SessionType() string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.sessionType
+}
+
+func (c *Client) attachSession(session Session) {
+	c.mu.Lock()
+	c.session = session
+	if session != nil {
+		c.sessionType = session.GetType()
+	} else {
+		c.sessionType = ""
+	}
+	c.mu.Unlock()
 }
 
 // SendLog sends a log message to the client
