@@ -66,6 +66,24 @@ func (e *Executor) Plan(ctx context.Context) (bool, error) {
 	return hasChanges, nil
 }
 
+// PlanWithOutput runs terraform plan and returns the plan output as a string
+func (e *Executor) PlanWithOutput(ctx context.Context) (bool, string, error) {
+	// Use Plan with output redirect
+	planFile := "tfplan.out"
+	hasChanges, err := e.tf.Plan(ctx, tfexec.Out(planFile))
+	if err != nil {
+		return false, "", fmt.Errorf("terraform plan failed: %w", err)
+	}
+
+	// Show the plan in human-readable format
+	planOutput, err := e.tf.ShowPlanFileRaw(ctx, planFile)
+	if err != nil {
+		return hasChanges, "", fmt.Errorf("terraform show failed: %w", err)
+	}
+
+	return hasChanges, planOutput, nil
+}
+
 func (e *Executor) Apply(ctx context.Context) error {
 	if err := e.tf.Apply(ctx); err != nil {
 		return fmt.Errorf("terraform apply failed: %w", err)

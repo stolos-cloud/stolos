@@ -31,8 +31,10 @@ services:
     environment:
       - ADMIN_EMAIL=admin@example.com
       - ADMIN_PASSWORD=Admin123!
+      - TALOS_FOLDER=/app/talos-configs
     volumes:
       - gitops_workspace:/root/gitops-workspace
+      - ./backend/talos-configs:/app/talos-configs:ro
     ports:
       - "8080:8080"
     networks:

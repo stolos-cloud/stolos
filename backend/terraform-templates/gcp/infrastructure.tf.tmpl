@@ -32,6 +32,79 @@ resource "google_compute_subnetwork" "main_subnet" {
   network       = google_compute_network.main_vpc.id
 }
 
+# Firewall Rules
+
+# Allow KubeSpan WireGuard (UDP 51820)
+resource "google_compute_firewall" "kubespan" {
+  name    = "{{.ClusterName}}-allow-kubespan"
+  network = google_compute_network.main_vpc.name
+
+  allow {
+    protocol = "udp"
+    ports    = ["51820"]
+  }
+
+  source_ranges = ["0.0.0.0/0"]
+  target_tags   = ["talos-node"]
+
+  description = "Allow KubeSpan WireGuard mesh traffic"
+}
+
+# Allow Talos API (TCP 50000)
+resource "google_compute_firewall" "talos_api" {
+  name    = "{{.ClusterName}}-allow-talos-api"
+  network = google_compute_network.main_vpc.name
+
+  allow {
+    protocol = "tcp"
+    ports    = ["50000"]
+  }
+
+  source_ranges = ["0.0.0.0/0"]
+  target_tags   = ["talos-node"]
+
+  description = "Allow Talos API access"
+}
+
+# Allow Kubernetes API (TCP 6443)
+resource "google_compute_firewall" "kubernetes_api" {
+  name    = "{{.ClusterName}}-allow-k8s-api"
+  network = google_compute_network.main_vpc.name
+
+  allow {
+    protocol = "tcp"
+    ports    = ["6443"]
+  }
+
+  source_ranges = ["0.0.0.0/0"]
+  target_tags   = ["controlplane"]
+
+  description = "Allow Kubernetes API access to control plane nodes"
+}
+
+# Allow internal
+resource "google_compute_firewall" "internal_cluster" {
+  name    = "{{.ClusterName}}-allow-internal"
+  network = google_compute_network.main_vpc.name
+
+  allow {
+    protocol = "tcp"
+  }
+
+  allow {
+    protocol = "udp"
+  }
+
+  allow {
+    protocol = "icmp"
+  }
+
+  source_tags = ["talos-node"]
+  target_tags = ["talos-node"]
+
+  description = "Allow all internal traffic between cluster nodes"
+}
+
 # Output values for VM provisioning
 output "network_name" {
   value = google_compute_network.main_vpc.name

@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stolos-cloud/stolos/backend/internal/config"
 	"github.com/stolos-cloud/stolos/backend/internal/models"
+	githubpkg "github.com/stolos-cloud/stolos/backend/pkg/github"
 	"gorm.io/gorm"
 )
 
@@ -154,4 +155,21 @@ func (s *GitOpsService) GetConfigOrDefault() (*models.GitOpsConfig, error) {
 	}
 
 	return nil, fmt.Errorf("GitOps not configured in database or environment")
+}
+
+// GetGitHubClient creates a GitHub client using app config + GitOps config
+func (s *GitOpsService) GetGitHubClient() (*githubpkg.Client, error) {
+	gitopsConfig, err := s.GetConfigOrDefault()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get GitOps config: %w", err)
+	}
+
+	return githubpkg.NewClientFromConfig(
+		s.cfg.GitHub.AppID,
+		s.cfg.GitHub.InstallationID,
+		s.cfg.GitHub.PrivateKey,
+		gitopsConfig.RepoOwner,
+		gitopsConfig.RepoName,
+		gitopsConfig.Branch,
+	)
 }

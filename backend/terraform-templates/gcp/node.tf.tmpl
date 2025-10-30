@@ -1,5 +1,12 @@
 # GCP Talos Node: {{.Name}}
 # Managed by Stolos - Generated at {{.Timestamp}}
+# Talos config stored in GCS bucket
+
+# Fetch Talos machine configuration from GCS storage
+data "google_storage_bucket_object_content" "{{.Name}}_config" {
+  name   = "talos-configs/{{.Name}}.yaml"
+  bucket = "{{.BucketName}}"
+}
 
 module "{{.Name}}" {
   source = "../../modules/node"
@@ -10,9 +17,12 @@ module "{{.Name}}" {
   region       = "{{.Region}}"
   role         = "{{.Role}}"
   architecture = "{{.Architecture}}"
-  talos_config = <<-EOT
-{{.TalosConfig}}
-EOT
+
+  talos_config = data.google_storage_bucket_object_content.{{.Name}}_config.content
+
+  # Network configuration
+  network_name    = "{{.ClusterName}}-vpc"
+  subnetwork_name = "{{.ClusterName}}-subnet"
 
   disk_size_gb = {{.DiskSizeGB}}
   disk_type    = "{{.DiskType}}"

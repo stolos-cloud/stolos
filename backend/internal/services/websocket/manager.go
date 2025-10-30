@@ -194,6 +194,13 @@ func (c *Client) readPump() {
 	}
 }
 
+// SetSession sets or updates the session for this client
+func (c *Client) SetSession(session Session) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.session = session
+}
+
 // Close closes the WebSocket connection
 func (c *Client) Close() {
 	c.mu.Lock()

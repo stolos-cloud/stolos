@@ -129,7 +129,9 @@
                 "numberOfNodes": "Nombre de noeuds",
                 "role": "Rôle",
                 "zone": "Zone",
-                "machineType": "Type de machine"
+                "machineType": "Type de machine",
+                "diskSizeGb": "Taille du disque (Go)",
+                "diskType": "Type de disque"
             }
         }
     },
