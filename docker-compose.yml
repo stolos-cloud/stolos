@@ -35,7 +35,7 @@ services:
       - ./backend/talos-configs:/app/talos-configs:ro
     ports:
       - "8080:8080"
-      - "10.0.0.4:8082:8082" # update to your vpn ip
+      # - "10.0.0.4:8082:8082" # update to your vpn ip
     networks:
       - stolos-network
     depends_on:
