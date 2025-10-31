@@ -110,6 +110,7 @@
                     "ip": "IP",
                     "status": "Status",
                     "mac": "MAC",
+                    "disk": "Install disk",
                     "role": "Role",
                     "labels": "Labels"
                 }

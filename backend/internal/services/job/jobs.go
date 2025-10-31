@@ -153,6 +153,7 @@ var NodeStatusUpdateJob *StolosJob = &StolosJob{
 			log.Printf("NodeStatusUpdateJob: no valid hostnames found in Affiliates")
 			if err := db.Model(&models.Node{}).
 				Where("provider = ?", "onprem").
+				Where("status <> ?", models.StatusPending).
 				Update("status", models.StatusFailed).Error; err != nil {
 				log.Printf("NodeStatusUpdateJob: failed to mark missing nodes as failed: %v", err)
 			}
@@ -167,6 +168,7 @@ var NodeStatusUpdateJob *StolosJob = &StolosJob{
 			if err := db.Model(&models.Node{}).
 				Where("provider = ?", "onprem").
 				Where("name NOT IN ?", hostnames).
+				Where("status <> ?", models.StatusPending).
 				Update("status", models.StatusFailed).Error; err != nil {
 				log.Printf("NodeStatusUpdateJob: failed to mark missing nodes as failed: %v", err)
 			}

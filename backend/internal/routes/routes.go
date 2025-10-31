@@ -61,7 +61,8 @@ func setupNodeRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
 		nodes.PUT("/config", h.NodeHandlers().UpdateActiveNodesConfig)
 		nodes.POST("/provision", h.NodeHandlers().ProvisionNodes)
 		nodes.POST("/samples", h.NodeHandlers().CreateSampleNodes) // TODO: remove in production
-		//nodes.GET("/talosconfig", h.NodeHandlers().GetTalosconfig)
+		nodes.GET("/talosconfig", h.NodeHandlers().GetTalosconfig)
+		nodes.GET("/:id/disks", h.NodeHandlers().GetNodeDisks)
 		//nodes.GET("/kubeconfig", h.NodeHandlers().GetKubeconfig)
 	}
 }

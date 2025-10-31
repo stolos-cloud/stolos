@@ -111,6 +111,7 @@
                     "wid": "WID",
                     "status": "Statut",
                     "mac": "MAC",
+                    "disk": "Disque d'installation",
                     "role": "Rôle",
                     "labels": "Étiquettes"
                 }

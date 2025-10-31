@@ -181,7 +181,7 @@ func (s *NodeService) UpdateActiveNodesConfig(updates []NodeConfigUpdate) ([]mod
 // ProvisionNodes provisions multiple on-prem nodes by updating their role and labels,
 // then applying Talos machine configuration. It continues processing all nodes even if
 // some fail, returning a result list with per-node success/error details.
-func (s *NodeService) ProvisionNodes(configs []models.NodeProvisionConfig) ([]models.NodeProvisionResult, error) {
+func (s *NodeService) ProvisionNodes(configs []models.OnPremNodeProvisionConfig) ([]models.NodeProvisionResult, error) {
 	results := make([]models.NodeProvisionResult, 0, len(configs))
 
 	// Get machine config bundle from TALOS_FOLDER, fatal if it fails
@@ -287,7 +287,7 @@ func (s *NodeService) ProvisionNodes(configs []models.NodeProvisionConfig) ([]mo
 			jsonpatch.Operation{
 				"op":    raw("add"),
 				"path":  raw("/machine/install/disk"),
-				"value": raw("/dev/sda"),
+				"value": raw(cfg.InstallDisk),
 			},
 		}
 

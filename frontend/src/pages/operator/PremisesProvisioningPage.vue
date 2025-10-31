@@ -21,6 +21,19 @@
                     {{ item.status }}
                 </v-chip>
             </template>
+
+            <template #[`item.installDisk`]="{ item }">
+                <v-select
+                    v-model="item.installDisk"
+                    :items="item.diskOptions"
+                    :loading="item.disksLoading"
+                    density="compact"
+                    :placeholder="$t('provisioning.onPremises.table.headers.disk')"
+                    variant="solo"
+                    hide-details
+                    :disabled="item.disksLoading || !item.diskOptions.length"
+                />
+            </template>
             
             <!-- Slot for roles -->
             <template #[`item.role`]="{ item }">
@@ -76,7 +89,7 @@
 </template>
 
 <script setup>
-import { getConnectedNodes, provisionNodes } from '@/services/provisioning.service';
+import { getConnectedNodes, getNodeDisks, provisionNodes } from '@/services/provisioning.service';
 import { onMounted, ref, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useStore } from 'vuex';
@@ -109,6 +122,7 @@ const nodeHeaders = computed(() => [
     { title: t('provisioning.onPremises.table.headers.ip'), value: 'ip_address'},
     { title: t('provisioning.onPremises.table.headers.mac'), value: 'mac_address', width: "20%" },
     { title: t('provisioning.onPremises.table.headers.status'), value: 'status', width: "15%" },
+    { title: t('provisioning.onPremises.table.headers.disk'), value: 'installDisk', width: "20%" },
     { title: t('provisioning.onPremises.table.headers.role'), value: 'role', width: "20%" },
     { title: t('provisioning.onPremises.table.headers.labels'), value: 'labels', width: "30%" },
 ]);
@@ -117,7 +131,7 @@ const canProvision = computed(() => {
     if (!nodes.value.length) return false
 
     return nodes.value.every(node =>
-        node.role
+        node.role && node.installDisk
     )
 });
 const actionsButtonForTable = computed(() => [
@@ -140,31 +154,49 @@ const actionsButtonForTable = computed(() => [
 function showDownloadISODialog() {
     dialogDownloadISOOnPremise.value = true;
 }
-function fetchConnectedNodes() {
+async function fetchConnectedNodes() {
     loading.value = true;
-    getConnectedNodes({status: "pending"})
-        .then(response => {        
-            nodes.value = response
-                .filter(node => node.provider?.toLowerCase() === "onprem")
-                .map(node => ({
-                    ...node,
-                    status: node.status.charAt(0).toUpperCase() + node.status.slice(1),
-                    role: null,
-                    labels: [],
-                }));
-        })
-        .catch(error => {
-            console.error('Error fetching connected nodes:', error);
-        })
-        .finally(() => {
-            loading.value = false;
-        });
+    try {
+        const response = await getConnectedNodes({status: "pending"});
+        nodes.value = response
+            .filter(node => node.provider?.toLowerCase() === "onprem")
+            .map(node => ({
+                ...node,
+                status: node.status.charAt(0).toUpperCase() + node.status.slice(1),
+                role: null,
+                labels: [],
+                installDisk: null,
+                diskOptions: [],
+                disksLoading: false,
+            }));
+        await Promise.all(nodes.value.map(node => loadNodeDisks(node)));
+    } catch (error) {
+        console.error('Error fetching connected nodes:', error);
+    } finally {
+        loading.value = false;
+    }
 }
 function addLabel(item) {
     if (item.newLabel && !item.labels.includes(item.newLabel)) {
         item.labels.push(item.newLabel);
     }
     item.newLabel = '';
+}
+async function loadNodeDisks(node) {
+    node.disksLoading = true;
+    try {
+        const disks = await getNodeDisks(node.id);
+        node.diskOptions = disks;
+        if (!node.installDisk && disks.length) {
+            node.installDisk = disks[0];
+        }
+    } catch (error) {
+        console.error(`Error fetching disks for node ${node.id}:`, error);
+        node.diskOptions = [];
+        node.installDisk = null;
+    } finally {
+        node.disksLoading = false;
+    }
 }
 function provisionConnectedNodes() {
     if (!canProvision.value) return;
@@ -174,6 +206,7 @@ function provisionConnectedNodes() {
         node_id: node.id,
         role: node.role,
         labels: node.labels,
+        install_disk: node.installDisk,
     }));
 
     provisionNodes({ nodes: payloadNodes })
