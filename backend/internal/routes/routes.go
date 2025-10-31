@@ -32,7 +32,7 @@ func SetupRoutes(r *gin.Engine, h *handlers.Handlers) {
 			setupGCPRoutes(api, protected, h)
 			setupTeamRoutes(protected, h)
 			setupUserRoutes(protected, h)
-			setupEventRoutes(api, h)
+			setupEventRoutes(protected, h)
 		}
 	}
 }
@@ -69,9 +69,8 @@ func setupNodeRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
 
 func setupEventRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
 	events := api.Group("/events")
-	events.Use(middleware.RequireRole(models.RoleAdmin))
 	{
-		events.GET("/stream", h.EventHandlers().StreamEvents)
+		events.GET("/stream", middleware.RequireRole(models.RoleAdmin), h.EventHandlers().StreamEvents)
 	}
 }
 
