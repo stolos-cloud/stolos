@@ -45,8 +45,8 @@ func RegisterMiddleware() []any {
 // RegisterCoreServices registers core business services
 func RegisterCoreServices() []any {
 	return []any{
-		gontainer.NewFactory(func(db *gorm.DB, cfg *config.Config) *talosservice.TalosService {
-			return talosservice.NewTalosService(db, cfg)
+		gontainer.NewFactory(func(db *gorm.DB, cfg *config.Config, wsManager *wsservices.Manager) *talosservice.TalosService {
+			return talosservice.NewTalosService(db, cfg, wsManager)
 		}),
 		gontainer.NewFactory(func(db *gorm.DB, cfg *config.Config, ts *talosservice.TalosService) *discoveryservice.DiscoveryService {
 			return discoveryservice.NewDiscoveryService(db, cfg, ts)

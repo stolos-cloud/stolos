@@ -23,7 +23,6 @@ func SetupRoutes(r *gin.Engine, h *handlers.Handlers) {
 
 		// temporary: don't require authentication for nodes routes
 		setupNodeRoutes(api, h)
-		setupEventRoutes(api, h)
 		// require authentication
 		protected := api.Group("")
 		protected.Use(middleware.JWTAuthMiddleware(h.JWTService(), h.DB()))
@@ -33,6 +32,7 @@ func SetupRoutes(r *gin.Engine, h *handlers.Handlers) {
 			setupGCPRoutes(api, protected, h)
 			setupTeamRoutes(protected, h)
 			setupUserRoutes(protected, h)
+			setupEventRoutes(api, h)
 		}
 	}
 }
@@ -68,6 +68,7 @@ func setupNodeRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
 
 func setupEventRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
 	events := api.Group("/events")
+	events.Use(middleware.RequireRole(models.RoleAdmin))
 	{
 		events.GET("/stream", h.EventHandlers().StreamEvents)
 	}

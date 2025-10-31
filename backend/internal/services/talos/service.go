@@ -21,6 +21,7 @@ import (
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/talos"
 	"github.com/stolos-cloud/stolos/backend/internal/config"
 	"github.com/stolos-cloud/stolos/backend/internal/models"
+	wsservices "github.com/stolos-cloud/stolos/backend/internal/services/websocket"
 	"gorm.io/gorm"
 )
 
@@ -30,6 +31,7 @@ type TalosService struct {
 	db            *gorm.DB
 	cfg           *config.Config
 	factoryClient *factoryClient.Client
+	wsManager     *wsservices.Manager
 }
 
 // MachineConfigRequest represents parameters for generating machine configs
@@ -40,12 +42,13 @@ type MachineConfigRequest struct {
 	ControlPlaneIP    string `json:"control_plane_ip"`
 }
 
-func NewTalosService(db *gorm.DB, cfg *config.Config) *TalosService {
+func NewTalosService(db *gorm.DB, cfg *config.Config, wsManager *wsservices.Manager) *TalosService {
 	factory := talos.CreateFactoryClient()
 	return &TalosService{
 		db:            db,
 		cfg:           cfg,
 		factoryClient: factory,
+		wsManager:     wsManager,
 	}
 }
 

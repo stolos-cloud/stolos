@@ -134,7 +134,6 @@ var NodeStatusUpdateJob *StolosJob = &StolosJob{
 		}
 		if affs.Len() == 0 {
 			log.Printf("NodeStatusUpdateJob: no Affiliates returned")
-			return
 		}
 
 		// Collect affiliate hostnames
@@ -152,25 +151,37 @@ var NodeStatusUpdateJob *StolosJob = &StolosJob{
 
 		if len(hostnames) == 0 {
 			log.Printf("NodeStatusUpdateJob: no valid hostnames found in Affiliates")
-			return
+			if err := db.Model(&models.Node{}).
+				Where("provider = ?", "onprem").
+				Update("status", models.StatusFailed).Error; err != nil {
+				log.Printf("NodeStatusUpdateJob: failed to mark missing nodes as failed: %v", err)
+			}
+		} else {
+			if err := db.Model(&models.Node{}).
+				Where("name IN ?", hostnames).
+				Update("status", models.StatusActive).Error; err != nil {
+				log.Printf("NodeStatusUpdateJob: DB update failed: %v", err)
+				return
+			}
+
+			if err := db.Model(&models.Node{}).
+				Where("provider = ?", "onprem").
+				Where("name NOT IN ?", hostnames).
+				Update("status", models.StatusFailed).Error; err != nil {
+				log.Printf("NodeStatusUpdateJob: failed to mark missing nodes as failed: %v", err)
+			}
 		}
 
-		// --- update DB: mark all matching hostnames as Active ---
-		if err := db.Model(&models.Node{}).
-			Where("name IN ?", hostnames).
-			Update("status", models.StatusActive).Error; err != nil {
-			log.Printf("NodeStatusUpdateJob: DB update failed: %v", err)
-			return
+		var nodes []models.Node
+		if err := db.Find(&nodes).Error; err != nil {
+			log.Printf("NodeStatusUpdateJob: failed to load nodes for broadcast: %v", err)
 		}
 
-		log.Printf("NodeStatusUpdateJob: marked %d nodes as Active", len(hostnames))
-
-		if len(hostnames) > 0 && wsManager != nil {
+		if wsManager != nil {
 			wsManager.BroadcastToSessionType(wsservices.SessionTypeEvent, wsservices.Message{
 				Type: "NodeStatusUpdated",
 				Payload: map[string]any{
-					"nodes":     hostnames,
-					"status":    models.StatusActive,
+					"nodes":     nodes,
 					"updatedAt": time.Now().UTC(),
 				},
 			})
@@ -196,11 +207,12 @@ var NodeInfoReconciler = &StolosJob{
 		(*talos.TalosService)(nil),
 		(*node.NodeService)(nil),
 		(*gorm.DB)(nil),
+		(*wsservices.Manager)(nil),
 	},
 	Options: []gocron.JobOption{
 		gocron.WithSingletonMode(gocron.LimitModeWait),
 	},
-	JobFunc: func(ts *talos.TalosService, ns *node.NodeService, db *gorm.DB) {
+	JobFunc: func(ts *talos.TalosService, ns *node.NodeService, db *gorm.DB, wsManager *wsservices.Manager) {
 		ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 		defer cancel()
 
@@ -318,11 +330,25 @@ var NodeInfoReconciler = &StolosJob{
 				Name:       hostname,
 				IPAddress:  newIP,
 				MACAddress: mac,
-				Status:     models.StatusActive,
 			}).Error; err != nil {
 				log.Printf("NodeInfoReconciler: upsert %s failed: %v", hostname, err)
 				return
 			}
 		})
+
+		if wsManager != nil {
+			var nodes []models.Node
+			if err := db.Find(&nodes).Error; err != nil {
+				log.Printf("NodeInfoReconciler: failed to load nodes for broadcast: %v", err)
+			} else {
+				wsManager.BroadcastToSessionType(wsservices.SessionTypeEvent, wsservices.Message{
+					Type: "NodeStatusUpdated",
+					Payload: map[string]any{
+						"nodes":     nodes,
+						"updatedAt": time.Now().UTC(),
+					},
+				})
+			}
+		}
 	},
 }
