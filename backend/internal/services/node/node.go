@@ -186,7 +186,7 @@ func (s *NodeService) ProvisionNodes(configs []models.OnPremNodeProvisionConfig)
 	results := make([]models.NodeProvisionResult, 0, len(configs))
 
 	for _, cfg := range configs {
-		// Get a fresh config bundle for each node to avoid mutation issues
+		// Get a fresh config bundle for each node
 		configBundle, err := s.ts.GetMachineConfigBundle()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get machine config bundle: %w", err)
