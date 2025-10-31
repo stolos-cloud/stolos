@@ -118,6 +118,11 @@
             "buttons": {
                 "addLabel": "Add label",
                 "provisionConnectedNodes": "Provision nodes"
+            },
+            "notifications": {
+                "provisionSuccess": "Nodes provisioned successfully! They will join the cluster shortly.",
+                "provisionFailed": "Provisioning failed: {error}",
+                "provisionPartial": "Provisioned {success} of {total} nodes. {failures} failed"
             }
         },
         "cloud": {

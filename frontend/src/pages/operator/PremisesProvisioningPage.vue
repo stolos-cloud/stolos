@@ -198,11 +198,34 @@ function provisionConnectedNodes() {
     }));
 
     provisionNodes({ nodes: payloadNodes })
-        .then(() => {
-            showNotification(t('provisioning.onPremises.notifications.provisionSuccess'), 'success');
+        .then((results) => {
+            // Check individual node results
+            const failures = results.filter(r => !r.succeeded);
+
+            if (failures.length === 0) {
+                showNotification(t('provisioning.onPremises.notifications.provisionSuccess'), 'success');
+                // Refresh the node list after successful provisioning
+                fetchConnectedNodes();
+            } else if (failures.length === results.length) {
+                // All failed
+                const errorMsg = failures.map(f => `${f.node_id}: ${f.error}`).join('; ');
+                showNotification(t('provisioning.onPremises.notifications.provisionFailed', { error: errorMsg }), 'error');
+            } else {
+                // Partial success
+                showNotification(
+                    t('provisioning.onPremises.notifications.provisionPartial', {
+                        success: results.length - failures.length,
+                        total: results.length,
+                        failures: failures.length
+                    }),
+                    'warning'
+                );
+                fetchConnectedNodes();
+            }
         })
         .catch(error => {
             console.error('Error provisioning connected nodes:', error);
+            showNotification(`Provisioning error: ${error.message || error}`, 'error');
         })
         .finally(() => {
             hideOverlay();

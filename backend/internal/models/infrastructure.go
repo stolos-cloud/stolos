@@ -179,16 +179,6 @@ type OnPremNodeProvisionConfig struct {
 	InstallDisk string    `json:"install_disk" example:"/dev/sda"`
 }
 
-type NodeProvisionRequest struct {
-	Nodes []NodeProvisionConfig `json:"nodes" binding:"required"`
-}
-
-type NodeProvisionConfig struct {
-	NodeID uuid.UUID `json:"node_id" binding:"required" example:"550e8400-e29b-41d4-a716-446655440000"`
-	Role   string    `json:"role" binding:"required" example:"worker"`
-	Labels []string  `json:"labels" example:"zone=us-east,type=compute"`
-}
-
 type NodeProvisionResult struct {
 	NodeID    uuid.UUID `json:"node_id" binding:"required" example:"550e8400-e29b-41d4-a716-446655440000"`
 	Role      string    `json:"role" binding:"required" example:"worker"`

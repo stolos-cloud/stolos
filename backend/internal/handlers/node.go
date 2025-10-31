@@ -65,6 +65,52 @@ func (h *NodeHandlers) GetNode(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Get node - TODO"})
 }
 
+// DeleteNode godoc
+// @Summary Delete a node
+// @Description Remove a node from the database
+// @Tags nodes
+// @Accept json
+// @Produce json
+// @Param id path string true "Node ID (UUID)"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /nodes/{id} [delete]
+func (h *NodeHandlers) DeleteNode(c *gin.Context) {
+	idStr := c.Param("id")
+	if idStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "node id is required"})
+		return
+	}
+
+	// Parse UUID
+	nodeID, err := uuid.Parse(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid node id format"})
+		return
+	}
+
+	// Check if node exists
+	var node models.Node
+	if err := h.db.First(&node, "id = ?", nodeID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "node not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check node existence"})
+		return
+	}
+
+	// Delete the node
+	if err := h.db.Delete(&node).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete node"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "node deleted successfully"})
+}
+
 // UpdateActiveNodeConfig godoc
 // @Summary Update active node configuration
 // @Description Update a single active node's role and labels
@@ -167,8 +213,8 @@ func (h *NodeHandlers) CreateSampleNodes(c *gin.Context) {
 // @Tags nodes
 // @Accept json
 // @Produce json
-// @Param request body models.NodeProvisionRequest true "Array of nodes to provision with role and labels"
-// @Success 200 {object} models.NodeProvisionRequest "Returns provisioned count and nodes array"
+// @Param request body models.OnPremNodeProvisionRequest true "Array of nodes to provision with role and labels"
+// @Success 200 {object} models.OnPremNodeProvisionRequest "Returns provisioned count and nodes array"
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /nodes/provision [post]
@@ -282,9 +328,9 @@ func (h *NodeHandlers) GetNodeDisks(c *gin.Context) {
 // @Description Returns the talosconfig file in TALOS_FOLDER, destined for operators to do manual talosctl operations.
 // @Tags nodes
 // @Accept json
-// @Produce yaml
+// @Produce application/yaml
 // @Success 200 {object} []byte "Message indicating success"
-// @Failure 500 {object}
+// @Failure 500 {object} map[string]string
 // @Router /nodes/talosconfig [get]
 func (h *NodeHandlers) GetTalosconfig(c *gin.Context) {
 	cfg, err := h.talosService.GetTalosConfigFromDB()
