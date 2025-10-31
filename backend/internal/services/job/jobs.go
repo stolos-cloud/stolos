@@ -307,7 +307,11 @@ var NodeInfoReconciler = &StolosJob{
 			if newIP != "" {
 				if cli, err := ts.GetMachineryClient(newIP); err == nil {
 					iface := talos.GetMachineBestExternalNetworkInterface(ctx, cli)
-					mac = iface.Mac
+					if iface != nil {
+						mac = iface.Mac
+					} else {
+						return
+					}
 				} else {
 					log.Printf("NodeInfoReconciler: client err %s (%s): %v", hostname, newIP, err)
 				}

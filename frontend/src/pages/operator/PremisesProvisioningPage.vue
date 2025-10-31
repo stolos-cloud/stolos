@@ -1,20 +1,12 @@
 <template>
     <PortalLayout>
-        <BaseLabelBar 
-            :title="$t('provisioning.onPremises.title')"
-            :subheading="$t('provisioning.onPremises.subheading')"
-            :actions="actionsLabelBar"
-        />
-        <BaseDataTable
-            :headers="nodeHeaders"
-            :items="nodes"
-            :loading="loading"
+        <BaseLabelBar :title="$t('provisioning.onPremises.title')"
+            :subheading="$t('provisioning.onPremises.subheading')" :actions="actionsLabelBar" />
+        <BaseDataTable :headers="nodeHeaders" :items="nodes" :loading="loading"
             :loadingText="$t('provisioning.onPremises.table.loadingText')"
             :noDataText="$t('provisioning.onPremises.table.noDataText')"
             :itemsPerPageText="$t('provisioning.onPremises.table.itemsPerPageText')"
-            :titleToolbar="$t('provisioning.onPremises.table.title')"
-            :actionsButtonForTable="actionsButtonForTable"
-        >
+            :titleToolbar="$t('provisioning.onPremises.table.title')" :actionsButtonForTable="actionsButtonForTable">
             <!-- Slot for status -->
             <template #[`item.status`]="{ item }">
                 <v-chip :color="getStatusColor(item.status)">
@@ -23,43 +15,22 @@
             </template>
 
             <template #[`item.installDisk`]="{ item }">
-                <v-select
-                    v-model="item.installDisk"
-                    :items="item.diskOptions"
-                    :loading="item.disksLoading"
-                    density="compact"
-                    :placeholder="$t('provisioning.onPremises.table.headers.disk')"
-                    variant="solo"
-                    hide-details
-                    :disabled="item.disksLoading || !item.diskOptions.length"
-                />
+                <v-select v-model="item.installDisk" :items="item.diskOptions" :loading="item.disksLoading"
+                    density="compact" :placeholder="$t('provisioning.onPremises.table.headers.disk')" variant="solo"
+                    hide-details :disabled="item.disksLoading || !item.diskOptions.length" />
             </template>
-            
+
             <!-- Slot for roles -->
             <template #[`item.role`]="{ item }">
-                <v-select
-                v-model="item.role"
-                :items="provisioningRoles"
-                item-value="value"
-                item-title="label"
-                dense
-                density="compact"
-                placeholder="Select role"
-                variant="solo"
-                hide-details
-                ></v-select>
+                <v-select v-model="item.role" :items="provisioningRoles" item-value="value" item-title="label" dense
+                    density="compact" placeholder="Select role" variant="solo" hide-details></v-select>
             </template>
 
             <!-- Slot for labels -->
             <template #[`item.labels`]="{ item }">
                 <div class="d-flex flex-wrap align-center">
-                    <v-chip
-                        v-for="(label, index) in item.labels"
-                        :key="index"
-                        class="ma-1"
-                        closable
-                        @click:close="item.labels.splice(index, 1)"
-                    >
+                    <v-chip v-for="(label, index) in item.labels" :key="index" class="ma-1" closable
+                        @click:close="item.labels.splice(index, 1)">
                         {{ label }}
                     </v-chip>
                     <template v-if="!item.addingLabel">
@@ -68,19 +39,17 @@
                         </v-chip>
                     </template>
                     <template v-else>
-                        <v-text-field
-                            v-model="item.newLabel"
-                            density="compact"
-                            placeholder="New label"
-                            variant="solo"
-                            rounded
-                            hide-details
-                            max-width="120"
-                            autofocus
-                            @keyup.enter="addLabel(item)"
-                            @blur="addLabel(item); item.addingLabel = false"
-                        />
+                        <v-text-field v-model="item.newLabel" density="compact" placeholder="New label" variant="solo"
+                            rounded hide-details max-width="120" autofocus @keyup.enter="addLabel(item)"
+                            @blur="addLabel(item); item.addingLabel = false" />
                     </template>
+                </div>
+            </template>
+            <template #bottom="{ headers }">
+                <v-divider class="mb-4"></v-divider>
+                <div style="padding-bottom: 10px;" class="d-flex justify-center align-center text-center">
+                    <v-progress-circular indeterminate class="mr-2" size="20"></v-progress-circular>
+                    <span class="text-body-2">New nodes will appear automatically...</span>
                 </div>
             </template>
         </BaseDataTable>
@@ -90,13 +59,14 @@
 
 <script setup>
 import { getConnectedNodes, getNodeDisks, provisionNodes } from '@/services/provisioning.service';
-import { onMounted, ref, computed } from 'vue';
+import { onMounted, onBeforeUnmount, ref, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useStore } from 'vuex';
 import { GlobalNotificationHandler } from "@/composables/GlobalNotificationHandler";
 import { GlobalOverlayHandler } from "@/composables/GlobalOverlayHandler";
 import { StatusColorHandler } from '@/composables/StatusColorHandler';
 import DownloadISOOnPremDialog from '@/pages/operator/dialogs/download/DownloadISOOnPremDialog.vue';
+import wsEventService from '@/services/wsEvent.service';
 
 const { t } = useI18n();
 const store = useStore();
@@ -109,9 +79,27 @@ const loading = ref(false);
 const nodes = ref([]);
 const dialogDownloadISOOnPremise = ref(false);
 
+let unsubscribeNodeStatusUpdated;
+let unsubscribeNewPendingNodeDetected;
+
 // Mounted
 onMounted(() => {
     fetchConnectedNodes();
+    unsubscribeNodeStatusUpdated = wsEventService.subscribe('NodeStatusUpdated', () => {
+        fetchConnectedNodes();
+    });
+    unsubscribeNewPendingNodeDetected = wsEventService.subscribe('NewPendingNodeDetected', () => {
+        fetchConnectedNodes();
+    });
+});
+
+onBeforeUnmount(() => {
+    if (typeof unsubscribeNodeStatusUpdated === 'function') {
+        unsubscribeNodeStatusUpdated();
+    }
+    if (typeof unsubscribeNewPendingNodeDetected === 'function') {
+        unsubscribeNewPendingNodeDetected();
+    }
 });
 
 // Computed
@@ -119,7 +107,7 @@ const actionsLabelBar = computed(() => [
     { icon: "mdi-download", text: t('actionButtons.downloadISOOnPremise'), tooltip: t('actionButtons.downloadISOOnPremise'), onClick: () => showDownloadISODialog() }
 ]);
 const nodeHeaders = computed(() => [
-    { title: t('provisioning.onPremises.table.headers.ip'), value: 'ip_address'},
+    { title: t('provisioning.onPremises.table.headers.ip'), value: 'ip_address' },
     { title: t('provisioning.onPremises.table.headers.mac'), value: 'mac_address', width: "20%" },
     { title: t('provisioning.onPremises.table.headers.status'), value: 'status', width: "15%" },
     { title: t('provisioning.onPremises.table.headers.disk'), value: 'installDisk', width: "20%" },
@@ -157,7 +145,7 @@ function showDownloadISODialog() {
 async function fetchConnectedNodes() {
     loading.value = true;
     try {
-        const response = await getConnectedNodes({status: "pending"});
+        const response = await getConnectedNodes({ status: "pending" });
         nodes.value = response
             .filter(node => node.provider?.toLowerCase() === "onprem")
             .map(node => ({
@@ -210,20 +198,20 @@ function provisionConnectedNodes() {
     }));
 
     provisionNodes({ nodes: payloadNodes })
-    .then(() => {
-        showNotification(t('provisioning.onPremises.notifications.provisionSuccess'), 'success');
-    })
-    .catch(error => {
-        console.error('Error provisioning connected nodes:', error);
-    })
-    .finally(() => {
-        hideOverlay();
-    });
+        .then(() => {
+            showNotification(t('provisioning.onPremises.notifications.provisionSuccess'), 'success');
+        })
+        .catch(error => {
+            console.error('Error provisioning connected nodes:', error);
+        })
+        .finally(() => {
+            hideOverlay();
+        });
 }
 </script>
 
 <style scoped>
 .chip-input .v-field__input {
-  padding: 0 8px !important;
+    padding: 0 8px !important;
 }
 </style>

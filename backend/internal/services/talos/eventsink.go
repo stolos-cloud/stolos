@@ -11,6 +11,7 @@ import (
 	"github.com/siderolabs/siderolink/pkg/events"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/talos"
 	"github.com/stolos-cloud/stolos/backend/internal/models"
+	wsservices "github.com/stolos-cloud/stolos/backend/internal/services/websocket"
 	"gorm.io/gorm"
 )
 
@@ -88,6 +89,15 @@ func (s *TalosService) StartEventSink() {
 				}
 
 				log.Printf("Auto-registered new on-prem node: %s (IP: %s)", node.Name, ip)
+
+				if s.wsManager != nil {
+					s.wsManager.BroadcastToSessionType(wsservices.SessionTypeEvent, wsservices.Message{
+						Type: "NewPendingNodeDetected",
+						Payload: map[string]any{
+							"node": node,
+						},
+					})
+				}
 			} else if err != nil {
 				log.Printf("Error checking node existence for IP %s: %v", ip, err)
 				return err
