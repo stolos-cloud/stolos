@@ -5,14 +5,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 
-	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/google/uuid"
 	machineapi "github.com/siderolabs/talos/pkg/machinery/api/machine"
+	coreconfig "github.com/siderolabs/talos/pkg/machinery/config"
 	"github.com/siderolabs/talos/pkg/machinery/config/configpatcher"
-	"github.com/siderolabs/talos/pkg/machinery/config/encoder"
 	machineconf "github.com/siderolabs/talos/pkg/machinery/config/machine"
 	"github.com/stolos-cloud/stolos/backend/internal/config"
+	"github.com/stolos-cloud/stolos/backend/internal/helpers"
 	"github.com/stolos-cloud/stolos/backend/internal/models"
 	"github.com/stolos-cloud/stolos/backend/internal/services"
 	gcpservices "github.com/stolos-cloud/stolos/backend/internal/services/gcp"
@@ -184,13 +185,12 @@ func (s *NodeService) UpdateActiveNodesConfig(updates []NodeConfigUpdate) ([]mod
 func (s *NodeService) ProvisionNodes(configs []models.OnPremNodeProvisionConfig) ([]models.NodeProvisionResult, error) {
 	results := make([]models.NodeProvisionResult, 0, len(configs))
 
-	// Get machine config bundle from TALOS_FOLDER, fatal if it fails
-	configBundle, err := s.ts.GetMachineConfigBundle()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get machine config bundle: %w", err)
-	}
-
 	for _, cfg := range configs {
+		// Get a fresh config bundle for each node to avoid mutation issues
+		configBundle, err := s.ts.GetMachineConfigBundle()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get machine config bundle: %w", err)
+		}
 		result := models.NodeProvisionResult{
 			NodeID: cfg.NodeID,
 			Role:   cfg.Role,
@@ -241,23 +241,51 @@ func (s *NodeService) ProvisionNodes(configs []models.OnPremNodeProvisionConfig)
 		}
 
 		// get talos api client for node
+		log.Printf("ProvisionNodes: Attempting to connect to node %s (%s)", cfg.NodeID, node.IPAddress)
 		cli, err := talos.GetInsecureMachineryClient(context.Background(), node.IPAddress)
 		if err != nil {
+			log.Printf("ProvisionNodes: Failed to get Talos client for %s: %v", node.IPAddress, err)
 			result.Error = fmt.Sprintf("failed to get Talos client for %s: %v", node.IPAddress, err)
 			results = append(results, result)
 			continue
 		}
 
-		// get existing node count for this type
-		var existingNodeCount int64
+		// Count existing active nodes of this role
+		var count int64
 		if err := s.db.Model(&models.Node{}).
 			Where("status = 'active' AND role = ?", node.Role).
-			Count(&existingNodeCount).Error; err != nil {
+			Count(&count).Error; err != nil {
 			result.Error = fmt.Sprintf("failed to count existing nodes: %v", err)
 			results = append(results, result)
 			continue
 		}
-		nodeName := fmt.Sprintf("%s-%d", node.Role, int(existingNodeCount)+1)
+
+		// Control planes use 1-based indexing, workers use 0-based
+		// Generate name and check if it exists, increment until we find unused
+		var nodeName string
+		nodeIndex := int(count)
+		if node.Role == "control-plane" {
+			nodeIndex++ // 1-based: control-plane-1, control-plane-2, ...
+		}
+		// If name exists (e.g., after deletion/gaps), keep incrementing
+		for {
+			nodeName = fmt.Sprintf("%s-%d", node.Role, nodeIndex)
+			var existing int64
+			if err := s.db.Model(&models.Node{}).
+				Where("name = ?", nodeName).
+				Count(&existing).Error; err != nil {
+				result.Error = fmt.Sprintf("failed to check node name: %v", err)
+				results = append(results, result)
+				break
+			}
+			if existing == 0 {
+				break // Name is available
+			}
+			nodeIndex++
+		}
+		if result.Error != "" {
+			continue
+		}
 
 		// create machineConfig for the node (part 1)
 		var machineType machineconf.Type
@@ -266,49 +294,62 @@ func (s *NodeService) ProvisionNodes(configs []models.OnPremNodeProvisionConfig)
 		} else {
 			machineType = machineconf.TypeWorker
 		}
-		rendered, err := configBundle.Serialize(encoder.CommentsDocs, machineType)
-		if err != nil {
-			result.Error = fmt.Sprintf("failed to serialize config: %v", err)
+
+		// Get the base config provider from the bundle
+		var baseProvider coreconfig.Provider
+		if machineType == machineconf.TypeControlPlane {
+			baseProvider = configBundle.ControlPlane()
+		} else {
+			baseProvider = configBundle.Worker()
+		}
+
+		if baseProvider == nil {
+			result.Error = fmt.Sprintf("failed to get base config from bundle for machine type %v", machineType)
 			results = append(results, result)
 			continue
 		}
 
-		// use json patch to overwrite certain values (part 2)
-		patch := jsonpatch.Patch{
-			jsonpatch.Operation{
-				"op":    raw("replace"),
-				"path":  raw("/machine/network/hostname"),
-				"value": raw(nodeName),
-			},
-			jsonpatch.Operation{
-				"op":   raw("remove"),
-				"path": raw("/machine/install/diskSelector"),
-			},
-			jsonpatch.Operation{
-				"op":    raw("add"),
-				"path":  raw("/machine/install/disk"),
-				"value": raw(cfg.InstallDisk),
-			},
-		}
-
-		patched, err := configpatcher.JSON6902(rendered, patch)
+		// Create typed config patch with hostname, disk, and network settings
+		typedPatch, err := talos.CreateMachineConfigPatch(nodeName, cfg.InstallDisk)
 		if err != nil {
-			result.Error = fmt.Sprintf("failed to apply JSON patch: %v", err)
+			result.Error = fmt.Sprintf("failed to create config patch: %v", err)
 			results = append(results, result)
 			continue
 		}
+
+		// Apply the strategic merge patch
+		patchedProvider, err := configpatcher.StrategicMerge(baseProvider, typedPatch.(configpatcher.StrategicMergePatch))
+		if err != nil {
+			result.Error = fmt.Sprintf("failed to apply config patch: %v", err)
+			results = append(results, result)
+			continue
+		}
+
+		// Serialize the patched config
+		baseConfig, err := patchedProvider.Bytes()
+		if err != nil {
+			result.Error = fmt.Sprintf("failed to serialize patched config: %v", err)
+			results = append(results, result)
+			continue
+		}
+
+		// Remove diskSelector from config (hardware-specific busPath won't work on new nodes)
+		patched := helpers.RemoveDiskSelector(baseConfig)
 
 		// Send talos ApplyConfiguration request
+		log.Printf("ProvisionNodes: Applying configuration to node %s with name %s", node.IPAddress, nodeName)
 		_, err = cli.ApplyConfiguration(context.Background(), &machineapi.ApplyConfigurationRequest{
 			Data:   patched,
 			Mode:   machineapi.ApplyConfigurationRequest_AUTO,
 			DryRun: false,
 		})
 		if err != nil {
+			log.Printf("ProvisionNodes: Failed to apply configuration to %s: %v", node.IPAddress, err)
 			result.Error = fmt.Sprintf("failed to apply configuration: %v", err)
 			results = append(results, result)
 			continue
 		}
+		log.Printf("ProvisionNodes: Successfully applied configuration to node %s", node.IPAddress)
 
 		// Set node to "provisioning" status
 		node.Status = models.StatusProvisioning
@@ -324,12 +365,6 @@ func (s *NodeService) ProvisionNodes(configs []models.OnPremNodeProvisionConfig)
 	}
 
 	return results, nil
-}
-
-func raw(v any) *json.RawMessage {
-	b, _ := json.Marshal(v)
-	rm := json.RawMessage(b)
-	return &rm
 }
 
 // ListNodes lists nodes with optional status filter, offset, and limit.

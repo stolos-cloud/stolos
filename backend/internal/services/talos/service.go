@@ -8,7 +8,6 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/google/uuid"
 	factoryClient "github.com/siderolabs/image-factory/pkg/client"
@@ -16,6 +15,9 @@ import (
 	machineryClient "github.com/siderolabs/talos/pkg/machinery/client"
 	machineryClientConfig "github.com/siderolabs/talos/pkg/machinery/client/config"
 	"github.com/siderolabs/talos/pkg/machinery/config/bundle"
+	"github.com/siderolabs/talos/pkg/machinery/config/configpatcher"
+	"github.com/siderolabs/talos/pkg/machinery/config/container"
+	"github.com/siderolabs/talos/pkg/machinery/config/types/v1alpha1"
 	netres "github.com/siderolabs/talos/pkg/machinery/resources/network"
 	"github.com/siderolabs/talos/pkg/machinery/resources/runtime"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/talos"
@@ -224,12 +226,12 @@ func (s *TalosService) GetBootstrapCachedNodes(clusterID uuid.UUID) ([]*models.N
 	var nodes []*models.Node
 
 	for ip := range machines.ControlPlanes {
-		node, err := s.CreateExistingNodeFromIP(context.Background(), ip, "controlplane")
+		node, err := s.CreateExistingNodeFromIP(context.Background(), ip, "control-plane")
 		if err != nil {
 			// fallback: still return minimal node with IP
 			node = &models.Node{
 				ID:        uuid.New(),
-				Role:      "controlplane",
+				Role:      "control-plane",
 				IPAddress: ip,
 				Status:    "active",
 			}
@@ -289,7 +291,9 @@ func (s *TalosService) CreateExistingNodeFromIP(ctx context.Context, nodeIP stri
 	// version, err := GetTypedTalosResource[*runtime.Version](ctx, cli, runtime.NamespaceName, runtime.VersionType, "runtime")
 	// node.Architecture = version.TypedSpec().Version
 
-	node.MACAddress = GetMachineBestExternalNetworkInterface(ctx, cli).Mac
+	if iface := GetMachineBestExternalNetworkInterface(ctx, cli); iface != nil {
+		node.MACAddress = iface.Mac
+	}
 
 	return &node, nil
 }
@@ -423,49 +427,36 @@ func (s *TalosService) MigrateTalosConfigFromFiles() error {
 	return nil
 }
 
-// InjectHostname sets the hostname in a machine config YAML
-func InjectHostname(machineConfigYAML, hostname string) (string, error) {
-
-	lines := strings.Split(machineConfigYAML, "\n")
-	for i, line := range lines {
-		// Look for hostname line in network section
-		if strings.Contains(line, "hostname:") && strings.Contains(line, "# Used to statically set the hostname") {
-			indent := strings.Repeat(" ", len(line)-len(strings.TrimLeft(line, " ")))
-			lines[i] = fmt.Sprintf("%shostname: %s # Used to statically set the hostname for the machine.", indent, hostname)
-			return strings.Join(lines, "\n"), nil
-		}
+// CreateMachineConfigPatch creates a machine config patch for a node.
+// It applies hostname, disk, and network settings (including static subnets for hybrid cloud).
+func CreateMachineConfigPatch(hostname, installDisk string) (configpatcher.Patch, error) {
+	cfg := &v1alpha1.Config{
+		ConfigVersion: "v1alpha1",
+		MachineConfig: &v1alpha1.MachineConfig{
+			MachineNetwork: &v1alpha1.NetworkConfig{
+				NetworkHostname: hostname,
+			},
+			MachineInstall: &v1alpha1.InstallConfig{
+				InstallDisk: installDisk,
+				// Explicitly set diskSelector to nil to remove hardware-specific busPath
+				InstallDiskSelector: nil,
+			},
+			MachineKubelet: &v1alpha1.KubeletConfig{
+				KubeletNodeIP: &v1alpha1.KubeletNodeIPConfig{
+					// Use static private network subnets for node IP selection
+					KubeletNodeIPValidSubnets: []string{
+						"10.0.0.0/8",      // RFC 1918 Class A private networks
+						"172.16.0.0/12",   // RFC 1918 Class B private networks
+						"192.168.0.0/16",  // RFC 1918 Class C private networks
+						"fdd6::/16",       // KubeSpan IPv6 overlay network
+					},
+				},
+			},
+		},
 	}
 
-	return "", fmt.Errorf("could not find hostname field in machine config")
+	// Wrap in container and create strategic merge patch
+	ctr := container.NewV1Alpha1(cfg)
+	return configpatcher.NewStrategicMergePatch(ctr), nil
 }
 
-// InjectNodeIPConfig adds nodeIP configuration to a machine config YAML
-// This ensures kubelet can select the correct node IP from valid subnets
-func InjectNodeIPConfig(machineConfigYAML string) (string, error) {
-	nodeIPConfig := `
-        # Configure kubelet node IP selection for hybrid cloud
-        nodeIP:
-            validSubnets:
-                - 10.0.0.0/8      # RFC 1918 Class A private networks
-                - 172.16.0.0/12   # RFC 1918 Class B private networks
-                - 192.168.0.0/16  # RFC 1918 Class C private networks
-                - fdd6::/16       # KubeSpan IPv6 overlay network
-`
-
-	// Find the kubelet section and inject nodeIP config before the network section
-	networkMarker := "    # Provides machine specific network configuration options.\n    network:"
-
-	if idx := strings.Index(machineConfigYAML, networkMarker); idx != -1 {
-		// Insert nodeIP config before the network section
-		return machineConfigYAML[:idx] + nodeIPConfig + "\n" + machineConfigYAML[idx:], nil
-	}
-
-	// Fallback: try to find just the network section
-	networkMarker = "    network:"
-	if idx := strings.Index(machineConfigYAML, networkMarker); idx != -1 {
-		return machineConfigYAML[:idx] + nodeIPConfig + "\n" + machineConfigYAML[idx:], nil
-	}
-
-	// If we can't find the insertion point, return error
-	return "", fmt.Errorf("could not find network section in machine config to inject nodeIP configuration")
-}

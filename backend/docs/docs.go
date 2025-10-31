@@ -1018,7 +1018,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.NodeProvisionRequest"
+                            "$ref": "#/definitions/models.OnPremNodeProvisionRequest"
                         }
                     }
                 ],
@@ -1026,7 +1026,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Returns provisioned count and nodes array",
                         "schema": {
-                            "$ref": "#/definitions/models.NodeProvisionRequest"
+                            "$ref": "#/definitions/models.OnPremNodeProvisionRequest"
                         }
                     },
                     "400": {
@@ -1066,6 +1066,104 @@ const docTemplate = `{
                 "responses": {
                     "200": {
                         "description": "Message indicating success",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/nodes/talosconfig": {
+            "get": {
+                "description": "Returns the talosconfig file in TALOS_FOLDER, destined for operators to do manual talosctl operations.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/yaml"
+                ],
+                "tags": [
+                    "nodes"
+                ],
+                "summary": "Returns talosconfig File in TALOS_FOLDER",
+                "responses": {
+                    "200": {
+                        "description": "Message indicating success",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "integer",
+                                "format": "int32"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/nodes/{id}": {
+            "delete": {
+                "description": "Remove a node from the database",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "nodes"
+                ],
+                "summary": "Delete a node",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Node ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1136,6 +1234,71 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/nodes/{id}/disks": {
+            "get": {
+                "description": "Retrieves the list of disks reported by the Talos machinery API for the specified node.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "nodes"
+                ],
+                "summary": "Get available disks for a node",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Node ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Disks associated with node",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -2317,13 +2480,32 @@ const docTemplate = `{
                 }
             }
         },
-        "models.NodeProvisionConfig": {
+        "models.NodeStatus": {
+            "type": "string",
+            "enum": [
+                "pending",
+                "provisioning",
+                "active",
+                "failed"
+            ],
+            "x-enum-varnames": [
+                "StatusPending",
+                "StatusProvisioning",
+                "StatusActive",
+                "StatusFailed"
+            ]
+        },
+        "models.OnPremNodeProvisionConfig": {
             "type": "object",
             "required": [
                 "node_id",
                 "role"
             ],
             "properties": {
+                "install_disk": {
+                    "type": "string",
+                    "example": "/dev/sda"
+                },
                 "labels": {
                     "type": "array",
                     "items": {
@@ -2344,7 +2526,7 @@ const docTemplate = `{
                 }
             }
         },
-        "models.NodeProvisionRequest": {
+        "models.OnPremNodeProvisionRequest": {
             "type": "object",
             "required": [
                 "nodes"
@@ -2353,25 +2535,10 @@ const docTemplate = `{
                 "nodes": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.NodeProvisionConfig"
+                        "$ref": "#/definitions/models.OnPremNodeProvisionConfig"
                     }
                 }
             }
-        },
-        "models.NodeStatus": {
-            "type": "string",
-            "enum": [
-                "pending",
-                "provisioning",
-                "active",
-                "failed"
-            ],
-            "x-enum-varnames": [
-                "StatusPending",
-                "StatusProvisioning",
-                "StatusActive",
-                "StatusFailed"
-            ]
         },
         "models.Role": {
             "type": "string",

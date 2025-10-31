@@ -119,6 +119,11 @@
             "buttons": {
                 "addLabel": "Ajouter une étiquette",
                 "provisionConnectedNodes": "Provisionner les nœuds"
+            },
+            "notifications": {
+                "provisionSuccess": "Nœuds provisionnés avec succès ! Ils rejoindront le cluster sous peu.",
+                "provisionFailed": "Échec du provisionnement : {error}",
+                "provisionPartial": "{success} nœuds provisionnés sur {total}. {failures} échecs"
             }
         },
         "cloud": {

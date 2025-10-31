@@ -236,8 +236,23 @@ definitions:
       updated_at:
         type: string
     type: object
-  models.NodeProvisionConfig:
+  models.NodeStatus:
+    enum:
+    - pending
+    - provisioning
+    - active
+    - failed
+    type: string
+    x-enum-varnames:
+    - StatusPending
+    - StatusProvisioning
+    - StatusActive
+    - StatusFailed
+  models.OnPremNodeProvisionConfig:
     properties:
+      install_disk:
+        example: /dev/sda
+        type: string
       labels:
         example:
         - zone=us-east
@@ -255,27 +270,15 @@ definitions:
     - node_id
     - role
     type: object
-  models.NodeProvisionRequest:
+  models.OnPremNodeProvisionRequest:
     properties:
       nodes:
         items:
-          $ref: '#/definitions/models.NodeProvisionConfig'
+          $ref: '#/definitions/models.OnPremNodeProvisionConfig'
         type: array
     required:
     - nodes
     type: object
-  models.NodeStatus:
-    enum:
-    - pending
-    - provisioning
-    - active
-    - failed
-    type: string
-    x-enum-varnames:
-    - StatusPending
-    - StatusProvisioning
-    - StatusActive
-    - StatusFailed
   models.Role:
     enum:
     - admin
@@ -899,6 +902,47 @@ paths:
       summary: List nodes
       tags:
       - nodes
+  /nodes/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Remove a node from the database
+      parameters:
+      - description: Node ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete a node
+      tags:
+      - nodes
   /nodes/{id}/config:
     put:
       consumes:
@@ -943,6 +987,50 @@ paths:
               type: string
             type: object
       summary: Update active node configuration
+      tags:
+      - nodes
+  /nodes/{id}/disks:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves the list of disks reported by the Talos machinery API
+        for the specified node.
+      parameters:
+      - description: Node ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Disks associated with node
+          schema:
+            additionalProperties:
+              items:
+                type: string
+              type: array
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get available disks for a node
       tags:
       - nodes
   /nodes/config:
@@ -998,14 +1086,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/models.NodeProvisionRequest'
+          $ref: '#/definitions/models.OnPremNodeProvisionRequest'
       produces:
       - application/json
       responses:
         "200":
           description: Returns provisioned count and nodes array
           schema:
-            $ref: '#/definitions/models.NodeProvisionRequest'
+            $ref: '#/definitions/models.OnPremNodeProvisionRequest'
         "400":
           description: Bad Request
           schema:
@@ -1044,6 +1132,31 @@ paths:
               type: string
             type: object
       summary: Create samples pending nodes
+      tags:
+      - nodes
+  /nodes/talosconfig:
+    get:
+      consumes:
+      - application/json
+      description: Returns the talosconfig file in TALOS_FOLDER, destined for operators
+        to do manual talosctl operations.
+      produces:
+      - application/yaml
+      responses:
+        "200":
+          description: Message indicating success
+          schema:
+            items:
+              format: int32
+              type: integer
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Returns talosconfig File in TALOS_FOLDER
       tags:
       - nodes
   /teams:

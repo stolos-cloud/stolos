@@ -23,11 +23,11 @@ func (s *TalosService) StartEventSink() {
 		return
 	}
 
-	log.Printf("Starting Talos event sink on %s:%s", s.cfg.Talos.EventSinkHostname, s.cfg.Talos.EventSinkPort)
+	log.Printf("Starting Talos event sink on %s:%s", s.cfg.Talos.EventSinkBindHostname, s.cfg.Talos.EventSinkPort)
 
-	// Prepare talosInfo struct for EventSink
+	// Prepare talosInfo struct for EventSink (use bind hostname for actual binding)
 	talosInfo := &talos.TalosInfo{
-		HTTPHostname: s.cfg.Talos.EventSinkHostname,
+		HTTPHostname: s.cfg.Talos.EventSinkBindHostname,
 		HTTPPort:     s.cfg.Talos.EventSinkPort,
 	}
 
@@ -65,7 +65,10 @@ func (s *TalosService) StartEventSink() {
 					return errors.Wrapf(err, "Error connecting to node %s, skipping", ip)
 				}
 
-				mac := GetMachineBestExternalNetworkInterface(ctx, cli).Mac
+				var mac string
+				if iface := GetMachineBestExternalNetworkInterface(ctx, cli); iface != nil {
+					mac = iface.Mac
+				}
 
 				log.Printf("Found machine at %s with stage %s", ip, status.Stage.String())
 

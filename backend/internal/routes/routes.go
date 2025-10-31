@@ -57,6 +57,7 @@ func setupNodeRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
 		nodes.GET("", h.NodeHandlers().ListNodes)
 		nodes.POST("", h.NodeHandlers().CreateNodes)
 		nodes.GET("/:id", h.NodeHandlers().GetNode)
+		nodes.DELETE("/:id", h.NodeHandlers().DeleteNode)
 		nodes.PUT("/:id/config", h.NodeHandlers().UpdateActiveNodeConfig)
 		nodes.PUT("/config", h.NodeHandlers().UpdateActiveNodesConfig)
 		nodes.POST("/provision", h.NodeHandlers().ProvisionNodes)
