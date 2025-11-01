@@ -45,7 +45,7 @@
                     </template>
                 </div>
             </template>
-            <template #bottom="{ headers }">
+            <template #bottom>
                 <v-divider class="mb-4"></v-divider>
                 <div style="padding-bottom: 10px;" class="d-flex justify-center align-center text-center">
                     <v-progress-circular indeterminate class="mr-2" size="20"></v-progress-circular>
