@@ -14,7 +14,7 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-type JsonSchema = []byte
+type JsonSchema = map[string]interface{}
 
 type Template struct {
 	crd         *apiextensionsv1.CustomResourceDefinition
@@ -125,23 +125,23 @@ func toJSONSchema(crd *apiextensionsv1.CustomResourceDefinition) (JsonSchema, er
 				"type":  "string",
 				"const": crd.Spec.Names.Kind,
 			},
-			"metadata": map[string]interface{}{
-				"type": "object",
-				"properties": map[string]interface{}{
-					"labels": map[string]interface{}{
-						"type":                 "object",
-						"additionalProperties": map[string]interface{}{"type": "string"},
-					},
-					"annotations": map[string]interface{}{
-						"type":                 "object",
-						"additionalProperties": map[string]interface{}{"type": "string"},
-					},
-				},
-				"additionalProperties": false,
-			},
+			//"metadata": map[string]interface{}{
+			//	"type": "object",
+			//	"properties": map[string]interface{}{
+			//		"labels": map[string]interface{}{
+			//			"type":                 "object",
+			//			"additionalProperties": map[string]interface{}{"type": "string"},
+			//		},
+			//		"annotations": map[string]interface{}{
+			//			"type":                 "object",
+			//			"additionalProperties": map[string]interface{}{"type": "string"},
+			//		},
+			//	},
+			//	"additionalProperties": false,
+			//},
 			"spec": crdSchema["properties"].(map[string]interface{})["spec"],
 		},
-		"required":             []string{"apiVersion", "kind", "metadata"},
+		"required":             []string{"apiVersion", "kind"},
 		"additionalProperties": false,
 	}
 
@@ -158,12 +158,7 @@ func toJSONSchema(crd *apiextensionsv1.CustomResourceDefinition) (JsonSchema, er
 		jsonSchema["allOf"] = allOf
 	}
 
-	out, err := json.MarshalIndent(jsonSchema, "", "  ")
-	if err != nil {
-		return nil, err
-	}
-
-	return out, nil
+	return jsonSchema, nil
 }
 
 func toStringSlice(v interface{}) []string {
@@ -274,14 +269,10 @@ func generateDefaultYAML(crd *apiextensionsv1.CustomResourceDefinition) ([]byte,
 	}
 
 	spec := generateObjectFromSchema(schema.Properties["spec"])
-
 	root := map[string]interface{}{
 		"apiVersion": fmt.Sprintf("%s/%s", crd.Spec.Group, crd.Spec.Versions[0].Name),
 		"kind":       crd.Spec.Names.Kind,
-		"metadata": map[string]interface{}{
-			"name": "example",
-		},
-		"spec": spec,
+		"spec":       spec,
 	}
 
 	return yaml.Marshal(root)

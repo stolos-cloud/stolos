@@ -21,12 +21,16 @@ export default defineConfig({
   server: {
     port: 3000,
     proxy: {
-      '/api': {
-        target: env.VITE_API_BASE_URL,
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '/api/v1'),
-        ws: true,
-      }
+      // '/api': {
+      //   target: env.VITE_API_BASE_URL,
+      //   changeOrigin: true,
+      //   rewrite: (path) => {
+      //       const result = path.replace(/^\/api/, '/api/v1')
+      //       console.log(result)
+      //       return result
+      //   },
+      //   ws: true,
+      // }
     }
   },
 })

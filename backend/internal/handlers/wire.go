@@ -10,6 +10,7 @@ import (
 	talosservice "github.com/stolos-cloud/stolos/backend/internal/services/talos"
 	wsservices "github.com/stolos-cloud/stolos/backend/internal/services/websocket"
 	"gorm.io/gorm"
+	"k8s.io/client-go/rest"
 )
 
 // RegisterHandlers registers all HTTP handlers with the DI container
@@ -30,6 +31,9 @@ func RegisterHandlers() []any {
 		}),
 		gontainer.NewFactory(func(db *gorm.DB, ns *node.NodeService, ts *talosservice.TalosService, wsManager *wsservices.Manager) *NodeHandlers {
 			return NewNodeHandlers(db, ns, ts, wsManager)
+		}),
+		gontainer.NewFactory(func(k8s *rest.Config) *TemplatesHandler {
+			return NewTemplatesHandler(k8s)
 		}),
 		gontainer.NewFactory(func(
 			db *gorm.DB,
@@ -62,6 +66,7 @@ func RegisterHandlers() []any {
 			nodeHandlers *NodeHandlers,
 			gcpHandlers *GCPHandlers,
 			jwtService *middleware.JWTService,
+			templatesHandler *TemplatesHandler,
 			db *gorm.DB,
 			wsManager *wsservices.Manager,
 		) *Handlers {
@@ -72,6 +77,7 @@ func RegisterHandlers() []any {
 				isoHandlers,
 				nodeHandlers,
 				gcpHandlers,
+				templatesHandler,
 				jwtService,
 				db,
 				wsManager,

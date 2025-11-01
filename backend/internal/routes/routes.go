@@ -30,10 +30,11 @@ func SetupRoutes(r *gin.Engine, h *handlers.Handlers) {
 			setupClusterRoutes(protected, h)
 			setupISORoutes(protected, h)
 			setupGCPRoutes(api, protected, h)
-			setupTemplateRoutes(protected, h)
+			//setupTemplateRoutes(protected, h)
 			setupTeamRoutes(protected, h)
 			setupUserRoutes(protected, h)
 		}
+		setupTemplateRoutes(api, h)
 	}
 }
 
@@ -141,6 +142,6 @@ func setupTemplateRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
 	templateRoutes := api.Group("/templates")
 	{
 		templateRoutes.GET("/", h.TemplatesHandlers().GetTemplatesList)
-		templateRoutes.GET("/{name}", h.TemplatesHandlers().GetTemplate)
+		templateRoutes.GET("/:name", h.TemplatesHandlers().GetTemplate)
 	}
 }
