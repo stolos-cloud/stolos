@@ -49,7 +49,7 @@
                 <v-divider class="mb-4"></v-divider>
                 <div style="padding-bottom: 10px;" class="d-flex justify-center align-center text-center">
                     <v-progress-circular indeterminate class="mr-2" size="20"></v-progress-circular>
-                    <span class="text-body-2">New nodes will appear automatically...</span>
+                    <span class="text-body-2">{{ $t('provisioning.onPremises.table.footerSpinnerMsg') }}</span>
                 </div>
             </template>
         </BaseDataTable>

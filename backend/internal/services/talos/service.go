@@ -184,6 +184,33 @@ func (s *TalosService) GetMachineryClient(nodeIP string) (*machineryClient.Clien
 	)
 }
 
+// GetReachableMachineryClient iterates over nodes to find the first reachable Talos machinery client.
+func (s *TalosService) GetReachableMachineryClient(ctx context.Context) (*machineryClient.Client, *models.Node, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	var nodes []models.Node
+	if err := s.db.Where("ip_address <> ''").Find(&nodes).Error; err != nil {
+		return nil, nil, fmt.Errorf("failed to load nodes: %w", err)
+	}
+
+	for _, node := range nodes {
+		client, err := s.GetMachineryClient(node.IPAddress)
+		if err != nil {
+			continue
+		}
+
+		if _, err := GetMachineStatus(client); err != nil {
+			continue
+		}
+
+		return client, &node, nil
+	}
+
+	return nil, nil, fmt.Errorf("no reachable Talos nodes found")
+}
+
 func GetInsecureMachineryClient(ctx context.Context, nodeIP string) (*machineryClient.Client, error) {
 	endpoint := net.JoinHostPort(nodeIP, "50000")
 	tlsCfg := &tls.Config{}
@@ -445,10 +472,10 @@ func CreateMachineConfigPatch(hostname, installDisk string) (configpatcher.Patch
 				KubeletNodeIP: &v1alpha1.KubeletNodeIPConfig{
 					// Use static private network subnets for node IP selection
 					KubeletNodeIPValidSubnets: []string{
-						"10.0.0.0/8",      // RFC 1918 Class A private networks
-						"172.16.0.0/12",   // RFC 1918 Class B private networks
-						"192.168.0.0/16",  // RFC 1918 Class C private networks
-						"fdd6::/16",       // KubeSpan IPv6 overlay network
+						"10.0.0.0/8",     // RFC 1918 Class A private networks
+						"172.16.0.0/12",  // RFC 1918 Class B private networks
+						"192.168.0.0/16", // RFC 1918 Class C private networks
+						"fdd6::/16",      // KubeSpan IPv6 overlay network
 					},
 				},
 			},
@@ -459,4 +486,3 @@ func CreateMachineConfigPatch(hostname, installDisk string) (configpatcher.Patch
 	ctr := container.NewV1Alpha1(cfg)
 	return configpatcher.NewStrategicMergePatch(ctr), nil
 }
-

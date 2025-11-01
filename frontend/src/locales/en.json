@@ -102,9 +102,9 @@
             "title": "On-Premises provisioning",
             "subheading": "Manage your on-premises resources",
             "table": {
-                "title": "Connected Nodes",
-                "loadingText": "Loading connected nodes...",
-                "noDataText": "No connected nodes found.",
+                "title": "Pending Nodes",
+                "loadingText": "Loading pending nodes...",
+                "noDataText": "No pending nodes found.",
                 "itemsPerPageText": "Items per page :",
                 "headers": {
                     "ip": "IP",
@@ -113,7 +113,8 @@
                     "disk": "Install disk",
                     "role": "Role",
                     "labels": "Labels"
-                }
+                },
+                "footerSpinnerMsg": "New nodes will appear automatically..." 
             },
             "buttons": {
                 "addLabel": "Add label",

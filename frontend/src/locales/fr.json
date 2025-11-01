@@ -114,7 +114,8 @@
                     "disk": "Disque d'installation",
                     "role": "Rôle",
                     "labels": "Étiquettes"
-                }
+                },
+                "footerSpinnerMsg": "Les nouveaux nœuds seront affichés automatiquement..." 
             },
             "buttons": {
                 "addLabel": "Ajouter une étiquette",
