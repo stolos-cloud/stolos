@@ -25,7 +25,7 @@ import (
 
 var ClusterHealthCheckJob = &StolosJob{
 	Name:       "ClusterHealthCheckJob",
-	Definition: gocron.DurationJob(30 * time.Second),
+	Definition: gocron.DurationJob(1 * time.Minute),
 	JobFunc: func(ts *talos.TalosService, db *gorm.DB) {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
 		defer cancel()
@@ -173,7 +173,7 @@ var NodeStatusUpdateJob *StolosJob = &StolosJob{
 //  3. upsert row by hostname (create if missing)
 var NodeInfoReconciler = &StolosJob{
 	Name:       "NodeInfoReconciler",
-	Definition: gocron.DurationJob(30 * time.Second),
+	Definition: gocron.DurationJob(2 * time.Minute),
 	JobArgs: []any{
 		(*talos.TalosService)(nil),
 		(*node.NodeService)(nil),
