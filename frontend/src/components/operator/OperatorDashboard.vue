@@ -16,6 +16,27 @@
         >
             <template #[`item.status`]="{ item }">
                 <v-chip :color="getStatusColor(item.status)">
+                    <template #prepend>
+                        <v-progress-circular style="margin-right: 10px;"
+                            v-if="normalizeStatus(item.status) === 'provisioning'"
+                            indeterminate
+                            size="16"
+                            width="2"
+                            color="white"
+                        />
+                        <v-icon
+                            v-else-if="normalizeStatus(item.status) === 'pending'"
+                            size="100"
+                        >
+                            mdi-new-box
+                        </v-icon>
+                        <v-icon
+                            v-else-if="normalizeStatus(item.status) === 'failed'"
+                            size="18"
+                        >
+                            mdi-alert
+                        </v-icon>
+                    </template>
                     {{ item.status }}
                 </v-chip>
             </template>        
@@ -35,10 +56,11 @@
 
 <script setup>
 import { getConnectedNodes } from '@/services/provisioning.service';
-import { computed, ref , onMounted } from 'vue';
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { StatusColorHandler } from '@/composables/StatusColorHandler';
 import ViewDetailsNodeDialog from '../../pages/operator/dialogs/node/ViewDetailsNodeDialog.vue';
+import wsEventService from '@/services/wsEvent.service';
 
 const { t } = useI18n();
 const { getStatusColor } = StatusColorHandler();
@@ -68,12 +90,28 @@ const actionsButtonForTable = computed(() => [
     }
 ]);
 
+let unsubscribeNodeStatusUpdated;
+
 //mounted
 onMounted(() => {
     fetchConnectedNodes();
+    unsubscribeNodeStatusUpdated = wsEventService.subscribe('NodeStatusUpdated', () => {
+        console.log("Updated node status.")
+        fetchConnectedNodes();
+    });
+});
+
+onBeforeUnmount(() => {
+    if (typeof unsubscribeNodeStatusUpdated === 'function') {
+        unsubscribeNodeStatusUpdated();
+    }
 });
 
 // Methods
+function normalizeStatus(status) {
+    return typeof status === 'string' ? status.toLowerCase() : '';
+}
+
 function fetchConnectedNodes() {
     loading.value = true;
 

@@ -13,6 +13,7 @@ import (
 	"cloud.google.com/go/storage"
 	"github.com/google/go-github/v74/github"
 	"github.com/google/uuid"
+	"github.com/siderolabs/talos/pkg/machinery/config/configpatcher"
 	"github.com/siderolabs/talos/pkg/machinery/config/encoder"
 	machineconf "github.com/siderolabs/talos/pkg/machinery/config/machine"
 	"github.com/stolos-cloud/stolos/backend/internal/config"
@@ -126,13 +127,6 @@ func (s *ProvisioningService) ProvisionNodes(
 	clusterID := cluster.ID
 	session.SendLog(fmt.Sprintf("Using cluster: %s (ID: %s)", cluster.Name, cluster.ID))
 
-	// Get Talos machine config bundle
-	session.SendLog("Loading Talos machine configuration bundle...")
-	configBundle, err := s.talosService.GetMachineConfigBundle()
-	if err != nil {
-		return fmt.Errorf("failed to get machine config bundle: %w", err)
-	}
-
 	// Get Talos image information
 	talosImageName, err := s.talosService.GetGCPImageName("amd64")
 	if err != nil {
@@ -150,40 +144,51 @@ func (s *ProvisioningService) ProvisionNodes(
 	nodes := make([]NodeConfig, 0, req.Number)
 
 	for i := 0; i < req.Number; i++ {
+		// Get a fresh config bundle for each node
+		session.SendLog("Loading Talos machine configuration bundle...")
+		configBundle, err := s.talosService.GetMachineConfigBundle()
+		if err != nil {
+			return fmt.Errorf("failed to get machine config bundle: %w", err)
+		}
+
 		nodeName := fmt.Sprintf("%s-%d", req.NamePrefix, startNum+i)
 		session.SendLog(fmt.Sprintf("Generating Talos config for node: %s", nodeName))
 
-		// Serialize machine config based on role
-		var machineConfig string
+		// Determine machine type based on role
+		var machineType machineconf.Type
 		if req.Role == "control-plane" {
-			configBytes, err := configBundle.Serialize(encoder.CommentsDocs, machineconf.TypeControlPlane)
-			if err != nil {
-				return fmt.Errorf("failed to serialize controlplane config: %w", err)
-			}
-			machineConfig = string(configBytes)
+			machineType = machineconf.TypeControlPlane
 		} else {
-			configBytes, err := configBundle.Serialize(encoder.CommentsDocs, machineconf.TypeWorker)
-			if err != nil {
-				return fmt.Errorf("failed to serialize worker config: %w", err)
-			}
-			machineConfig = string(configBytes)
+			machineType = machineconf.TypeWorker
 		}
 
-		// Inject hostname
-		machineConfig, err = talosservices.InjectHostname(machineConfig, nodeName)
-		if err != nil {
-			return fmt.Errorf("failed to inject hostname: %w", err)
-		}
-		session.SendLog(fmt.Sprintf("Set hostname to: %s", nodeName))
+		// GCP always uses /dev/sda for boot disk
+		diskPath := "/dev/sda"
 
-		// Inject nodeIP configuration for hybrid cloud support
-		machineConfig, err = talosservices.InjectNodeIPConfig(machineConfig)
+		// Create typed config patch with hostname, disk, and network settings
+		typedPatch, err := talosservices.CreateMachineConfigPatch(nodeName, diskPath)
 		if err != nil {
-			session.SendLog(fmt.Sprintf("Warning: failed to inject nodeIP config: %v", err))
-			// Continue anyway - node might still work with default behavior
-		} else {
-			session.SendLog("Injected nodeIP configuration for hybrid cloud")
+			return fmt.Errorf("failed to create config patch: %w", err)
 		}
+		session.SendLog(fmt.Sprintf("Created typed config patch for hostname: %s, disk: %s", nodeName, diskPath))
+
+		// Apply typed patch to bundle based on machine type
+		isControlPlane := machineType == machineconf.TypeControlPlane
+		isWorker := machineType == machineconf.TypeWorker
+		if err := configBundle.ApplyPatches([]configpatcher.Patch{typedPatch}, isControlPlane, isWorker); err != nil {
+			return fmt.Errorf("failed to apply typed patch to config bundle: %w", err)
+		}
+
+		// Serialize the patched config
+		rendered, err := configBundle.Serialize(encoder.CommentsDocs, machineType)
+		if err != nil {
+			return fmt.Errorf("failed to serialize config: %w", err)
+		}
+
+		// Remove diskSelector from base config (hardware-specific busPath won't work on GCP)
+		patchedBytes := helpers.RemoveDiskSelector(rendered)
+		machineConfig := string(patchedBytes)
+		session.SendLog("Applied typed config patch and removed diskSelector")
 
 		nodes = append(nodes, NodeConfig{
 			Name:              nodeName,

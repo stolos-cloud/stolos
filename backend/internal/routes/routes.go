@@ -32,6 +32,7 @@ func SetupRoutes(r *gin.Engine, h *handlers.Handlers) {
 			setupGCPRoutes(api, protected, h)
 			setupTeamRoutes(protected, h)
 			setupUserRoutes(protected, h)
+			setupEventRoutes(protected, h)
 		}
 	}
 }
@@ -56,12 +57,21 @@ func setupNodeRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
 		nodes.GET("", h.NodeHandlers().ListNodes)
 		nodes.POST("", h.NodeHandlers().CreateNodes)
 		nodes.GET("/:id", h.NodeHandlers().GetNode)
+		nodes.DELETE("/:id", h.NodeHandlers().DeleteNode)
 		nodes.PUT("/:id/config", h.NodeHandlers().UpdateActiveNodeConfig)
 		nodes.PUT("/config", h.NodeHandlers().UpdateActiveNodesConfig)
 		nodes.POST("/provision", h.NodeHandlers().ProvisionNodes)
 		nodes.POST("/samples", h.NodeHandlers().CreateSampleNodes) // TODO: remove in production
-		//nodes.GET("/talosconfig", h.NodeHandlers().GetTalosconfig)
+		nodes.GET("/talosconfig", h.NodeHandlers().GetTalosconfig)
+		nodes.GET("/:id/disks", h.NodeHandlers().GetNodeDisks)
 		//nodes.GET("/kubeconfig", h.NodeHandlers().GetKubeconfig)
+	}
+}
+
+func setupEventRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
+	events := api.Group("/events")
+	{
+		events.GET("/stream", middleware.RequireRole(models.RoleAdmin), h.EventHandlers().StreamEvents)
 	}
 }
 

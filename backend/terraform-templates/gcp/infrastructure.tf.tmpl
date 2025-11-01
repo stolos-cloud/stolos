@@ -77,7 +77,7 @@ resource "google_compute_firewall" "kubernetes_api" {
   }
 
   source_ranges = ["0.0.0.0/0"]
-  target_tags   = ["controlplane"]
+  target_tags   = ["control-plane"]
 
   description = "Allow Kubernetes API access to control plane nodes"
 }

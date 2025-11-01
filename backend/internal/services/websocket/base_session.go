@@ -5,6 +5,9 @@ type Session interface {
 	// GetRequestID returns the unique identifier for this session
 	GetRequestID() string
 
+	// GetType returns the logical session type
+	GetType() string
+
 	// HandleMessage processes incoming messages from the client
 	// Returns error if message handling fails
 	HandleMessage(msgType string, data map[string]any) error
@@ -13,24 +16,47 @@ type Session interface {
 	Close()
 }
 
+const (
+	SessionTypeGeneric  = "generic"
+	SessionTypeApproval = "approval"
+	SessionTypeEvent    = "event"
+)
+
 // BaseSession provides a session that streams logs and status updates
 // Use this for workflows that don't need incoming message handling
 type BaseSession struct {
-	requestID string
-	client    *Client
+	requestID   string
+	sessionType string
+	client      *Client
 }
 
-// NewBaseSession creates a new base session
+// NewBaseSession creates a new base session with generic session type
 func NewBaseSession(requestID string, client *Client) *BaseSession {
-	return &BaseSession{
-		requestID: requestID,
-		client:    client,
+	return newBaseSession(requestID, client, SessionTypeGeneric)
+}
+
+func newBaseSession(requestID string, client *Client, sessionType string) *BaseSession {
+	bs := &BaseSession{
+		requestID:   requestID,
+		sessionType: sessionType,
+		client:      client,
 	}
+
+	if client != nil {
+		client.attachSession(bs)
+	}
+
+	return bs
 }
 
 // GetRequestID returns the request ID
 func (bs *BaseSession) GetRequestID() string {
 	return bs.requestID
+}
+
+// GetType returns the session type
+func (bs *BaseSession) GetType() string {
+	return bs.sessionType
 }
 
 // SendLog sends a log message
