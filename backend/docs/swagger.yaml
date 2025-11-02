@@ -85,7 +85,7 @@ definitions:
       description:
         type: string
       jsonSchema:
-        type: string
+        $ref: '#/definitions/templates.JsonSchema'
       name:
         type: string
     type: object
@@ -311,6 +311,9 @@ definitions:
         items:
           type: string
         type: array
+    type: object
+  templates.JsonSchema:
+    additionalProperties: true
     type: object
   templates.Template:
     properties:
@@ -1396,6 +1399,92 @@ paths:
           schema:
             type: string
       summary: Get a detailed template
+      tags:
+      - templates
+  /templates/{id}/apply/{instance_name}:
+    post:
+      consumes:
+      - text/plain
+      description: Applies a template deployment
+      parameters:
+      - description: template CRD name
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: deployment name
+        in: query
+        name: instance_name
+        required: true
+        type: string
+      - description: deploy to which team
+        in: query
+        name: team
+        required: true
+        type: string
+      - description: CRD yaml
+        in: body
+        name: request
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "422":
+          description: validation error
+          schema:
+            type: string
+        "500":
+          description: error
+          schema:
+            type: string
+      summary: Applies a template deployment
+      tags:
+      - templates
+  /templates/{id}/validate/{instance_name}:
+    post:
+      consumes:
+      - text/plain
+      description: Validate a template deployment
+      parameters:
+      - description: template CRD name
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: deployment name
+        in: query
+        name: instance_name
+        required: true
+        type: string
+      - description: deploy to which team
+        in: query
+        name: team
+        required: true
+        type: string
+      - description: CRD yaml
+        in: body
+        name: request
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "422":
+          description: validation error
+          schema:
+            type: string
+        "500":
+          description: error
+          schema:
+            type: string
+      summary: Validate a template deployment
       tags:
       - templates
   /users:

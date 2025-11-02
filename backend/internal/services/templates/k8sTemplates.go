@@ -6,10 +6,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/stolos-cloud/stolos/backend/internal/services/k8s"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/rest"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/yaml"
 )
@@ -22,17 +21,14 @@ type Template struct {
 	Description string `json:"description"`
 }
 
-func ListTemplates(config *rest.Config) ([]Template, error) {
+func (t Template) GetCRD() *apiextensionsv1.CustomResourceDefinition {
+	return t.crd
+}
 
-	apiExtClient, err := apiextensionsclient.NewForConfig(config)
-	if err != nil {
-		return nil, err
-	}
-
-	groupFilter := "stolos.cloud"
+func ListTemplates(client *k8s.K8sClient, groupFilter string) ([]Template, error) {
 
 	// List all CRDs
-	crdList, err := apiExtClient.ApiextensionsV1().CustomResourceDefinitions().List(context.Background(), metav1.ListOptions{})
+	crdList, err := client.ApiExtensionClient.ApiextensionsV1().CustomResourceDefinitions().List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		//log.Fatalf("Failed to list CRDs: %v", err)
 		return nil, err
@@ -50,23 +46,20 @@ func ListTemplates(config *rest.Config) ([]Template, error) {
 	return allTemplates, nil
 }
 
-func GetTemplate(config *rest.Config, name string) (Template, error) {
+func GetTemplate(client *k8s.K8sClient, name string) (Template, error) {
 
-	apiExtClient, err := apiextensionsclient.NewForConfig(config)
-	if err != nil {
-		return Template{}, err
-	}
-
-	crd, err := apiExtClient.ApiextensionsV1().CustomResourceDefinitions().Get(context.Background(), name, metav1.GetOptions{})
+	crd, err := client.ApiExtensionClient.ApiextensionsV1().CustomResourceDefinitions().Get(context.Background(), name, metav1.GetOptions{})
 	if err != nil {
 		return Template{}, err
 	}
 	return crdToTemplate(crd), nil
 }
 
+//func DeployTemplate()
+
 func crdToTemplate(crd *apiextensionsv1.CustomResourceDefinition) Template {
 	newTemplate := Template{
-		crd: crd,
+		Crd: crd,
 	}
 
 	name, ok := crd.Annotations["stolos.cloud/template-name"]
@@ -85,11 +78,11 @@ func crdToTemplate(crd *apiextensionsv1.CustomResourceDefinition) Template {
 }
 
 func (t *Template) GetJsonSchema() (JsonSchema, error) {
-	return toJSONSchema(t.crd)
+	return toJSONSchema(t.Crd)
 }
 
 func (t *Template) GetDefaultYaml() (string, error) {
-	defaults, err := generateDefaultYAML(t.crd)
+	defaults, err := generateDefaultYAML(t.Crd)
 	if err != nil {
 		return "", err
 	}
@@ -125,6 +118,7 @@ func toJSONSchema(crd *apiextensionsv1.CustomResourceDefinition) (JsonSchema, er
 				"type":  "string",
 				"const": crd.Spec.Names.Kind,
 			},
+			// Leave these comments in case we want to re-enable metadata here
 			//"metadata": map[string]interface{}{
 			//	"type": "object",
 			//	"properties": map[string]interface{}{

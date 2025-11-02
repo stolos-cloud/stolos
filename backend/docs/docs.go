@@ -1665,6 +1665,134 @@ const docTemplate = `{
                 }
             }
         },
+        "/templates/{id}/apply/{instance_name}": {
+            "post": {
+                "description": "Applies a template deployment",
+                "consumes": [
+                    "text/plain"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "templates"
+                ],
+                "summary": "Applies a template deployment",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "template CRD name",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "deployment name",
+                        "name": "instance_name",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "deploy to which team",
+                        "name": "team",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "description": "CRD yaml",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "422": {
+                        "description": "validation error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/templates/{id}/validate/{instance_name}": {
+            "post": {
+                "description": "Validate a template deployment",
+                "consumes": [
+                    "text/plain"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "templates"
+                ],
+                "summary": "Validate a template deployment",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "template CRD name",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "deployment name",
+                        "name": "instance_name",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "deploy to which team",
+                        "name": "team",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "description": "CRD yaml",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "422": {
+                        "description": "validation error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/users": {
             "get": {
                 "security": [
@@ -2118,7 +2246,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "jsonSchema": {
-                    "type": "string"
+                    "$ref": "#/definitions/templates.JsonSchema"
                 },
                 "name": {
                     "type": "string"
@@ -2445,6 +2573,10 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "templates.JsonSchema": {
+            "type": "object",
+            "additionalProperties": true
         },
         "templates.Template": {
             "type": "object",
