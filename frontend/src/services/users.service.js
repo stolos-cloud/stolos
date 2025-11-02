@@ -2,7 +2,7 @@ import api from './api';
 
 export async function getUsers() {
     try {
-        const response = await api.get('/api/users');
+        const response = await api.get('/users');
         return response.data;
     } catch (error) {
         console.error('Error fetching users:', error);
@@ -12,7 +12,7 @@ export async function getUsers() {
 
 export async function createNewUser(userData) {
     try {
-        const response = await api.post('/api/users/create', userData);
+        const response = await api.post('/users/create', userData);
         return response.data;
     } catch (error) {
         console.error('Error creating user:', error);

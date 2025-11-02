@@ -2,7 +2,7 @@ import api from './api';
 
 export async function getTeams() {
     try {
-        const response = await api.get('/api/teams');
+        const response = await api.get('/teams');
         return response.data;
     } catch (error) {
         console.error('Error fetching teams:', error);
@@ -12,7 +12,7 @@ export async function getTeams() {
 
 export async function createNewTeam(teamData) {
     try {
-        const response = await api.post('/api/teams', teamData);
+        const response = await api.post('/teams', teamData);
         return response.data;
     } catch (error) {
         console.error('Error creating team:', error);
