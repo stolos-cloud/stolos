@@ -859,13 +859,4 @@ const downloadApply = async () => {
     }
 };
 
-const formatOutputValue = value => {
-    if (typeof value === 'object' && value !== null) {
-        if (value.value !== undefined) {
-            return formatOutputValue(value.value);
-        }
-        return JSON.stringify(value, null, 2);
-    }
-    return String(value);
-};
 </script>
