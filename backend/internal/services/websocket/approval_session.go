@@ -86,6 +86,16 @@ func (as *ApprovalSession) WaitForApprovalCtx(ctx context.Context, timeout time.
 	}
 }
 
+// SendResourceUpdate sends a resource update to the client
+func (as *ApprovalSession) SendResourceUpdate(resource any) error {
+	return as.client.SendResourceUpdate(resource)
+}
+
+// SendWorkflowUpdate sends a workflow update to the client
+func (as *ApprovalSession) SendWorkflowUpdate(workflow any) error {
+	return as.client.SendWorkflowUpdate(workflow)
+}
+
 // Close cleans up approval session resources
 func (as *ApprovalSession) Close() {
 	close(as.approvalChan)

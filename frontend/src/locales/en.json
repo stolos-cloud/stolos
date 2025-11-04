@@ -138,6 +138,73 @@
                 "machineType": "Machine type",
                 "diskSizeGb": "Disk size (GB)",
                 "diskType": "Disk type"
+            },
+            "cardTitle": "Cloud Node Provisioning",
+            "buttons": {
+                "provision": "Provision Nodes",
+                "provisioning": "Provisioning...",
+                "approve": "Approve & Apply",
+                "reject": "Reject",
+                "downloadPlan": "Download Plan",
+                "downloadApply": "Download Apply"
+            },
+            "phases": {
+                "terraformPlan": "Terraform Plan",
+                "approvalRequired": "Approval Required",
+                "terraformApply": "Terraform Apply"
+            },
+            "status": {
+                "running": "Running...",
+                "complete": "Complete",
+                "error": "Error"
+            },
+            "messages": {
+                "waitingPlan": "Waiting for plan to start...",
+                "waitingApply": "Waiting for apply to start...",
+                "reviewPlan": "Review the plan above and approve to continue with terraform apply."
+            },
+            "resources": {
+                "title": "Resources",
+                "plannedChanges": "Planned Changes",
+                "resourcesCreated": "Resources Created",
+                "emptyMessages": {
+                    "analyzing": "Analyzing planned changes...",
+                    "noResources": "No resources created yet...",
+                    "duringProvisioning": "Resources will appear here during provisioning"
+                },
+                "actions": {
+                    "create": "create",
+                    "update": "update",
+                    "delete": "delete"
+                },
+                "statuses": {
+                    "pending": "pending",
+                    "creating": "creating",
+                    "modifying": "modifying",
+                    "complete": "complete",
+                    "failed": "failed",
+                    "deleting": "deleting"
+                },
+                "details": {
+                    "resourceId": "Resource ID",
+                    "provider": "Provider",
+                    "started": "Started",
+                    "duration": "Duration",
+                    "inProgress": "In progress...",
+                    "error": "Error",
+                    "configuration": "Configuration"
+                }
+            },
+            "tooltips": {
+                "provisioning": "Provisioning in progress...",
+                "invalidForm": "Please fill in all required fields",
+                "infrastructure": {
+                    "unconfigured": "Infrastructure not configured. Please configure GCP settings first.",
+                    "pending": "Infrastructure configuration pending...",
+                    "initializing": "Infrastructure is being initialized. This may take a few minutes.",
+                    "failed": "Infrastructure initialization failed. Please check logs and try again."
+                },
+                "ready": "Click to provision nodes"
             }
         }
     },

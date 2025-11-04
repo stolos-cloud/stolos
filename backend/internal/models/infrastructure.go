@@ -95,6 +95,13 @@ type GCPConfig struct {
 	DeletedAt             gorm.DeletedAt `json:"-" gorm:"index"`
 }
 
+func (g *GCPConfig) TerraformEnvVars() map[string]string {
+	return map[string]string{
+		"GOOGLE_CREDENTIALS": g.ServiceAccountKeyJSON,
+		"GOOGLE_PROJECT":     g.ProjectID,
+	}
+}
+
 func (g *GCPConfig) BeforeCreate(tx *gorm.DB) error {
 	if g.ID == (uuid.UUID{}) {
 		g.ID = uuid.New()

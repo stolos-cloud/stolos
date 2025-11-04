@@ -16,7 +16,7 @@
         },
         "logout": "Se Déconnecter"
     },
-     "login": {
+    "login": {
         "title": "Se connecter à votre compte",
         "email": "Courriel",
         "password": "Mot de passe",
@@ -115,7 +115,7 @@
                     "role": "Rôle",
                     "labels": "Étiquettes"
                 },
-                "footerSpinnerMsg": "Les nouveaux nœuds seront affichés automatiquement..." 
+                "footerSpinnerMsg": "Les nouveaux nœuds seront affichés automatiquement..."
             },
             "buttons": {
                 "addLabel": "Ajouter une étiquette",
@@ -139,6 +139,73 @@
                 "machineType": "Type de machine",
                 "diskSizeGb": "Taille du disque (Go)",
                 "diskType": "Type de disque"
+            },
+            "cardTitle": "Provisionnement de Nœuds Cloud",
+            "buttons": {
+                "provision": "Provisionner les nœuds",
+                "provisioning": "Provisionnement en cours...",
+                "approve": "Approuver et appliquer",
+                "reject": "Rejeter",
+                "downloadPlan": "Télécharger le plan",
+                "downloadApply": "Télécharger le apply"
+            },
+            "phases": {
+                "terraformPlan": "Plan Terraform",
+                "approvalRequired": "Approbation requise",
+                "terraformApply": "Application Terraform"
+            },
+            "status": {
+                "running": "En cours...",
+                "complete": "Terminé",
+                "error": "Erreur"
+            },
+            "messages": {
+                "waitingPlan": "En attente du démarrage du plan...",
+                "waitingApply": "En attente du démarrage de l'application...",
+                "reviewPlan": "Examinez le plan ci-dessus et approuvez pour continuer avec terraform apply."
+            },
+            "resources": {
+                "title": "Ressources",
+                "plannedChanges": "Changements planifiés",
+                "resourcesCreated": "Ressources créées",
+                "emptyMessages": {
+                    "analyzing": "Analyse des changements planifiés...",
+                    "noResources": "Aucune ressource créée pour le moment...",
+                    "duringProvisioning": "Les ressources apparaîtront ici pendant le provisionnement"
+                },
+                "actions": {
+                    "create": "créer",
+                    "update": "mettre à jour",
+                    "delete": "supprimer"
+                },
+                "statuses": {
+                    "pending": "en attente",
+                    "creating": "création",
+                    "modifying": "modification",
+                    "complete": "terminé",
+                    "failed": "échoué",
+                    "deleting": "suppression"
+                },
+                "details": {
+                    "resourceId": "ID de ressource",
+                    "provider": "Fournisseur",
+                    "started": "Démarré",
+                    "duration": "Durée",
+                    "inProgress": "En cours...",
+                    "error": "Erreur",
+                    "configuration": "Configuration"
+                }
+            },
+            "tooltips": {
+                "provisioning": "Provisionnement en cours...",
+                "invalidForm": "Veuillez remplir tous les champs requis",
+                "infrastructure": {
+                    "unconfigured": "Infrastructure non configurée. Veuillez d'abord configurer les paramètres GCP.",
+                    "pending": "Configuration de l'infrastructure en attente...",
+                    "initializing": "L'infrastructure est en cours d'initialisation. Cela peut prendre quelques minutes.",
+                    "failed": "L'initialisation de l'infrastructure a échoué. Veuillez vérifier les logs et réessayer."
+                },
+                "ready": "Cliquez pour provisionner les nœuds"
             }
         }
     },
@@ -163,7 +230,7 @@
             "serviceAccountFile": "Fichier de compte de service (JSON)"
         },
         "dialogs": {
-            "updateCloudConfiguration":  {
+            "updateCloudConfiguration": {
                 "title": "Mettre à jour la configuration du fournisseur GCP"
             },
             "configurateCloudConfig": {
@@ -209,7 +276,7 @@
                 }
             },
             "dialogs": {
-                "addUser":  {
+                "addUser": {
                     "title": "Ajouter un nouvel utilisateur"
                 },
                 "editUser": {
@@ -257,7 +324,7 @@
                 "createNameTeam": {
                     "title": "Créer une nouvelle équipe"
                 },
-                "addUserToTeam":  {
+                "addUserToTeam": {
                     "title": "Ajouter un nouvel utilisateur à l'équipe"
                 },
                 "deleteTeam": {
@@ -298,7 +365,7 @@
         }
     },
     "dialogs": {
-        "downloadISOOnPremise":  {
+        "downloadISOOnPremise": {
             "title": "Télécharger l'ISO On-Premise",
             "noticeText": "Pour utiliser le mode On-Prem, commencez par télécharger l'ISO (AMD ou ARM) et installez-le sur vos serveurs physiques. Une fois les serveurs démarrés avec l'ISO, ils apparaîtront dans la page de Provisioning pour être configurés.",
             "label": "Choix de l'ISO",
