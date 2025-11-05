@@ -22,7 +22,7 @@
 import { ref, computed } from 'vue';
 import { useDisplay } from 'vuetify';
 
-const drawer = ref(false);
+const drawer = ref(true);
 const toolbarHeight = ref(50);
 const  { mdAndUp } = useDisplay();
 
