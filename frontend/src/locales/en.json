@@ -327,9 +327,13 @@
         "refresh": "Refresh",
         "search": "Search",
         "goHome": "Go to home",
+        "close": "Close",
         "download": "Download",
         "downloadISOOnPremise": "Download ISO On-Premise",
-        "viewRepo": "View repository"
+        "viewRepo": "View repository",
+        "showCode": "Show code",
+        "hideCode": "Hide code",
+        "copyCode": "Copy code"
     },
     "rules": {
         "validation": {
@@ -371,6 +375,183 @@
         "404": {
             "title": "404 - Not Found",
             "description": "The page you are looking for does not exist."
+        }
+    },
+    "ui": {
+        "title": "UI components",
+        "buttons": {
+            "title": "Buttons",
+            "subheading": "Various button styles and sizes.",
+            "sizes": {
+                "title": "Button sizes",
+                "label": "Choose a button size",
+                "types": {
+                    "extraSmall": "Extra Small",
+                    "small": "Small",
+                    "medium": "Medium",
+                    "large": "Large",
+                    "extraLarge": "Extra large"
+                }
+            },
+            "variants": {
+                "title": "Button variants",
+                "label": "Choose a button variant",
+                "types": {
+                    "flat": "Flat",
+                    "elevated": "Elevated",
+                    "tonal": "Tonal",
+                    "outlined": "Outlined",
+                    "text": "Text"
+                }
+            },
+            "iconsTooltips": {
+                "title": "Buttons with icons and tooltips",
+                "icons": {
+                    "label": "With icon"
+                },
+                "tooltips": {
+                    "label": "With tooltip"
+                }
+            }
+        },
+        "inputs": {
+            "title": "Inputs",
+            "subheading": "Text fields and input components for user data entry.",
+            "textfieldInput": {
+                "title": "TextField input",
+                "label": "Enter some text",
+                "type": {
+                    "label": "Type",
+                    "options": {
+                        "text": "Text",
+                        "number": "Number",
+                        "date": "Date",
+                        "email": "Email",
+                        "password": "Password"
+                    }
+                },
+                "checkboxes": {
+                    "readonly": "Read-only",
+                    "withIcon": "With icon"
+                }
+            },
+            "autocompleteInput": {
+                "title": "AutoComplete input",
+                "label": "Choose a test",
+                "checkboxes": {
+                    "disabled": "Disabled",
+                    "multiple": "Multiple selection"
+                }
+            },
+            "fileInput": {
+                "title": "File input",
+                "file": {
+                    "label": "Choose a json file"
+                }
+            }
+        },
+        "selectionControls": {
+            "title": "Selection controls",
+            "subheading": "Checkboxes and radio buttons for user selections.",
+            "radioButtons": {
+                "title": "Radio buttons",
+                "label": "Choose an option",
+                "options": {
+                    "option1": "Option 1",
+                    "option2": "Option 2",
+                    "option3": "Option 3"
+                }
+            },
+            "checkboxes": {
+                "title": "Checkboxes",
+                "options": {
+                    "test1": "Test 1",
+                    "test2": "Test 2"
+                }
+            }
+        },
+        "dialogs": {
+            "title": "Dialogs",
+            "subheading": "Modal dialogs for user interactions and confirmations.",
+            "baseDialogs": {
+                "title": "Base dialogs",
+                "nameLabel": "Name",
+                "button": {
+                    "open": "Open base dialog"
+                }
+            },
+            "confirmDialogs": {
+                "title": "Confirm dialogs",
+                "message": "Are you sure you want to proceed with this action? This cannot be undone.",
+                "button": {
+                    "open": "Open confirm dialog"
+                }
+            }
+        },
+        "tables": {
+            "title": "Tables",
+            "subheading": "Data tables for displaying structured information.",
+            "dataTables": {
+                "loadingText": "Loading data...",
+                "noDataText": "No data available.",
+                "itemsPerPageText": "Items per page :",
+                "titleToolbar": "Data Table Example"
+            },
+            "controls": {
+                "searchable": {
+                    "label": "Searchable"
+                },
+                "rowClickable": {
+                    "label": "Row clickable"
+                }
+            }
+        },
+        "alerts": {
+            "title": "Alerts",
+            "subheading": "Notification components for user feedback.",
+            "notice": {
+                "title": "Notice notification",
+                "type": {
+                    "label": "Type",
+                    "options": {
+                        "info": "Info",
+                        "success": "Success",
+                        "warning": "Warning",
+                        "error": "Error"
+                    }
+                },
+                "density": {
+                    "label": "Density",
+                    "options": {
+                        "default": "Default",
+                        "comfortable": "Comfortable",
+                        "compact": "Compact"
+                    }
+                },
+                "controls": {
+                    "title": {
+                        "label": "With title"
+                    },
+                    "closable": {
+                        "label": "Closable"
+                    }
+                }
+            },
+            "snackbar": {
+                "title": "Snackbar notification",
+                "type": {
+                    "label": "Type",
+                    "options": {
+                        "success": "Success",
+                        "info": "Info",
+                        "warning": "Warning",
+                        "error": "Error"
+                    }
+                },
+                "button": {
+                    "showSnackbar": "Show snackbar"
+                }
+            }
         }
     }
 }

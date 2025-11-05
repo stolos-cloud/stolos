@@ -1,9 +1,9 @@
 <template>
-    <div>
+    <v-app>
         <router-view />
         <BaseOverlay v-model="overlay" />
         <BaseNotification v-model="notification.visible" :text="notification.text" :type="notification.type" />
-    </div>
+    </v-app>
 </template>
 
 <script setup>
