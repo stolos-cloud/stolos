@@ -11,9 +11,11 @@ import (
 	clusterapi "github.com/siderolabs/talos/pkg/machinery/api/cluster"
 	machineryClient "github.com/siderolabs/talos/pkg/machinery/client"
 	clusterres "github.com/siderolabs/talos/pkg/machinery/resources/cluster"
+	runtime "github.com/siderolabs/talos/pkg/machinery/resources/runtime"
 	"github.com/stolos-cloud/stolos/backend/internal/models"
 	"github.com/stolos-cloud/stolos/backend/internal/services/node"
 	"github.com/stolos-cloud/stolos/backend/internal/services/talos"
+	wsservices "github.com/stolos-cloud/stolos/backend/internal/services/websocket"
 	"google.golang.org/grpc/codes"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -23,7 +25,7 @@ import (
 
 var ClusterHealthCheckJob = &StolosJob{
 	Name:       "ClusterHealthCheckJob",
-	Definition: gocron.DurationJob(30 * time.Second),
+	Definition: gocron.DurationJob(1 * time.Minute),
 	JobFunc: func(ts *talos.TalosService, db *gorm.DB) {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
 		defer cancel()
@@ -100,73 +102,66 @@ var ClusterHealthCheckJob = &StolosJob{
 var NodeStatusUpdateJob *StolosJob = &StolosJob{
 	Name:       "NodeStatusUpdateJob",
 	Definition: gocron.DurationJob(30 * time.Second),
-	JobFunc: func(ts *talos.TalosService, db *gorm.DB) {
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
+	JobFunc: func(ts *talos.TalosService, db *gorm.DB, wsManager *wsservices.Manager) {
+		var nodes []models.Node
+		if err := db.Find(&nodes).Error; err != nil {
+			log.Printf("NodeStatusUpdateJob: failed to load nodes: %v", err)
+			return
+		}
 
-		// --- pick a seed node to contact Talos API ---
-		var seed models.Node
-		if err := db.Where("status = ?", models.StatusActive).
-			Where("ip_address <> ''").
-			First(&seed).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				log.Printf("NodeStatusUpdateJob: no ACTIVE node with IP found")
-				return
+		for i := range nodes {
+			node := &nodes[i]
+			newStatus := node.Status
+
+			if node.Status == models.StatusPending {
+				// Keep pending nodes untouched until they move to provisioning/ready
+				continue
 			}
-			log.Printf("NodeStatusUpdateJob: db error selecting seed: %v", err)
-			return
-		}
 
-		cli, err := ts.GetMachineryClient(seed.IPAddress)
-		if err != nil {
-			log.Printf("NodeStatusUpdateJob: unable to get Talos client for %s: %v", seed.IPAddress, err)
-			return
-		}
+			newStatus = models.StatusFailed
 
-		// --- get Affiliates list from cluster namespace ---
-		affs, err := talos.GetTypedTalosResourceList[*clusterres.Affiliate](
-			ctx, cli, clusterres.NamespaceName, clusterres.AffiliateType,
-		)
-		if err != nil {
-			log.Printf("NodeStatusUpdateJob: failed to get Affiliates: %v", err)
-			return
-		}
-		if affs.Len() == 0 {
-			log.Printf("NodeStatusUpdateJob: no Affiliates returned")
-			return
-		}
-
-		// Collect affiliate hostnames
-		var hostnames []string
-		affs.ForEach(func(a *clusterres.Affiliate) {
-			spec := a.TypedSpec()
-			name := spec.Hostname
-			if name == "" {
-				name = spec.Nodename
+			if node.IPAddress != "" {
+				client, err := ts.GetMachineryClient(node.IPAddress)
+				if err != nil {
+					log.Printf("NodeStatusUpdateJob: unable to get client for %s: %v", node.IPAddress, err)
+				} else {
+					statusSpec, err := talos.GetMachineStatus(client)
+					if err != nil {
+						log.Printf("NodeStatusUpdateJob: failed to get machine status for %s: %v", node.IPAddress, err)
+					} else if statusSpec != nil && statusSpec.Stage == runtime.MachineStageRunning && statusSpec.Status.Ready {
+						// Node is fully running.
+						newStatus = models.StatusActive
+					}
+				}
+			} else {
+				log.Printf("NodeStatusUpdateJob: node %s has no IP address, marking as not ready", node.Name)
 			}
-			if name != "" {
-				hostnames = append(hostnames, name)
+
+			if node.Status != newStatus {
+				if err := db.Model(&models.Node{}).
+					Where("id = ?", node.ID).
+					Update("status", newStatus).Error; err != nil {
+					log.Printf("NodeStatusUpdateJob: failed to update status for node %s: %v", node.Name, err)
+					continue
+				}
+				node.Status = newStatus
 			}
-		})
-
-		if len(hostnames) == 0 {
-			log.Printf("NodeStatusUpdateJob: no valid hostnames found in Affiliates")
-			return
 		}
 
-		// --- update DB: mark all matching hostnames as Active ---
-		if err := db.Model(&models.Node{}).
-			Where("name IN ?", hostnames).
-			Update("status", models.StatusActive).Error; err != nil {
-			log.Printf("NodeStatusUpdateJob: DB update failed: %v", err)
-			return
+		if wsManager != nil {
+			wsManager.BroadcastToSessionType(wsservices.SessionTypeEvent, wsservices.Message{
+				Type: "NodeStatusUpdated",
+				Payload: map[string]any{
+					"nodes":     nodes,
+					"updatedAt": time.Now().UTC(),
+				},
+			})
 		}
-
-		log.Printf("NodeStatusUpdateJob: marked %d nodes as Active", len(hostnames))
 	},
 	JobArgs: []any{
 		(*talos.TalosService)(nil),
 		(*gorm.DB)(nil),
+		(*wsservices.Manager)(nil),
 	},
 	Options: nil,
 }
@@ -178,35 +173,23 @@ var NodeStatusUpdateJob *StolosJob = &StolosJob{
 //  3. upsert row by hostname (create if missing)
 var NodeInfoReconciler = &StolosJob{
 	Name:       "NodeInfoReconciler",
-	Definition: gocron.DurationJob(30 * time.Second),
+	Definition: gocron.DurationJob(2 * time.Minute),
 	JobArgs: []any{
 		(*talos.TalosService)(nil),
 		(*node.NodeService)(nil),
 		(*gorm.DB)(nil),
+		(*wsservices.Manager)(nil),
 	},
 	Options: []gocron.JobOption{
 		gocron.WithSingletonMode(gocron.LimitModeWait),
 	},
-	JobFunc: func(ts *talos.TalosService, ns *node.NodeService, db *gorm.DB) {
+	JobFunc: func(ts *talos.TalosService, ns *node.NodeService, db *gorm.DB, wsManager *wsservices.Manager) {
 		ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 		defer cancel()
 
-		// --- seed: any ACTIVE node with an IP ---
-		var seed models.Node
-		if err := db.Where("status = ?", models.StatusActive).
-			Where("ip_address <> ''").
-			First(&seed).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				log.Printf("NodeInfoReconciler: no ACTIVE node with IP found")
-				return
-			}
-			log.Printf("NodeInfoReconciler: db error selecting seed: %v", err)
-			return
-		}
-
-		seedCli, err := ts.GetMachineryClient(seed.IPAddress)
+		seedCli, _, err := ts.GetReachableMachineryClient(ctx)
 		if err != nil {
-			log.Printf("NodeInfoReconciler: seed client err for %s: %v", seed.IPAddress, err)
+			log.Printf("NodeInfoReconciler: no reachable node found: %v", err)
 			return
 		}
 
@@ -224,6 +207,7 @@ var NodeInfoReconciler = &StolosJob{
 		}
 
 		// iterate affiliates
+		hostnameList := make([]string, 0)
 		affs.ForEach(func(a *clusterres.Affiliate) {
 			spec := a.TypedSpec()
 			hostname := spec.Hostname
@@ -233,6 +217,8 @@ var NodeInfoReconciler = &StolosJob{
 			if hostname == "" {
 				return
 			}
+
+			hostnameList = append(hostnameList, hostname)
 
 			// select an IPv4 from Affiliate addresses (first global-unicast v4, else any v4)
 			var newIP string
@@ -260,29 +246,34 @@ var NodeInfoReconciler = &StolosJob{
 				return
 			}
 
-			// If the node exists and its current IP is still present in the affiliate list -> skip
-			if !notFound && existing.IPAddress != "" {
-				same := false
-				for _, ip := range spec.Addresses {
-					if ip.Is4() && ip.String() == existing.IPAddress {
-						same = true
-						break
-					}
-				}
-				if same {
-					// nothing to do
-					return
-				}
+			if newIP == "" && !notFound {
+				newIP = existing.IPAddress
 			}
 
-			// IP changed or node not in DB -> resolve best external NIC to get MAC
+			effectiveIP := newIP
+			if effectiveIP == "" && !notFound {
+				effectiveIP = existing.IPAddress
+			}
+
+			ipChanged := notFound || (newIP != "" && newIP != existing.IPAddress)
+
 			var mac string
-			if newIP != "" {
-				if cli, err := ts.GetMachineryClient(newIP); err == nil {
-					iface := talos.GetMachineBestExternalNetworkInterface(ctx, cli)
-					mac = iface.Mac
+			var arch string
+			if effectiveIP != "" {
+				if cli, err := ts.GetMachineryClient(effectiveIP); err == nil {
+					if ipChanged || existing.MACAddress == "" {
+						if iface := talos.GetMachineBestExternalNetworkInterface(ctx, cli); iface != nil {
+							mac = iface.Mac
+						}
+					}
+
+					if detectedArch, err := talos.DetectMachineArch(ctx, cli); err == nil && detectedArch != "" {
+						if notFound || existing.Architecture == "" || existing.Architecture != detectedArch {
+							arch = detectedArch
+						}
+					}
 				} else {
-					log.Printf("NodeInfoReconciler: client err %s (%s): %v", hostname, newIP, err)
+					log.Printf("NodeInfoReconciler: client err %s (%s): %v", hostname, effectiveIP, err)
 				}
 			}
 
@@ -296,20 +287,50 @@ var NodeInfoReconciler = &StolosJob{
 			if mac != "" {
 				upd["mac_address"] = mac
 			}
+			if arch != "" {
+				upd["architecture"] = arch
+			}
 
 			// Upsert by name (unique index recommended on "name")
 			if err := db.Clauses(clause.OnConflict{
 				Columns:   []clause.Column{{Name: "name"}}, // conflict target
 				DoUpdates: clause.Assignments(upd),
 			}).Create(&models.Node{
-				Name:       hostname,
-				IPAddress:  newIP,
-				MACAddress: mac,
-				Status:     models.StatusActive,
+				Name:         hostname,
+				IPAddress:    newIP,
+				MACAddress:   mac,
+				Architecture: arch,
 			}).Error; err != nil {
 				log.Printf("NodeInfoReconciler: upsert %s failed: %v", hostname, err)
 				return
 			}
 		})
+
+		// Removed this section as nodes which are shutdown are removed from affiliates. Final logic TBD.
+		// Remove nodes no longer present in affiliates
+		// if len(hostnameList) == 0 {
+		// 	log.Printf("NodeInfoReconciler: warning - no affiliates returned; skipping stale node cleanup")
+		// } else {
+		// 	if err := db.Where("provider = ?", "onprem").Where("name NOT IN ?", hostnameList).
+		// 		Where("status NOT IN ?", []models.NodeStatus{models.StatusPending, models.StatusProvisioning}).
+		// 		Delete(&models.Node{}).Error; err != nil {
+		// 		log.Printf("NodeInfoReconciler: failed to delete stale nodes: %v", err)
+		// 	}
+		// }
+
+		if wsManager != nil {
+			var nodes []models.Node
+			if err := db.Find(&nodes).Error; err != nil {
+				log.Printf("NodeInfoReconciler: failed to load nodes for broadcast: %v", err)
+			} else {
+				wsManager.BroadcastToSessionType(wsservices.SessionTypeEvent, wsservices.Message{
+					Type: "NodeStatusUpdated",
+					Payload: map[string]any{
+						"nodes":     nodes,
+						"updatedAt": time.Now().UTC(),
+					},
+				})
+			}
+		}
 	},
 }

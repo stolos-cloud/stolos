@@ -10,10 +10,11 @@
 import { useStore } from 'vuex';
 import { useTheme } from 'vuetify';
 import { useI18n } from 'vue-i18n';
-import { onMounted } from 'vue';
+import { onMounted, onBeforeUnmount } from 'vue';
 import { getAvailableGCPResources } from '@/services/provisioning.service';
 import { GlobalNotificationHandler } from '@/composables/GlobalNotificationHandler';
 import { GlobalOverlayHandler } from '@/composables/GlobalOverlayHandler';
+import wsEventService from '@/services/wsEvent.service';
 
 const store = useStore();
 const theme = useTheme();
@@ -28,9 +29,14 @@ theme.change(savedTheme);
 i18n.locale.value = savedLanguage;
 
 onMounted(async () => {
+    wsEventService.connect();
     await getAvailableGCPResources().then(gcpResources => {
         store.dispatch('referenceLists/setCloudResources', gcpResources);
     });
+});
+
+onBeforeUnmount(() => {
+    wsEventService.disconnect();
 });
 </script>
 

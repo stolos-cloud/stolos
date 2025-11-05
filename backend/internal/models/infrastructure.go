@@ -49,9 +49,9 @@ func (n *Node) BeforeCreate(tx *gorm.DB) error {
 }
 
 type Cluster struct {
-	ID        uuid.UUID      `json:"id" gorm:"type:uuid;primary_key"`
-	Name      string         `json:"name" gorm:"not null;uniqueIndex"`
-	Nodes     []Node         `json:"nodes" gorm:"foreignKey:ClusterID"`
+	ID    uuid.UUID `json:"id" gorm:"type:uuid;primary_key"`
+	Name  string    `json:"name" gorm:"not null;uniqueIndex"`
+	Nodes []Node    `json:"nodes" gorm:"foreignKey:ClusterID"`
 
 	// Talos configuration fields
 	TalosVersion string `json:"talos_version,omitempty"`
@@ -168,14 +168,15 @@ type ISOResponse struct {
 	Architecture string `json:"architecture"`
 }
 
-type NodeProvisionRequest struct {
-	Nodes []NodeProvisionConfig `json:"nodes" binding:"required"`
+type OnPremNodeProvisionRequest struct {
+	Nodes []OnPremNodeProvisionConfig `json:"nodes" binding:"required"`
 }
 
-type NodeProvisionConfig struct {
-	NodeID uuid.UUID `json:"node_id" binding:"required" example:"550e8400-e29b-41d4-a716-446655440000"`
-	Role   string    `json:"role" binding:"required" example:"worker"`
-	Labels []string  `json:"labels" example:"zone=us-east,type=compute"`
+type OnPremNodeProvisionConfig struct {
+	NodeID      uuid.UUID `json:"node_id" binding:"required" example:"550e8400-e29b-41d4-a716-446655440000"`
+	Role        string    `json:"role" binding:"required" example:"worker"`
+	Labels      []string  `json:"labels" example:"zone=us-east,type=compute"`
+	InstallDisk string    `json:"install_disk" example:"/dev/sda"`
 }
 
 type NodeProvisionResult struct {

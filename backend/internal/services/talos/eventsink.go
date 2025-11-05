@@ -11,6 +11,7 @@ import (
 	"github.com/siderolabs/siderolink/pkg/events"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/talos"
 	"github.com/stolos-cloud/stolos/backend/internal/models"
+	wsservices "github.com/stolos-cloud/stolos/backend/internal/services/websocket"
 	"gorm.io/gorm"
 )
 
@@ -22,11 +23,11 @@ func (s *TalosService) StartEventSink() {
 		return
 	}
 
-	log.Printf("Starting Talos event sink on %s:%s", s.cfg.Talos.EventSinkHostname, s.cfg.Talos.EventSinkPort)
+	log.Printf("Starting Talos event sink on %s:%s", s.cfg.Talos.EventSinkBindHostname, s.cfg.Talos.EventSinkPort)
 
-	// Prepare talosInfo struct for EventSink
+	// Prepare talosInfo struct for EventSink (use bind hostname for actual binding)
 	talosInfo := &talos.TalosInfo{
-		HTTPHostname: s.cfg.Talos.EventSinkHostname,
+		HTTPHostname: s.cfg.Talos.EventSinkBindHostname,
 		HTTPPort:     s.cfg.Talos.EventSinkPort,
 	}
 
@@ -64,7 +65,10 @@ func (s *TalosService) StartEventSink() {
 					return errors.Wrapf(err, "Error connecting to node %s, skipping", ip)
 				}
 
-				mac := GetMachineBestExternalNetworkInterface(ctx, cli).Mac
+				var mac string
+				if iface := GetMachineBestExternalNetworkInterface(ctx, cli); iface != nil {
+					mac = iface.Mac
+				}
 
 				log.Printf("Found machine at %s with stage %s", ip, status.Stage.String())
 
@@ -88,6 +92,15 @@ func (s *TalosService) StartEventSink() {
 				}
 
 				log.Printf("Auto-registered new on-prem node: %s (IP: %s)", node.Name, ip)
+
+				if s.wsManager != nil {
+					s.wsManager.BroadcastToSessionType(wsservices.SessionTypeEvent, wsservices.Message{
+						Type: "NewPendingNodeDetected",
+						Payload: map[string]any{
+							"node": node,
+						},
+					})
+				}
 			} else if err != nil {
 				log.Printf("Error checking node existence for IP %s: %v", ip, err)
 				return err

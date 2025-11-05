@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"strings"
 	"time"
@@ -25,7 +26,9 @@ func BuildNodeModelFromResources(ctx context.Context, c *machineryClient.Client,
 		Status:    models.StatusPending,
 	}
 
-	node.MACAddress = GetMachineBestExternalNetworkInterface(ctx, c).Mac
+	if iface := GetMachineBestExternalNetworkInterface(ctx, c); iface != nil {
+		node.MACAddress = iface.Mac
+	}
 
 	return node, nil
 }
@@ -92,7 +95,13 @@ type NodeNetworkIface struct {
 
 // GetMachineBestExternalNetworkInterface tries to find the external Mac address of primary net interface
 func GetMachineBestExternalNetworkInterface(ctx context.Context, c *machineryClient.Client) *NodeNetworkIface {
-	if linkList, err := GetTypedTalosResourceList[*netres.LinkStatus](ctx, c, netres.NamespaceName, "Link"); err == nil {
+	linkList, err := GetTypedTalosResourceList[*netres.LinkStatus](ctx, c, netres.NamespaceName, "Link")
+	if err != nil {
+		log.Printf("GetMachineBestExternalNetworkInterface: failed to get link list: %v", err)
+		return nil
+	}
+
+	if linkList.Len() > 0 {
 
 		var best NodeNetworkIface
 
@@ -120,7 +129,12 @@ func GetMachineBestExternalNetworkInterface(ctx context.Context, c *machineryCli
 				best = NodeNetworkIface{Score: score, Link: link, Mac: mac}
 			}
 		}
-		return &best
+
+		// Only return the interface if we found a valid one
+		if best.Score > 0 {
+			return &best
+		}
+		log.Printf("GetMachineBestExternalNetworkInterface: no suitable network interface found")
 	}
 	return nil
 }
@@ -145,7 +159,7 @@ func isVirtualIface(name string) bool {
 	return false
 }
 
-// DetectMachineArch tries to detect cpu arch via /proc/cpuinfo , returns goarch formatted string.
+// DetectMachineArch returns the CPU vendor_id from /proc/cpuinfo as a lightweight architecture hint.
 func DetectMachineArch(ctx context.Context, cli *machineryClient.Client) (string, error) {
 	// set a timeout to avoid hangs
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -161,20 +175,15 @@ func DetectMachineArch(ctx context.Context, cli *machineryClient.Client) (string
 	if err != nil {
 		return "", fmt.Errorf("readAll /proc/cpuinfo: %w", err)
 	}
-	text := strings.ToLower(string(data))
+	text := string(data)
 
-	// fast checks
-	if strings.Contains(text, "aarch64") || strings.Contains(text, "armv8") {
-		return "arm64", nil
-	}
-	if strings.Contains(text, "x86_64") {
-		return "amd64", nil
-	}
-	if strings.Contains(text, "riscv64") || strings.Contains(text, "rv64") {
-		return "riscv64", nil
-	}
-	if strings.Contains(text, "armv7") || strings.Contains(text, "v7l") {
-		return "armv7", nil
+	for _, line := range strings.Split(text, "\n") {
+		if strings.HasPrefix(strings.ToLower(line), "vendor_id") {
+			parts := strings.SplitN(line, ":", 2)
+			if len(parts) == 2 {
+				return strings.TrimSpace(parts[1]), nil
+			}
+		}
 	}
 
 	return "Unknown", nil

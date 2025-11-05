@@ -30,7 +30,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 func TestNodeService_CreateNode(t *testing.T) {
 	db := setupTestDB(t)
 	cfg := &config.Config{}
-	service := node.NewNodeService(db, cfg, nil, talosservice.NewTalosService(db, cfg))
+	service := node.NewNodeService(db, cfg, nil, talosservice.NewTalosService(db, cfg, nil))
 
 	clusterID := uuid.New()
 
@@ -63,7 +63,7 @@ func TestNodeService_CreateNode(t *testing.T) {
 func TestNodeService_GetNode(t *testing.T) {
 	db := setupTestDB(t)
 	cfg := &config.Config{}
-	service := node.NewNodeService(db, cfg, nil, talosservice.NewTalosService(db, cfg))
+	service := node.NewNodeService(db, cfg, nil, talosservice.NewTalosService(db, cfg, nil))
 
 	clusterID := uuid.New()
 
@@ -87,7 +87,7 @@ func TestNodeService_GetNode(t *testing.T) {
 func TestNodeService_GetNode_NotFound(t *testing.T) {
 	db := setupTestDB(t)
 	cfg := &config.Config{}
-	service := node.NewNodeService(db, cfg, nil, talosservice.NewTalosService(db, cfg))
+	service := node.NewNodeService(db, cfg, nil, talosservice.NewTalosService(db, cfg, nil))
 
 	randomID := uuid.New()
 

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -62,6 +63,52 @@ func (h *NodeHandlers) CreateNodes(c *gin.Context) {
 
 func (h *NodeHandlers) GetNode(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Get node - TODO"})
+}
+
+// DeleteNode godoc
+// @Summary Delete a node
+// @Description Remove a node from the database
+// @Tags nodes
+// @Accept json
+// @Produce json
+// @Param id path string true "Node ID (UUID)"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /nodes/{id} [delete]
+func (h *NodeHandlers) DeleteNode(c *gin.Context) {
+	idStr := c.Param("id")
+	if idStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "node id is required"})
+		return
+	}
+
+	// Parse UUID
+	nodeID, err := uuid.Parse(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid node id format"})
+		return
+	}
+
+	// Check if node exists
+	var node models.Node
+	if err := h.db.First(&node, "id = ?", nodeID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "node not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check node existence"})
+		return
+	}
+
+	// Delete the node
+	if err := h.db.Delete(&node).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete node"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "node deleted successfully"})
 }
 
 // UpdateActiveNodeConfig godoc
@@ -166,14 +213,14 @@ func (h *NodeHandlers) CreateSampleNodes(c *gin.Context) {
 // @Tags nodes
 // @Accept json
 // @Produce json
-// @Param request body models.NodeProvisionRequest true "Array of nodes to provision with role and labels"
-// @Success 200 {object} models.NodeProvisionRequest "Returns provisioned count and nodes array"
+// @Param request body models.OnPremNodeProvisionRequest true "Array of nodes to provision with role and labels"
+// @Success 200 {object} models.OnPremNodeProvisionRequest "Returns provisioned count and nodes array"
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /nodes/provision [post]
 // @Security BearerAuth
 func (h *NodeHandlers) ProvisionNodes(c *gin.Context) {
-	var req models.NodeProvisionRequest
+	var req models.OnPremNodeProvisionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body", "details": err.Error()})
 		return
@@ -225,20 +272,71 @@ func (h *NodeHandlers) ProvisionNodesStream(c *gin.Context) {
 	session.SendStatus("provisioning")
 }
 
+// GetNodeDisks godoc
+// @Summary Get available disks for a node
+// @Description Retrieves the list of disks reported by the Talos machinery API for the specified node.
+// @Tags nodes
+// @Accept json
+// @Produce json
+// @Param id path string true "Node ID (UUID)"
+// @Success 200 {object} map[string][]string "Disks associated with node"
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /nodes/{id}/disks [get]
+func (h *NodeHandlers) GetNodeDisks(c *gin.Context) {
+	nodeIDParam := c.Param("id")
+	nodeID, err := uuid.Parse(nodeIDParam)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid node ID"})
+		return
+	}
+
+	node, err := h.nodeService.GetNode(nodeID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "node not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if node.IPAddress == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "node IP address is not set"})
+		return
+	}
+
+	client, err := talos.GetInsecureMachineryClient(c.Request.Context(), node.IPAddress)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	defer client.Close()
+
+	disks, err := h.talosService.GetNodeDisks(c.Request.Context(), client)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"disks": disks})
+}
+
 // GetTalosconfig godoc
 // @Summary Returns talosconfig File in TALOS_FOLDER
 // @Description Returns the talosconfig file in TALOS_FOLDER, destined for operators to do manual talosctl operations.
 // @Tags nodes
 // @Accept json
-// @Produce yaml
+// @Produce application/yaml
 // @Success 200 {object} []byte "Message indicating success"
-// @Failure 500 {object}
+// @Failure 500 {object} map[string]string
 // @Router /nodes/talosconfig [get]
-//func (h *NodeHandlers) GetTalosconfig(c *gin.Context) {
-//	err := h.nodeService.GetTalosconfig()
-//	if err != nil {
-//		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-//		return
-//	}
-//	c.JSON(http.StatusOK, gin.H{"message": "Sample nodes created"})
-//}
+func (h *NodeHandlers) GetTalosconfig(c *gin.Context) {
+	cfg, err := h.talosService.GetTalosConfigFromDB()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.Data(http.StatusOK, "application/yaml", cfg)
+}
