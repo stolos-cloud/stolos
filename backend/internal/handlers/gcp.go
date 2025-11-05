@@ -523,6 +523,55 @@ func (h *GCPHandlers) GetProvisionPlan(c *gin.Context) {
 	c.File(planFilePath)
 }
 
+// GetProvisionApply godoc
+// @Summary Download terraform apply logs
+// @Description Download the terraform apply JSON logs
+// @Tags gcp
+// @Param request_id path string true "Provision request ID"
+// @Produce application/json
+// @Success 200 {file} string
+// @Failure 404 {object} map[string]string
+// @Router /gcp/nodes/provision/{request_id}/apply [get]
+// @Security BearerAuth
+func (h *GCPHandlers) GetProvisionApply(c *gin.Context) {
+	requestID := c.Param("request_id")
+
+	// Validate request ID
+	parsedUUID, err := uuid.Parse(requestID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request_id"})
+		return
+	}
+	canonicalRequestID := parsedUUID.String()
+
+	// Check if provision request exists
+	var provisionRequest models.ProvisionRequest
+	if err := h.db.Where("id = ?", canonicalRequestID).First(&provisionRequest).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "provision request not found"})
+		return
+	}
+
+	// Serve the apply log file
+	appliesDir := "applies"
+	applyFileName := fmt.Sprintf("apply-%s.json", canonicalRequestID)
+	applyFilePath := filepath.Join(appliesDir, applyFileName)
+
+	// Defensive: make sure the resolved path is within the applies directory
+	absAppliesDir, err := filepath.Abs(appliesDir)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return
+	}
+	absApplyFilePath, err := filepath.Abs(applyFilePath)
+	if err != nil || len(absApplyFilePath) < len(absAppliesDir) || absApplyFilePath[:len(absAppliesDir)] != absAppliesDir {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid file path"})
+		return
+	}
+
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", applyFileName))
+	c.File(applyFilePath)
+}
+
 // ProvisionGCPNodesStream godoc
 // @Summary WebSocket stream for GCP node provisioning
 // @Description Connect to this WebSocket endpoint to receive real-time logs and approval requests

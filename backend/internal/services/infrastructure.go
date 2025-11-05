@@ -79,16 +79,10 @@ func (s *InfrastructureService) InitializeInfrastructure(ctx context.Context, pr
 		return fmt.Errorf("failed to get backend config: %w", err)
 	}
 
-	// Create orchestrator
-	envVars := map[string]string{
-		"GOOGLE_CREDENTIALS": gcpConfig.ServiceAccountKeyJSON,
-		"GOOGLE_PROJECT":     gcpConfig.ProjectID,
-	}
-
 	orchestrator, err := tfpkg.NewOrchestrator(tfpkg.OrchestratorConfig{
 		WorkDir:         workDir,
 		TemplateBaseDir: "terraform-templates",
-		EnvVars:         envVars,
+		EnvVars:         gcpConfig.TerraformEnvVars(),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create orchestrator: %w", err)
@@ -134,7 +128,7 @@ func (s *InfrastructureService) InitializeInfrastructure(ctx context.Context, pr
 			return fmt.Errorf("failed to create GitHub client: %w", err)
 		}
 
-		if err := orchestrator.CommitToGitOps(ctx, ghClient.Client, tfpkg.GitOpsConfig{
+		if _, err := orchestrator.CommitToGitOps(ctx, ghClient.Client, tfpkg.GitOpsConfig{
 			Owner:    gitopsConfig.RepoOwner,
 			Repo:     gitopsConfig.RepoName,
 			Branch:   gitopsConfig.Branch,
@@ -199,16 +193,10 @@ func (s *InfrastructureService) DestroyInfrastructure(ctx context.Context, provi
 		return fmt.Errorf("failed to get backend config: %w", err)
 	}
 
-	// Create orchestrator
-	envVars := map[string]string{
-		"GOOGLE_CREDENTIALS": gcpConfig.ServiceAccountKeyJSON,
-		"GOOGLE_PROJECT":     gcpConfig.ProjectID,
-	}
-
 	orchestrator, err := tfpkg.NewOrchestrator(tfpkg.OrchestratorConfig{
 		WorkDir:         workDir,
 		TemplateBaseDir: "terraform-templates",
-		EnvVars:         envVars,
+		EnvVars:         gcpConfig.TerraformEnvVars(),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create orchestrator: %w", err)
@@ -367,19 +355,24 @@ func (s *InfrastructureService) PublishNodeModuleToRepo(providerName, talosVersi
 
 	// Commit to GitOps repository
 	moduleBasePath := filepath.Join(gitopsConfig.WorkingDir, providerName, "modules", "node")
-	if err := orchestrator.CommitToGitOps(ctx, ghClient.Client, tfpkg.GitOpsConfig{
+	committed, err := orchestrator.CommitToGitOps(ctx, ghClient.Client, tfpkg.GitOpsConfig{
 		Owner:    gitopsConfig.RepoOwner,
 		Repo:     gitopsConfig.RepoName,
 		Branch:   gitopsConfig.Branch,
 		BasePath: moduleBasePath,
 		Username: gitopsConfig.Username,
 		Email:    gitopsConfig.Email,
-	}, fmt.Sprintf("Publish Terraform node module for %s", providerName)); err != nil {
+	}, fmt.Sprintf("Publish Terraform node module for %s", providerName))
+	if err != nil {
 		return fmt.Errorf("failed to commit to repository: %w", err)
 	}
 
-	fmt.Printf("Published node module to %s/%s (branch: %s)\n", gitopsConfig.RepoOwner, gitopsConfig.RepoName, gitopsConfig.Branch)
-	fmt.Printf("  Module directory: %s\n", moduleBasePath)
+	if committed {
+		fmt.Printf("Published node module to %s/%s (branch: %s)\n", gitopsConfig.RepoOwner, gitopsConfig.RepoName, gitopsConfig.Branch)
+		fmt.Printf("  Module directory: %s\n", moduleBasePath)
+	} else {
+		fmt.Printf("Node module already up-to-date in %s/%s (branch: %s)\n", gitopsConfig.RepoOwner, gitopsConfig.RepoName, gitopsConfig.Branch)
+	}
 
 	return nil
 }
@@ -421,16 +414,10 @@ func (s *InfrastructureService) ForceUnlockState(ctx context.Context, providerNa
 		return fmt.Errorf("failed to get backend config: %w", err)
 	}
 
-	// Create orchestrator
-	envVars := map[string]string{
-		"GOOGLE_CREDENTIALS": gcpConfig.ServiceAccountKeyJSON,
-		"GOOGLE_PROJECT":     gcpConfig.ProjectID,
-	}
-
 	orchestrator, err := tfpkg.NewOrchestrator(tfpkg.OrchestratorConfig{
 		WorkDir:         workDir,
 		TemplateBaseDir: "terraform-templates",
-		EnvVars:         envVars,
+		EnvVars:         gcpConfig.TerraformEnvVars(),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create orchestrator: %w", err)

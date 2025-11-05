@@ -122,6 +122,7 @@ func setupGCPRoutes(public *gin.RouterGroup, protected *gin.RouterGroup, h *hand
 	// Provisioning endpoints
 	public.GET("/gcp/nodes/provision/:request_id/stream", h.GCPHandlers().ProvisionGCPNodesStream)
 	protected.GET("/gcp/nodes/provision/:request_id/plan", h.GCPHandlers().GetProvisionPlan)
+	protected.GET("/gcp/nodes/provision/:request_id/apply", h.GCPHandlers().GetProvisionApply)
 
 	// Protected routes
 	gcp := protected.Group("/gcp")

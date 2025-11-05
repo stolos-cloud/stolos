@@ -541,6 +541,49 @@ const docTemplate = `{
                 }
             }
         },
+        "/gcp/nodes/provision/{request_id}/apply": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Download the terraform apply JSON logs",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "gcp"
+                ],
+                "summary": "Download terraform apply logs",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Provision request ID",
+                        "name": "request_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/gcp/nodes/provision/{request_id}/plan": {
             "get": {
                 "security": [

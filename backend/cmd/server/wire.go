@@ -88,8 +88,9 @@ func RegisterInfrastructureServices() []any {
 			gcpResourcesService *gcpservices.GCPResourcesService,
 			talosService *talosservice.TalosService,
 			gitopsService *gitops.GitOpsService,
+			wsManager *wsservices.Manager,
 		) *services.ProviderManager {
-			return services.NewProviderManager(db, cfg, gcpService, gcpResourcesService, talosService, gitopsService)
+			return services.NewProviderManager(db, cfg, gcpService, gcpResourcesService, talosService, gitopsService, wsManager)
 		}),
 		gontainer.NewFactory(func(resolver *gontainer.Resolver) *job.JobService {
 			s, _ := job.NewJobService(resolver)

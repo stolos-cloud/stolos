@@ -9,12 +9,15 @@ import (
 
 // Message types sent over WebSocket
 const (
-	MessageTypeLog      = "log"
-	MessageTypeStatus   = "status"
-	MessageTypePlan     = "plan"
-	MessageTypeApproval = "approval_required"
-	MessageTypeComplete = "complete"
-	MessageTypeError    = "error"
+	MessageTypeLog                   = "log"
+	MessageTypeStatus                = "status"
+	MessageTypePlan                  = "plan"
+	MessageTypeApproval              = "approval_required"
+	MessageTypeComplete              = "complete"
+	MessageTypeError                 = "error"
+	MessageTypeResource              = "resource_update"
+	MessageTypeWorkflow              = "workflow_update"
+	MessageTypeInfrastructureStatus  = "infrastructure_status"
 )
 
 // WebSocket message structure
@@ -275,5 +278,32 @@ func (c *Client) SendError(err string) error {
 	return c.manager.SendMessage(c.ID, Message{
 		Type:    MessageTypeError,
 		Payload: map[string]string{"error": err},
+	})
+}
+
+// SendResourceUpdate sends a resource update message
+func (c *Client) SendResourceUpdate(resource any) error {
+	return c.manager.SendMessage(c.ID, Message{
+		Type:    MessageTypeResource,
+		Payload: resource,
+	})
+}
+
+// SendWorkflowUpdate sends a workflow update message
+func (c *Client) SendWorkflowUpdate(workflow any) error {
+	return c.manager.SendMessage(c.ID, Message{
+		Type:    MessageTypeWorkflow,
+		Payload: workflow,
+	})
+}
+
+// BroadcastInfrastructureStatus broadcasts infrastructure status to all event session clients
+func (m *Manager) BroadcastInfrastructureStatus(status string, provider string) {
+	m.BroadcastToSessionType(SessionTypeEvent, Message{
+		Type: MessageTypeInfrastructureStatus,
+		Payload: map[string]string{
+			"status":   status,
+			"provider": provider,
+		},
 	})
 }

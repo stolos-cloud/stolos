@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -21,6 +22,7 @@ import (
 	"github.com/stolos-cloud/stolos/backend/internal/models"
 	gitopsservices "github.com/stolos-cloud/stolos/backend/internal/services/gitops"
 	talosservices "github.com/stolos-cloud/stolos/backend/internal/services/talos"
+	terraformservices "github.com/stolos-cloud/stolos/backend/internal/services/terraform"
 	wsservices "github.com/stolos-cloud/stolos/backend/internal/services/websocket"
 	githubpkg "github.com/stolos-cloud/stolos/backend/pkg/github"
 	tfpkg "github.com/stolos-cloud/stolos/backend/pkg/terraform"
@@ -235,13 +237,50 @@ func (s *ProvisioningService) ProvisionNodes(
 	session.SendLog("Running terraform plan...")
 	session.SendStatus("planning")
 
-	// Run terraform plan with output
+	// Create resource tracker for ws updates
+	resourceTracker := terraformservices.NewResourceTracker(session)
+
 	hasChanges, planOutput, err := provSession.Orchestrator.PlanWithOutput(ctx)
 	if err != nil {
 		return fmt.Errorf("terraform plan failed: %w", err)
 	}
 
 	session.SendLog("Terraform plan executed successfully")
+
+	planJSON, err := provSession.Orchestrator.GetPlanJSON(ctx)
+	if err != nil {
+		log.Printf("Warning: Failed to get plan JSON: %v", err)
+		// Continue without resource details
+	} else {
+		// Parse the plan to get actual resources
+		plannedResources, err := terraformservices.ParsePlanJSON(planJSON)
+		if err != nil {
+			log.Printf("Warning: Failed to parse plan JSON: %v", err)
+		} else {
+			// Initialize resource tracker with planned resources
+			resourceTracker.InitializeWithPlan(plannedResources)
+
+			// Send each resource update
+			for _, resource := range plannedResources {
+				session.SendResourceUpdate(resource)
+			}
+
+			// Send workflow update with resource summary
+			summary := make(map[string]int)
+			for _, res := range plannedResources {
+				summary[res.Action]++
+			}
+
+			workflowUpdate := models.TerraformWorkflowUpdate{
+				Resources:   plannedResources,
+				Summary:     summary,
+			}
+			session.SendWorkflowUpdate(workflowUpdate)
+
+			session.SendLog(fmt.Sprintf("Plan complete: %d resources to create, %d to update, %d to delete",
+				summary["create"], summary["update"], summary["delete"]))
+		}
+	}
 
 	// Save plan output to file
 	planDir := "plans"
@@ -259,7 +298,7 @@ func (s *ProvisioningService) ProvisionNodes(
 	}
 
 	// Create summary
-	planSummary := fmt.Sprintf("Terraform plan completed\n")
+	planSummary := "Terraform plan completed\n"
 	if hasChanges {
 		planSummary += fmt.Sprintf("Plan: %d node(s) to add\n", len(nodes))
 	} else {
@@ -282,7 +321,7 @@ func (s *ProvisioningService) ProvisionNodes(
 	}
 
 	session.SendStatus("awaiting_approval")
-	session.SendApprovalRequest(fmt.Sprintf("Ready to create %d node(s). Please review the plan and approve to continue.", req.Number))
+	session.SendApprovalRequest("Please review the plan and approve to continue.")
 
 	// Wait for approval (with timeout)
 	session.SendLog("Waiting for user approval...")
@@ -316,23 +355,98 @@ func (s *ProvisioningService) ProvisionNodes(
 	session.SendStatus("applying")
 	session.SendLog("Running terraform apply...")
 
-	// Run terraform apply
-	if err := provSession.Orchestrator.Apply(ctx); err != nil {
-		return fmt.Errorf("terraform apply failed: %w", err)
+	// Prepare file for saving apply logs
+	applyDir := "applies"
+	if err := os.MkdirAll(applyDir, 0755); err != nil {
+		log.Printf("Warning: failed to create applies directory: %v", err)
 	}
 
-	applyOutput := fmt.Sprintf("Apply complete! Resources: %d node(s) added\n", len(nodes))
+	applyFilename := fmt.Sprintf("apply-%s.json", requestID.String())
+	applyFilePath := filepath.Join(applyDir, applyFilename)
+
+	applyFile, err := os.Create(applyFilePath)
+	if err != nil {
+		log.Printf("Warning: failed to create apply log file: %v", err)
+	}
+
+	// for streaming JSON output
+	applyJsonReader, applyJsonWriter := io.Pipe()
+
+	// process JSON output as it streams and save to file
+	streamDone := make(chan error, 1)
+	go func() {
+		defer applyJsonReader.Close()
+		defer func() {
+			if applyFile != nil {
+				applyFile.Close()
+			}
+		}()
+
+		// Tee the reader to both the tracker and the file
+		var reader io.Reader = applyJsonReader
+		if applyFile != nil {
+			reader = io.TeeReader(applyJsonReader, applyFile)
+		}
+
+		if err := resourceTracker.StreamApplyJSON(ctx, reader); err != nil {
+			log.Printf("Error processing apply JSON: %v", err)
+			streamDone <- err
+		} else {
+			streamDone <- nil
+		}
+	}()
+
+	// Run terraform apply with JSON output for resource tracking
+	applyDone := make(chan error, 1)
+	go func() {
+		defer applyJsonWriter.Close()
+		if err := provSession.Orchestrator.ApplyJSON(ctx, applyJsonWriter); err != nil {
+			applyDone <- fmt.Errorf("terraform apply failed: %w", err)
+		} else {
+			applyDone <- nil
+		}
+	}()
+
+	// Wait for both to complete
+	applyErr := <-applyDone
+	streamErr := <-streamDone
+
+	// Check for errors
+	if applyErr != nil {
+		return applyErr
+	}
+	if streamErr != nil {
+		log.Printf("Warning: error processing apply stream: %v", streamErr)
+	}
+
+	applyOutput := fmt.Sprintf("Apply complete! Resources requested: %d node(s) added\n", len(nodes))
 
 	session.SendLog("Terraform apply executed successfully")
 	session.SendLog(applyOutput)
 	session.SendLog("Terraform apply completed successfully")
 
 	// Parse terraform output to get instance details
-	session.SendLog("Fetching created instance information...")
 	instanceDetails, err := s.getTerraformOutputs(ctx, requestID)
 	if err != nil {
-		log.Printf("Warning: failed to get terraform outputs: %v", err)
-		// Continue anyway, we can still create node records
+		log.Printf("Failed to get terraform outputs: %v", err)
+	} else if len(instanceDetails) > 0 {
+		outputsMap := make(map[string]any)
+		for _, detail := range instanceDetails {
+			if detail.InstanceName != "" {
+				// Use node name as key for better readability on frontend
+				outputsMap[detail.InstanceName] = map[string]any{
+					"instance_id": detail.InstanceID,
+					"internal_ip": detail.InternalIP,
+					"external_ip": detail.ExternalIP,
+				}
+			}
+		}
+
+		if len(outputsMap) > 0 {
+			session.SendWorkflowUpdate(models.TerraformWorkflowUpdate{
+				Outputs: outputsMap,
+			})
+		}
 	}
 
 	// Cleanup the provision session and temp directory
@@ -448,9 +562,10 @@ type NodeConfig struct {
 
 // InstanceDetails holds terraform output for a node
 type InstanceDetails struct {
-	InstanceID string
-	InternalIP string
-	ExternalIP string
+	InstanceName string
+	InstanceID   string
+	InternalIP   string
+	ExternalIP   string
 }
 
 // createTerraformFiles creates terraform configuration files
@@ -508,16 +623,10 @@ func (s *ProvisioningService) createTerraformFiles(ctx context.Context, requestI
 		TalosImageName:    talosImageName,
 	}
 
-	// todo see if we can handle better
-	envVars := map[string]string{
-		"GOOGLE_CREDENTIALS": gcpConfig.ServiceAccountKeyJSON,
-		"GOOGLE_PROJECT":     gcpConfig.ProjectID,
-	}
-
 	orchestrator, err := tfpkg.NewOrchestrator(tfpkg.OrchestratorConfig{
 		WorkDir:         workDir,
 		TemplateBaseDir: "terraform-templates",
-		EnvVars:         envVars,
+		EnvVars:         gcpConfig.TerraformEnvVars(),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create orchestrator: %w", err)
@@ -667,18 +776,21 @@ func (s *ProvisioningService) commitTerraformFiles(ctx context.Context, requestI
 	commitMessage := fmt.Sprintf("Add node configurations: %v", nodeNames)
 
 	// Commit to GitOps repository using the orchestrator
-	if err := provSession.Orchestrator.CommitToGitOps(ctx, ghClient.Client, tfpkg.GitOpsConfig{
+	committed, err := provSession.Orchestrator.CommitToGitOps(ctx, ghClient.Client, tfpkg.GitOpsConfig{
 		Owner:    gitopsConfig.RepoOwner,
 		Repo:     gitopsConfig.RepoName,
 		Branch:   gitopsConfig.Branch,
 		BasePath: filepath.Join(gitopsConfig.WorkingDir, "gcp"),
 		Username: gitopsConfig.Username,
 		Email:    gitopsConfig.Email,
-	}, commitMessage); err != nil {
+	}, commitMessage)
+	if err != nil {
 		return fmt.Errorf("failed to commit to repository: %w", err)
 	}
 
-	log.Printf("Committed terraform files for nodes: %v", nodeNames)
+	if committed {
+		log.Printf("Committed terraform files for nodes: %v", nodeNames)
+	}
 	return nil
 }
 
@@ -716,6 +828,22 @@ func (s *ProvisioningService) uploadTalosConfigsToGCS(ctx context.Context, gcpCo
 	return nil
 }
 
+// parseOutputValue unmarshals terraform output value (handles json.RawMessage or map)
+func parseOutputValue(value any) (map[string]any, error) {
+	switch v := value.(type) {
+	case map[string]any:
+		return v, nil
+	case json.RawMessage:
+		var result map[string]any
+		if err := json.Unmarshal(v, &result); err != nil {
+			return nil, err
+		}
+		return result, nil
+	default:
+		return nil, fmt.Errorf("unexpected type: %T", value)
+	}
+}
+
 // getTerraformOutputs retrieves instance details from terraform outputs
 func (s *ProvisioningService) getTerraformOutputs(ctx context.Context, requestID uuid.UUID) ([]InstanceDetails, error) {
 	provSession, ok := s.activeProvisions[requestID]
@@ -723,40 +851,47 @@ func (s *ProvisioningService) getTerraformOutputs(ctx context.Context, requestID
 		return nil, fmt.Errorf("provision session not found")
 	}
 
-	// Get terraform outputs
 	outputs, err := provSession.Orchestrator.Output(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get terraform outputs: %w", err)
 	}
 
-	// Parse outputs for each node
 	details := make([]InstanceDetails, 0, len(provSession.Nodes))
 
 	for _, node := range provSession.Nodes {
-		// Each node has an output like: "<node-name>_info"
 		outputKey := fmt.Sprintf("%s_info", helpers.SanitizeResourceName(node.Name))
 
-		if output, ok := outputs[outputKey]; ok {
-			// Output -> map with instance details
-			if nodeInfo, ok := output.(map[string]interface{}); ok {
-				detail := InstanceDetails{}
-
-				if instanceID, ok := nodeInfo["instance_id"].(string); ok {
-					detail.InstanceID = instanceID
-				}
-				if internalIP, ok := nodeInfo["internal_ip"].(string); ok {
-					detail.InternalIP = internalIP
-				}
-				if externalIP, ok := nodeInfo["external_ip"].(string); ok {
-					detail.ExternalIP = externalIP
-				}
-
-				details = append(details, detail)
-			}
+		outputValue, ok := outputs[outputKey]
+		if !ok {
+			log.Printf("Output key %s not found", outputKey)
+			continue
 		}
+
+		nodeInfo, err := parseOutputValue(outputValue)
+		if err != nil {
+			log.Printf("Failed to parse output for %s: %v", outputKey, err)
+			continue
+		}
+
+		detail := InstanceDetails{
+			InstanceName: getString(nodeInfo, "instance_name"),
+			InstanceID:   getString(nodeInfo, "instance_id"),
+			InternalIP:   getString(nodeInfo, "internal_ip"),
+			ExternalIP:   getString(nodeInfo, "external_ip"),
+		}
+
+		details = append(details, detail)
 	}
 
 	return details, nil
+}
+
+// getString safely extracts a string from a map
+func getString(m map[string]any, key string) string {
+	if val, ok := m[key].(string); ok {
+		return val
+	}
+	return ""
 }
 
 // updateProvisionStatus updates the status of a provision request

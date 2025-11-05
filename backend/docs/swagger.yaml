@@ -647,6 +647,33 @@ paths:
       summary: Provision GCP nodes with Talos
       tags:
       - gcp
+  /gcp/nodes/provision/{request_id}/apply:
+    get:
+      description: Download the terraform apply JSON logs
+      parameters:
+      - description: Provision request ID
+        in: path
+        name: request_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Download terraform apply logs
+      tags:
+      - gcp
   /gcp/nodes/provision/{request_id}/plan:
     get:
       description: Download the terraform plan output as a text file
