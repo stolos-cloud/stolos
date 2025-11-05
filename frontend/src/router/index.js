@@ -8,6 +8,12 @@ import SecretsSecurityPage from '@/pages/operator/SecretsSecurityPage.vue';
 import TemplatesPage from '@/pages/operator/TemplatesPage.vue';
 import UsersManagementPage from '@/pages/operator/UsersManagementPage.vue';
 import TeamsManagementPage from '@/pages/operator/TeamsManagementPage.vue';
+import UIButtonsPage from '@/pages/ui/UIButtonsPage.vue';
+import UIInputsPage from '@/pages/ui/UIInputsPage.vue';
+import UISelectionControlsPage from '@/pages/ui/UISelectionControlsPage.vue';
+import UIDialogsPage from '@/pages/ui/UIDialogsPage.vue';
+import UIDataTablesPage from '@/pages/ui/UIDataTablesPage.vue';
+import UIAlertsPage from '@/pages/ui/UIAlertsPage.vue';
 import Error403Page from '@/pages/errors/Error403Page.vue';
 import Error404Page from '@/pages/errors/Error404Page.vue';
 import i18n from '@/plugins/i18n';
@@ -162,6 +168,50 @@ const routes = [
         redirect: '/404',
     },
 ];
+if (import.meta.env.DEV) {
+    routes.push({
+        path: '/ui-components',
+        name: 'ui-components',
+        children: [
+            {
+                path: 'buttons',
+                name: 'buttons',
+                component: UIButtonsPage,
+                meta: { title: 'ui.buttons.title' },
+            },
+            {
+                path: 'inputs',
+                name: 'inputs',
+                component: UIInputsPage,
+                meta: { title: 'ui.inputs.title' },
+            },
+            {
+                path: 'selection-controls',
+                name: 'selection-controls',
+                component: UISelectionControlsPage,
+                meta: { title: 'ui.selectionControls.title' },
+            },
+            {
+                path: 'dialogs',
+                name: 'dialogs',
+                component: UIDialogsPage,
+                meta: { title: 'ui.dialogs.title' },
+            },
+            {
+                path: 'tables',
+                name: 'tables',
+                component: UIDataTablesPage,
+                meta: { title: 'ui.tables.title' },
+            },
+            {
+                path: 'alerts',
+                name: 'alerts',
+                component: UIAlertsPage,
+                meta: { title: 'ui.alerts.title' },
+            },
+        ],
+    });
+}
 
 const router = createRouter({
     history: createWebHistory(),

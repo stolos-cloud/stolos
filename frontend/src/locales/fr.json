@@ -335,9 +335,13 @@
         "refresh": "Rafraîchir",
         "search": "Rechercher",
         "goHome": "Aller à l'accueil",
+        "close": "Fermer",
         "download": "Télécharger",
         "downloadISOOnPremise": "Télécharger l'ISO On-Premise",
-        "viewRepo": "Voir le répertoire"
+        "viewRepo": "Voir le répertoire",
+        "showCode": "Afficher le code",
+        "hideCode": "Masquer le code",
+        "copyCode": "Copier le code"
     },
     "rules": {
         "validation": {
@@ -379,6 +383,183 @@
         "404": {
             "title": "404 - Non Trouvé",
             "message": "La page que vous recherchez n'existe pas."
+        }
+    },
+    "ui": {
+        "title": "Composants UI",
+        "buttons": {
+            "title": "Boutons",
+            "subheading": "Différents styles et tailles de boutons.",
+            "sizes": {
+                "title": "Tailles de boutons",
+                "label": "Choisissez une taille de bouton",
+                "types": {
+                    "extraSmall": "Très petit",
+                    "small": "Petit",
+                    "medium": "Moyen",
+                    "large": "Large",
+                    "extraLarge": "Extra large"
+                }
+            },
+            "variants": {
+                "title": "Variantes de boutons",
+                "label": "Choisissez une variante de bouton",
+                "types": {
+                    "flat": "Plat",
+                    "elevated": "Élevé",
+                    "tonal": "Tonal",
+                    "outlined": "Contour",
+                    "text": "Texte"
+                }
+            },
+            "iconsTooltips": {
+                "title": "Boutons avec icônes et infobulles",
+                "icons": {
+                    "label": "Avec icône"
+                },
+                "tooltips": {
+                    "label": "Avec infobulle"
+                }
+            }
+        },
+        "inputs": {
+            "title": "Champs de saisie",
+            "subheading": "Champs de texte et composants de saisie pour la saisie de données utilisateur.",
+            "textfieldInput": {
+                "title": "Champ de texte",
+                "label": "Entrez du texte",
+                "type": {
+                    "label": "Type",
+                    "options": {
+                        "text": "Texte",
+                        "number": "Nombre",
+                        "date": "Date",
+                        "email": "Courriel",
+                        "password": "Mot de passe"
+                    }
+                },
+                "checkboxes": {
+                    "readonly": "Lecture seule",
+                    "withIcon": "Avec icône"
+                }
+            },
+            "autocompleteInput": {
+                "title": "Champ d'auto-complétion",
+                "label": "Choisissez un test",
+                "checkboxes": {
+                    "disabled": "Désactivé",
+                    "multiple": "Sélection multiple"
+                }
+            },
+            "fileInput": {
+                "title": "Champ de fichier",
+                "file": {
+                    "label": "Choisissez un fichier json"
+                }
+            }
+        },
+        "selectionControls": {
+            "title": "Contrôles de sélection",
+            "subheading": "Cases à cocher et boutons radio pour les sélections utilisateur.",
+            "radioButtons": {
+                "title": "Boutons radio",
+                "label": "Choisissez une option",
+                "options": {
+                    "option1": "Option 1",
+                    "option2": "Option 2",
+                    "option3": "Option 3"
+                }
+            },
+            "checkboxes": {
+                "title": "Cases à cocher",
+                "options": {
+                    "test1": "Test 1",
+                    "test2": "Test 2"
+                }
+            }
+        },
+        "dialogs": {
+            "title": "Dialogues",
+            "subheading": "Dialogues modaux pour les interactions et confirmations utilisateur.",
+            "baseDialogs": {
+                "title": "Dialogues de base",
+                "nameLabel": "Nom",
+                "button": {
+                    "open": "Ouvrir le dialogue de base"
+                }
+            },
+            "confirmDialogs": {
+                "title": "Dialogues de confirmation",
+                "message": "Êtes-vous sûr de vouloir procéder à cette action ? Cela ne peut pas être annulé.",
+                "button": {
+                    "open": "Ouvrir le dialogue de confirmation"
+                }
+            }
+        },
+        "tables": {
+            "title": "Tables",
+            "subheading": "Tables de données pour afficher des informations structurées.",
+            "dataTables": {
+                "loadingText": "Chargement des données...",
+                "noDataText": "Aucune donnée disponible.",
+                "itemsPerPageText": "Éléments par page :",
+                "titleToolbar": "Exemple de tableau de données"
+            },
+            "controls": {
+                "searchable": {
+                    "label": "Recherche"
+                },
+                "rowClickable": {
+                    "label": "Ligne cliquable"
+                }
+            }
+        },
+        "alerts": {
+            "title": "Alertes",
+            "subheading": "Composants de notification pour les retours d'information utilisateur.",
+            "notice": {
+                "title": "Notification d'avis",
+                "type": {
+                    "label": "Type",
+                    "options": {
+                        "info": "Info",
+                        "success": "Succès",
+                        "warning": "Avertissement",
+                        "error": "Erreur"
+                    }
+                },
+                "density": {
+                    "label": "Densité",
+                    "options": {
+                        "default": "Par défaut",
+                        "comfortable": "Confortable",
+                        "compact": "Compact"
+                    }
+                },
+                "controls": {
+                    "title": {
+                        "label": "Avec titre"
+                    },
+                    "closable": {
+                        "label": "Fermable"
+                    }
+                }
+            },
+            "snackbar": {
+                "title": "Notification de snackbar",
+                "type": {
+                    "label": "Type",
+                    "options": {
+                        "success": "Succès",
+                        "info": "Info",
+                        "warning": "Avertissement",
+                        "error": "Erreur"
+                    }
+                },
+                "button": {
+                    "showSnackbar": "Afficher le snackbar"
+                }
+            }
         }
     }
 }

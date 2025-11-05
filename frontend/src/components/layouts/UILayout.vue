@@ -6,7 +6,7 @@
             :toolbarHeight="toolbarHeight" 
             @update:drawer="drawer = $event" 
         ></Toolbar>
-        <Sidebar 
+        <SidebarUI 
             :drawer="drawer" 
             :toolbarHeight="toolbarHeight" 
             :temporary="!isDesktop" 
