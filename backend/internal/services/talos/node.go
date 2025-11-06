@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"strings"
 	"time"
@@ -25,7 +26,9 @@ func BuildNodeModelFromResources(ctx context.Context, c *machineryClient.Client,
 		Status:    models.StatusPending,
 	}
 
-	node.MACAddress = GetMachineBestExternalMacCandidate(ctx, c)
+	if iface := GetMachineBestExternalNetworkInterface(ctx, c); iface != nil {
+		node.MACAddress = iface.Mac
+	}
 
 	return node, nil
 }
@@ -84,14 +87,23 @@ func GetTypedTalosResource[T resource.Resource](
 	return res, nil
 }
 
-// GetMachineBestExternalMacCandidate tries to find the external mac address of primary net interface
-func GetMachineBestExternalMacCandidate(ctx context.Context, c *machineryClient.Client) string {
-	if linkList, err := GetTypedTalosResourceList[*netres.LinkStatus](ctx, c, netres.NamespaceName, "link"); err == nil {
-		type cand struct {
-			mac   string
-			score int
-		}
-		var best cand
+type NodeNetworkIface struct {
+	Link  *netres.LinkStatus
+	Mac   string
+	Score int
+}
+
+// GetMachineBestExternalNetworkInterface tries to find the external Mac address of primary net interface
+func GetMachineBestExternalNetworkInterface(ctx context.Context, c *machineryClient.Client) *NodeNetworkIface {
+	linkList, err := GetTypedTalosResourceList[*netres.LinkStatus](ctx, c, netres.NamespaceName, "Link")
+	if err != nil {
+		log.Printf("GetMachineBestExternalNetworkInterface: failed to get link list: %v", err)
+		return nil
+	}
+
+	if linkList.Len() > 0 {
+
+		var best NodeNetworkIface
 
 		for link := range linkList.All() {
 			spec := link.TypedSpec()
@@ -113,13 +125,18 @@ func GetMachineBestExternalMacCandidate(ctx context.Context, c *machineryClient.
 				score += 2
 			}
 
-			if score > best.score {
-				best = cand{mac: strings.ToLower(mac), score: score}
+			if score > best.Score {
+				best = NodeNetworkIface{Score: score, Link: link, Mac: mac}
 			}
 		}
-		return best.mac
+
+		// Only return the interface if we found a valid one
+		if best.Score > 0 {
+			return &best
+		}
+		log.Printf("GetMachineBestExternalNetworkInterface: no suitable network interface found")
 	}
-	return ""
+	return nil
 }
 
 // GetMachineStatus gets the COSI runtime machine status and stage
@@ -142,7 +159,7 @@ func isVirtualIface(name string) bool {
 	return false
 }
 
-// DetectMachineArch tries to detect cpu arch via /proc/cpuinfo , returns goarch formatted string.
+// DetectMachineArch returns the CPU vendor_id from /proc/cpuinfo as a lightweight architecture hint.
 func DetectMachineArch(ctx context.Context, cli *machineryClient.Client) (string, error) {
 	// set a timeout to avoid hangs
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -158,20 +175,15 @@ func DetectMachineArch(ctx context.Context, cli *machineryClient.Client) (string
 	if err != nil {
 		return "", fmt.Errorf("readAll /proc/cpuinfo: %w", err)
 	}
-	text := strings.ToLower(string(data))
+	text := string(data)
 
-	// fast checks
-	if strings.Contains(text, "aarch64") || strings.Contains(text, "armv8") {
-		return "arm64", nil
-	}
-	if strings.Contains(text, "x86_64") {
-		return "amd64", nil
-	}
-	if strings.Contains(text, "riscv64") || strings.Contains(text, "rv64") {
-		return "riscv64", nil
-	}
-	if strings.Contains(text, "armv7") || strings.Contains(text, "v7l") {
-		return "armv7", nil
+	for _, line := range strings.Split(text, "\n") {
+		if strings.HasPrefix(strings.ToLower(line), "vendor_id") {
+			parts := strings.SplitN(line, ":", 2)
+			if len(parts) == 2 {
+				return strings.TrimSpace(parts[1]), nil
+			}
+		}
 	}
 
 	return "Unknown", nil

@@ -29,7 +29,7 @@ To use Postgres, set:
 ```bash
 export DB_HOST=localhost
 export DB_PASSWORD=postgres
-go run cmd/server/main.go
+go run cmd/server
 ```
 
 ## Build

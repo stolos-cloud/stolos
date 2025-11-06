@@ -35,6 +35,9 @@ func RegisterHandlers() []any {
 		gontainer.NewFactory(func(k8s *rest.Config) *TemplatesHandler {
 			return NewTemplatesHandler(k8s)
 		}),
+		gontainer.NewFactory(func(wsManager *wsservices.Manager) *EventHandlers {
+			return NewEventHandlers(wsManager)
+		}),
 		gontainer.NewFactory(func(
 			db *gorm.DB,
 			gcpService *gcpservices.GCPService,
@@ -65,6 +68,7 @@ func RegisterHandlers() []any {
 			isoHandlers *ISOHandlers,
 			nodeHandlers *NodeHandlers,
 			gcpHandlers *GCPHandlers,
+			eventHandlers *EventHandlers,
 			jwtService *middleware.JWTService,
 			templatesHandler *TemplatesHandler,
 			db *gorm.DB,
@@ -77,6 +81,7 @@ func RegisterHandlers() []any {
 				isoHandlers,
 				nodeHandlers,
 				gcpHandlers,
+				eventHandlers,
 				templatesHandler,
 				jwtService,
 				db,

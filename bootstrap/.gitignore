@@ -35,8 +35,8 @@ out/
 
 __debug_*
 
-talos-bootstrap-state.json
-talos-bootstrap-config.json
+bootstrap-state.json
+bootstrap-config.json
 
 talosconfig
 init.yaml

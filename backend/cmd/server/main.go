@@ -7,12 +7,10 @@ import (
 	"log"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/NVIDIA/gontainer/v2"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/go-co-op/gocron/v2"
 	"github.com/joho/godotenv"
 	_ "github.com/stolos-cloud/stolos/backend/docs"
 	"github.com/stolos-cloud/stolos/backend/internal/config"
@@ -21,6 +19,7 @@ import (
 	"github.com/stolos-cloud/stolos/backend/internal/routes"
 	"github.com/stolos-cloud/stolos/backend/internal/services"
 	discoveryservice "github.com/stolos-cloud/stolos/backend/internal/services/cluster"
+	"github.com/stolos-cloud/stolos/backend/internal/services/job"
 	"github.com/stolos-cloud/stolos/backend/internal/services/node"
 	talosservice "github.com/stolos-cloud/stolos/backend/internal/services/talos"
 	swaggerFiles "github.com/swaggo/files"
@@ -77,87 +76,66 @@ func main() {
 
 	// Add entrypoint
 	allServices = append(allServices, gontainer.NewEntrypoint(
-			func(talosService *talosservice.TalosService,
-				providerManager *services.ProviderManager,
-				nodeService *node.NodeService,
-				clusterDiscovery *discoveryservice.DiscoveryService,
-				h *handlers.Handlers,
-				infrastructureService *services.InfrastructureService,
-				resolver *gontainer.Resolver) {
-				providerManager.SetInfrastructureService(infrastructureService)
+		func(talosService *talosservice.TalosService,
+			providerManager *services.ProviderManager,
+			nodeService *node.NodeService,
+			clusterDiscovery *discoveryservice.DiscoveryService,
+			h *handlers.Handlers,
+			infrastructureService *services.InfrastructureService,
+			jobService *job.JobService,
+			resolver *gontainer.Resolver) {
+			providerManager.SetInfrastructureService(infrastructureService)
 
-				// Start EventSink after cluster init.
-				talosService.StartEventSink()
+			// Start EventSink after cluster init.
+			talosService.StartEventSink()
 
-				// Initialize providers
-				if err := providerManager.InitializeProviders(ctx); err != nil {
-					log.Fatal("Failed to initialize providers:", err)
-				}
+			// Initialize providers
+			if err := providerManager.InitializeProviders(ctx); err != nil {
+				log.Fatal("Failed to initialize providers:", err)
+			}
 
-				if !providerManager.HasConfiguredProviders() {
-					log.Println("No cloud providers configured")
-				}
+			if !providerManager.HasConfiguredProviders() {
+				log.Println("No cloud providers configured")
+			}
 
-				// discover the cluster the backend is running on
-				if err := clusterDiscovery.InitializeCluster(ctx); err != nil {
-					log.Fatal("Failed to initialize cluster:", err)
-				}
+			// discover the cluster the backend is running on
+			if err := clusterDiscovery.InitializeCluster(ctx); err != nil {
+				log.Fatal("Failed to initialize cluster:", err)
+			}
 
-				// Migrate Talos configs from files to db
-				if err := talosService.MigrateTalosConfigFromFiles(); err != nil {
-					log.Printf("Note: Talos config migration skipped: %v", err)
-				}
+			// Migrate Talos configs from files to db
+			if err := talosService.MigrateTalosConfigFromFiles(); err != nil {
+				log.Printf("Note: Talos config migration skipped: %v", err)
+			}
 
-				r := gin.Default()
+			jobService.Start()
 
-				r.Use(cors.New(cors.Config{
-					AllowOrigins:     []string{"*"},
-					AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-					AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
-					AllowCredentials: true,
-				}))
+			r := gin.Default()
 
-				routes.SetupRoutes(r, h)
-
-				r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-
-				port := os.Getenv("PORT")
-				if port == "" {
-					port = ":8080"
-				}
-				if !strings.HasPrefix(port, ":") {
-					port = ":" + port
-				}
-
-				s, err := gocron.NewScheduler()
-				if err != nil {
-					log.Print("Failed to start scheduler:", err)
-				}
-
-				// add a job to the scheduler
-				j, err := s.NewJob(
-					gocron.DurationJob(
-						30*time.Second,
-					),
-					gocron.NewTask(
-						func(ctx context.Context) {
-							//cli, _ := talosService.GetMachineryClient("192.168.2.71")
-							//talosservice.GetTypedTalosResource()
-							log.Println("Starting job")
-						},
-					),
-				)
-				if err != nil {
-					log.Print("Failed to start job:", err)
-				}
-				log.Printf("Started healtch check job with id %s\n", j.ID())
-				s.Start()
-
-				log.Printf("Starting server on %s", port)
-				if err := r.Run(port); err != nil {
-					log.Fatal("Failed to start server:", err)
-				}
+			r.Use(cors.New(cors.Config{
+				AllowOrigins:     []string{"*"},
+				AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+				AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+				AllowCredentials: true,
 			}))
+
+			routes.SetupRoutes(r, h)
+
+			r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+			port := os.Getenv("PORT")
+			if port == "" {
+				port = ":8080"
+			}
+			if !strings.HasPrefix(port, ":") {
+				port = ":" + port
+			}
+
+			log.Printf("Starting server on %s", port)
+			if err := r.Run(port); err != nil {
+				log.Fatal("Failed to start server:", err)
+			}
+		}))
 
 	options := make([]gontainer.Option, len(allServices))
 	for i, svc := range allServices {

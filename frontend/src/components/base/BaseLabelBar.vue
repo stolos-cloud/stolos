@@ -1,29 +1,15 @@
 <template>
     <div class="baseLabelBar">
         <div class="d-flex align-center justify-space-between py-4">
-            <BaseTitle  
-                :level="2"
-                :title="title"
-                :subheading="subheading"
-            />
+            <BaseTitle :level="2" :title="title" :subheading="subheading" />
             <div v-if="actions && actions.length" class="d-flex align-center">
-                <BaseButton 
-                    v-for="(action, index) in actions" 
-                    class="ml-2"
-                    :key="index"
-                    :text="action.text"
-                    :tooltip="action.tooltip"
-                    :elevation="2"
-                    :color="action.color || 'primary'"
-                    :variant="action.variant || 'elevated'"
-                    :icon="action.icon"
-                    :size="action.size || 'small'"
-                    :disabled="action.disabled"
-                    @click="action.onClick"
-                />
+                <BaseButton v-for="(action, index) in actions" class="ml-2" :key="index" :text="action.text"
+                    :tooltip="action.tooltip" :elevation="2" :color="action.color || 'primary'"
+                    :variant="action.variant || 'elevated'" :icon="action.icon" :size="action.size || 'small'"
+                    :disabled="action.disabled" @click="action.onClick" />
             </div>
         </div>
-        <v-divider></v-divider>
+        <v-divider thickness="3"></v-divider>
     </div>
 </template>
 

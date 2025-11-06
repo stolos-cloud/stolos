@@ -70,8 +70,9 @@ type GCPMachineType struct {
 }
 
 type TalosConfig struct {
-	EventSinkHostname string `mapstructure:"event_sink_hostname"`
-	EventSinkPort     string `mapstructure:"event_sink_port"`
+	EventSinkHostname     string `mapstructure:"event_sink_hostname"`
+	EventSinkBindHostname string `mapstructure:"event_sink_bind_hostname"`
+	EventSinkPort         string `mapstructure:"event_sink_port"`
 }
 
 func Load() (*Config, error) {
@@ -166,6 +167,11 @@ func Load() (*Config, error) {
 	// Talos Event Sink Config
 	if talosHostname := os.Getenv("TALOS_EVENT_SINK_HOSTNAME"); talosHostname != "" {
 		config.Talos.EventSinkHostname = talosHostname
+	}
+	if talosBindHostname := os.Getenv("TALOS_EVENT_SINK_BIND_HOSTNAME"); talosBindHostname != "" {
+		config.Talos.EventSinkBindHostname = talosBindHostname
+	} else {
+		config.Talos.EventSinkBindHostname = "0.0.0.0"
 	}
 	if talosPort := os.Getenv("TALOS_EVENT_SINK_PORT"); talosPort != "" {
 		config.Talos.EventSinkPort = talosPort

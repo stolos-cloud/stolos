@@ -15,11 +15,15 @@ import (
 	machineryClient "github.com/siderolabs/talos/pkg/machinery/client"
 	machineryClientConfig "github.com/siderolabs/talos/pkg/machinery/client/config"
 	"github.com/siderolabs/talos/pkg/machinery/config/bundle"
+	"github.com/siderolabs/talos/pkg/machinery/config/configpatcher"
+	"github.com/siderolabs/talos/pkg/machinery/config/container"
+	"github.com/siderolabs/talos/pkg/machinery/config/types/v1alpha1"
 	netres "github.com/siderolabs/talos/pkg/machinery/resources/network"
 	"github.com/siderolabs/talos/pkg/machinery/resources/runtime"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/talos"
 	"github.com/stolos-cloud/stolos/backend/internal/config"
 	"github.com/stolos-cloud/stolos/backend/internal/models"
+	wsservices "github.com/stolos-cloud/stolos/backend/internal/services/websocket"
 	"gorm.io/gorm"
 )
 
@@ -29,6 +33,7 @@ type TalosService struct {
 	db            *gorm.DB
 	cfg           *config.Config
 	factoryClient *factoryClient.Client
+	wsManager     *wsservices.Manager
 }
 
 // MachineConfigRequest represents parameters for generating machine configs
@@ -39,12 +44,13 @@ type MachineConfigRequest struct {
 	ControlPlaneIP    string `json:"control_plane_ip"`
 }
 
-func NewTalosService(db *gorm.DB, cfg *config.Config) *TalosService {
+func NewTalosService(db *gorm.DB, cfg *config.Config, wsManager *wsservices.Manager) *TalosService {
 	factory := talos.CreateFactoryClient()
 	return &TalosService{
 		db:            db,
 		cfg:           cfg,
 		factoryClient: factory,
+		wsManager:     wsManager,
 	}
 }
 
@@ -178,6 +184,33 @@ func (s *TalosService) GetMachineryClient(nodeIP string) (*machineryClient.Clien
 	)
 }
 
+// GetReachableMachineryClient iterates over nodes to find the first reachable Talos machinery client.
+func (s *TalosService) GetReachableMachineryClient(ctx context.Context) (*machineryClient.Client, *models.Node, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	var nodes []models.Node
+	if err := s.db.Where("ip_address <> ''").Find(&nodes).Error; err != nil {
+		return nil, nil, fmt.Errorf("failed to load nodes: %w", err)
+	}
+
+	for _, node := range nodes {
+		client, err := s.GetMachineryClient(node.IPAddress)
+		if err != nil {
+			continue
+		}
+
+		if _, err := GetMachineStatus(client); err != nil {
+			continue
+		}
+
+		return client, &node, nil
+	}
+
+	return nil, nil, fmt.Errorf("no reachable Talos nodes found")
+}
+
 func GetInsecureMachineryClient(ctx context.Context, nodeIP string) (*machineryClient.Client, error) {
 	endpoint := net.JoinHostPort(nodeIP, "50000")
 	tlsCfg := &tls.Config{}
@@ -220,12 +253,12 @@ func (s *TalosService) GetBootstrapCachedNodes(clusterID uuid.UUID) ([]*models.N
 	var nodes []*models.Node
 
 	for ip := range machines.ControlPlanes {
-		node, err := s.CreateExistingNodeFromIP(context.Background(), ip, "controlplane")
+		node, err := s.CreateExistingNodeFromIP(context.Background(), ip, "control-plane")
 		if err != nil {
 			// fallback: still return minimal node with IP
 			node = &models.Node{
 				ID:        uuid.New(),
-				Role:      "controlplane",
+				Role:      "control-plane",
 				IPAddress: ip,
 				Status:    "active",
 			}
@@ -259,6 +292,7 @@ func (s *TalosService) CreateExistingNodeFromIP(ctx context.Context, nodeIP stri
 	var node models.Node
 
 	node.Role = role
+	node.IPAddress = nodeIP
 
 	cli, err := s.GetMachineryClient(nodeIP) //Get authenticated client.
 	if err != nil {
@@ -284,7 +318,9 @@ func (s *TalosService) CreateExistingNodeFromIP(ctx context.Context, nodeIP stri
 	// version, err := GetTypedTalosResource[*runtime.Version](ctx, cli, runtime.NamespaceName, runtime.VersionType, "runtime")
 	// node.Architecture = version.TypedSpec().Version
 
-	node.MACAddress = GetMachineBestExternalMacCandidate(ctx, cli)
+	if iface := GetMachineBestExternalNetworkInterface(ctx, cli); iface != nil {
+		node.MACAddress = iface.Mac
+	}
 
 	return &node, nil
 }
@@ -405,7 +441,7 @@ func (s *TalosService) MigrateTalosConfigFromFiles() error {
 		return fmt.Errorf("failed to read worker.yaml: %w", err)
 	}
 
-	// default .. todo 
+	// default .. todo
 	talosVersion := "v1.11.1"
 	kubeVersion := "v1.32.1"
 
@@ -416,4 +452,37 @@ func (s *TalosService) MigrateTalosConfigFromFiles() error {
 
 	fmt.Printf("Successfully migrated Talos configs from %s to database\n", s.cfg.TalosFolder)
 	return nil
+}
+
+// CreateMachineConfigPatch creates a machine config patch for a node.
+// It applies hostname, disk, and network settings (including static subnets for hybrid cloud).
+func CreateMachineConfigPatch(hostname, installDisk string) (configpatcher.Patch, error) {
+	cfg := &v1alpha1.Config{
+		ConfigVersion: "v1alpha1",
+		MachineConfig: &v1alpha1.MachineConfig{
+			MachineNetwork: &v1alpha1.NetworkConfig{
+				NetworkHostname: hostname,
+			},
+			MachineInstall: &v1alpha1.InstallConfig{
+				InstallDisk: installDisk,
+				// Explicitly set diskSelector to nil to remove hardware-specific busPath
+				InstallDiskSelector: nil,
+			},
+			MachineKubelet: &v1alpha1.KubeletConfig{
+				KubeletNodeIP: &v1alpha1.KubeletNodeIPConfig{
+					// Use static private network subnets for node IP selection
+					KubeletNodeIPValidSubnets: []string{
+						"10.0.0.0/8",     // RFC 1918 Class A private networks
+						"172.16.0.0/12",  // RFC 1918 Class B private networks
+						"192.168.0.0/16", // RFC 1918 Class C private networks
+						"fdd6::/16",      // KubeSpan IPv6 overlay network
+					},
+				},
+			},
+		},
+	}
+
+	// Wrap in container and create strategic merge patch
+	ctr := container.NewV1Alpha1(cfg)
+	return configpatcher.NewStrategicMergePatch(ctr), nil
 }
