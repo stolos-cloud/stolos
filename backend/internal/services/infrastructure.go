@@ -12,6 +12,7 @@ import (
 	gcpservices "github.com/stolos-cloud/stolos/backend/internal/services/gcp"
 	gitopsservices "github.com/stolos-cloud/stolos/backend/internal/services/gitops"
 	talosservices "github.com/stolos-cloud/stolos/backend/internal/services/talos"
+	githubpkg "github.com/stolos-cloud/stolos/backend/pkg/github"
 	tfpkg "github.com/stolos-cloud/stolos/backend/pkg/terraform"
 	"gorm.io/gorm"
 )
@@ -139,7 +140,7 @@ func (s *InfrastructureService) InitializeInfrastructure(ctx context.Context, pr
 		}
 
 		// Publish node module to gitops repo (only on first-time setup)
-		if err := s.PublishNodeModuleToRepo(providerName, ""); err != nil {
+		if err := s.PublishNodeModuleToRepo(ctx, providerName, "", ghClient, gitopsConfig); err != nil {
 			return fmt.Errorf("failed to publish node module: %w", err)
 		}
 	} else {
@@ -271,9 +272,7 @@ type NodeModuleTemplateData struct {
 }
 
 // PublishNodeModuleToRepo publishes the Terraform node module to the GitOps repository
-func (s *InfrastructureService) PublishNodeModuleToRepo(providerName, talosVersion string) error {
-	ctx := context.Background()
-
+func (s *InfrastructureService) PublishNodeModuleToRepo(ctx context.Context, providerName, talosVersion string, ghClient *githubpkg.Client, gitopsConfig *models.GitOpsConfig) error {
 	// Get cluster name from database
 	var cluster models.Cluster
 	if err := s.db.First(&cluster).Error; err != nil {
@@ -338,18 +337,6 @@ func (s *InfrastructureService) PublishNodeModuleToRepo(providerName, talosVersi
 		if err := orchestrator.RenderTemplateToFile(templatePath, outputName, templateData); err != nil {
 			return fmt.Errorf("failed to render template %s: %w", templateName, err)
 		}
-	}
-
-	// Get GitOps config
-	gitopsConfig, err := s.gitopsService.GetConfigOrDefault()
-	if err != nil {
-		return fmt.Errorf("failed to get GitOps config: %w", err)
-	}
-
-	// Initialize GitHub client
-	ghClient, err := s.gitopsService.GetGitHubClient()
-	if err != nil {
-		return fmt.Errorf("failed to create GitHub client: %w", err)
 	}
 
 	// Commit to GitOps repository

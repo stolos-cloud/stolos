@@ -35,6 +35,8 @@ api.interceptors.response.use(
     }
 );
 
-api.defaults.baseURL = URL.parse(API_BASE_VERSION, import.meta.env.VITE_API_BASE_URL).toString()
+const httpBaseURL = URL.parse(API_BASE_VERSION, import.meta.env.VITE_API_BASE_URL).toString();
+api.defaults.baseURL = httpBaseURL;
+export const WS_BASE_URL = httpBaseURL.replace(/^http/, 'ws');
 
 export default api;
