@@ -59,7 +59,7 @@ func GetTemplate(client *k8s.K8sClient, name string) (Template, error) {
 
 func crdToTemplate(crd *apiextensionsv1.CustomResourceDefinition) Template {
 	newTemplate := Template{
-		Crd: crd,
+		crd: crd,
 	}
 
 	name, ok := crd.Annotations["stolos.cloud/template-name"]
@@ -78,11 +78,11 @@ func crdToTemplate(crd *apiextensionsv1.CustomResourceDefinition) Template {
 }
 
 func (t *Template) GetJsonSchema() (JsonSchema, error) {
-	return toJSONSchema(t.Crd)
+	return toJSONSchema(t.crd)
 }
 
 func (t *Template) GetDefaultYaml() (string, error) {
-	defaults, err := generateDefaultYAML(t.Crd)
+	defaults, err := generateDefaultYAML(t.crd)
 	if err != nil {
 		return "", err
 	}

@@ -32,8 +32,8 @@ func RegisterHandlers() []any {
 		gontainer.NewFactory(func(db *gorm.DB, ns *node.NodeService, ts *talosservice.TalosService, wsManager *wsservices.Manager) *NodeHandlers {
 			return NewNodeHandlers(db, ns, ts, wsManager)
 		}),
-		gontainer.NewFactory(func(k8s *k8s.K8sClient) *TemplatesHandler {
-			return NewTemplatesHandler(k8s)
+		gontainer.NewFactory(func(db *gorm.DB, k8s *k8s.K8sClient) *TemplatesHandler {
+			return NewTemplatesHandler(k8s, db)
 		}),
 		gontainer.NewFactory(func(
 			db *gorm.DB,
