@@ -3,6 +3,7 @@ package terraform
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,7 +18,7 @@ import (
 // Terraform execution
 // GitOps integration
 type Orchestrator struct {
-	executor       *Executor
+	executor        *Executor
 	templateBaseDir string
 }
 
@@ -79,8 +80,24 @@ func (o *Orchestrator) Plan(ctx context.Context) (bool, error) {
 	return o.executor.Plan(ctx)
 }
 
+func (o *Orchestrator) PlanWithOutput(ctx context.Context) (bool, string, error) {
+	return o.executor.PlanWithOutput(ctx)
+}
+
 func (o *Orchestrator) Apply(ctx context.Context) error {
 	return o.executor.Apply(ctx)
+}
+
+func (o *Orchestrator) PlanJSON(ctx context.Context, w io.Writer) (bool, error) {
+	return o.executor.PlanJSON(ctx, w)
+}
+
+func (o *Orchestrator) ApplyJSON(ctx context.Context, w io.Writer) error {
+	return o.executor.ApplyJSON(ctx, w)
+}
+
+func (o *Orchestrator) GetPlanJSON(ctx context.Context) ([]byte, error) {
+	return o.executor.GetPlanJSON(ctx)
 }
 
 func (o *Orchestrator) Destroy(ctx context.Context) error {
@@ -115,18 +132,18 @@ type GitOpsConfig struct {
 	Email    string
 }
 
-func (o *Orchestrator) CommitToGitOps(ctx context.Context, ghClient *github.Client, config GitOpsConfig, commitMessage string) error {
+func (o *Orchestrator) CommitToGitOps(ctx context.Context, ghClient *github.Client, config GitOpsConfig, commitMessage string) (bool, error) {
 	// Get the latest commit SHA for the branch (we refresh this before committing)
 	ref, _, err := ghClient.Git.GetRef(ctx, config.Owner, config.Repo, "refs/heads/"+config.Branch)
 	if err != nil {
-		return fmt.Errorf("failed to get branch ref: %w", err)
+		return false, fmt.Errorf("failed to get branch ref: %w", err)
 	}
 	baseCommitSHA := ref.GetObject().GetSHA()
 
 	// Get the base tree SHA
 	baseCommit, _, err := ghClient.Git.GetCommit(ctx, config.Owner, config.Repo, baseCommitSHA)
 	if err != nil {
-		return fmt.Errorf("failed to get base commit: %w", err)
+		return false, fmt.Errorf("failed to get base commit: %w", err)
 	}
 	baseTreeSHA := baseCommit.GetTree().GetSHA()
 
@@ -173,29 +190,28 @@ func (o *Orchestrator) CommitToGitOps(ctx context.Context, ghClient *github.Clie
 		return nil
 	})
 	if err != nil {
-		return fmt.Errorf("failed to process terraform files: %w", err)
+		return false, fmt.Errorf("failed to process terraform files: %w", err)
 	}
 
 	if len(treeEntries) == 0 {
-		return fmt.Errorf("no .tf files found in %s", o.executor.WorkDir())
+		return false, fmt.Errorf("no .tf files found in %s", o.executor.WorkDir())
 	}
 
 	// Create a new tree with the terraform files
 	tree, _, err := ghClient.Git.CreateTree(ctx, config.Owner, config.Repo, baseTreeSHA, treeEntries)
 	if err != nil {
-		return fmt.Errorf("failed to create tree: %w", err)
+		return false, fmt.Errorf("failed to create tree: %w", err)
 	}
 
 	// Check if tree is identical to base tree (no changes)
 	if tree.GetSHA() == baseTreeSHA {
-		fmt.Println("No changes detected in tree - skipping commit")
-		return nil
+		return false, nil
 	}
 
 	// Refresh the branch ref to get the latest commit (for concurrent changes)
 	latestRef, _, err := ghClient.Git.GetRef(ctx, config.Owner, config.Repo, "refs/heads/"+config.Branch)
 	if err != nil {
-		return fmt.Errorf("failed to refresh branch ref: %w", err)
+		return false, fmt.Errorf("failed to refresh branch ref: %w", err)
 	}
 	latestCommitSHA := latestRef.GetObject().GetSHA()
 
@@ -223,18 +239,18 @@ func (o *Orchestrator) CommitToGitOps(ctx context.Context, ghClient *github.Clie
 		Committer: author,
 	}, nil)
 	if err != nil {
-		return fmt.Errorf("failed to create commit: %w", err)
+		return false, fmt.Errorf("failed to create commit: %w", err)
 	}
 
 	// Update branch reference to point to new commit
 	latestRef.Object.SHA = commit.SHA
 	_, _, err = ghClient.Git.UpdateRef(ctx, config.Owner, config.Repo, latestRef, false)
 	if err != nil {
-		return fmt.Errorf("failed to update branch ref: %w", err)
+		return false, fmt.Errorf("failed to update branch ref: %w", err)
 	}
 
 	fmt.Printf("Successfully committed to %s/%s (branch: %s)\n", config.Owner, config.Repo, config.Branch)
-	return nil
+	return true, nil
 }
 
 func (o *Orchestrator) WorkDir() string {

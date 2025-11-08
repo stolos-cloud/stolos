@@ -37,3 +37,5 @@ temp/
 
 *.iso
 **/out
+
+backend/talos-configs/

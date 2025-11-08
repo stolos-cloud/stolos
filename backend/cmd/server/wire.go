@@ -9,6 +9,7 @@ import (
 	discoveryservice "github.com/stolos-cloud/stolos/backend/internal/services/cluster"
 	gcpservices "github.com/stolos-cloud/stolos/backend/internal/services/gcp"
 	"github.com/stolos-cloud/stolos/backend/internal/services/gitops"
+	"github.com/stolos-cloud/stolos/backend/internal/services/job"
 	"github.com/stolos-cloud/stolos/backend/internal/services/k8s"
 	"github.com/stolos-cloud/stolos/backend/internal/services/node"
 	talosservice "github.com/stolos-cloud/stolos/backend/internal/services/talos"
@@ -45,8 +46,8 @@ func RegisterMiddleware() []any {
 // RegisterCoreServices registers core business services
 func RegisterCoreServices() []any {
 	return []any{
-		gontainer.NewFactory(func(db *gorm.DB, cfg *config.Config) *talosservice.TalosService {
-			return talosservice.NewTalosService(db, cfg)
+		gontainer.NewFactory(func(db *gorm.DB, cfg *config.Config, wsManager *wsservices.Manager) *talosservice.TalosService {
+			return talosservice.NewTalosService(db, cfg, wsManager)
 		}),
 		gontainer.NewFactory(func(db *gorm.DB, cfg *config.Config, ts *talosservice.TalosService) *discoveryservice.DiscoveryService {
 			return discoveryservice.NewDiscoveryService(db, cfg, ts)
@@ -70,8 +71,8 @@ func RegisterGCPServices() []any {
 		gontainer.NewFactory(func(db *gorm.DB, gcpService *gcpservices.GCPService) *gcpservices.GCPResourcesService {
 			return gcpservices.NewGCPResourcesService(db, gcpService)
 		}),
-		gontainer.NewFactory(func(db *gorm.DB, cfg *config.Config, ts *talosservice.TalosService, gcpService *gcpservices.GCPService) *gcpservices.ProvisioningService {
-			return gcpservices.NewProvisioningService(db, cfg, ts, gcpService)
+		gontainer.NewFactory(func(db *gorm.DB, cfg *config.Config, ts *talosservice.TalosService, gcpService *gcpservices.GCPService, gitopsService *gitops.GitOpsService) *gcpservices.ProvisioningService {
+			return gcpservices.NewProvisioningService(db, cfg, ts, gcpService, gitopsService)
 		}),
 	}
 }
@@ -89,8 +90,13 @@ func RegisterInfrastructureServices() []any {
 			gcpResourcesService *gcpservices.GCPResourcesService,
 			talosService *talosservice.TalosService,
 			gitopsService *gitops.GitOpsService,
+			wsManager *wsservices.Manager,
 		) *services.ProviderManager {
-			return services.NewProviderManager(db, cfg, gcpService, gcpResourcesService, talosService, gitopsService)
+			return services.NewProviderManager(db, cfg, gcpService, gcpResourcesService, talosService, gitopsService, wsManager)
+		}),
+		gontainer.NewFactory(func(resolver *gontainer.Resolver) *job.JobService {
+			s, _ := job.NewJobService(resolver)
+			return s
 		}),
 	}
 }

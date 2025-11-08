@@ -13,7 +13,7 @@
                 </v-col>
             </v-row>
             <template #actions>
-                <BaseButton variant="outlined" :text="$t('actionButtons.cancel')" @click="closeDialog" />
+                <BaseButton variant="outlined" :text="$t('actionButtons.close')" @click="closeDialog" />
             </template>
         </BaseDialog>
     </div>

@@ -16,7 +16,7 @@
         },
         "logout": "Se Déconnecter"
     },
-     "login": {
+    "login": {
         "title": "Se connecter à votre compte",
         "email": "Courriel",
         "password": "Mot de passe",
@@ -111,13 +111,20 @@
                     "wid": "WID",
                     "status": "Statut",
                     "mac": "MAC",
+                    "disk": "Disque d'installation",
                     "role": "Rôle",
                     "labels": "Étiquettes"
-                }
+                },
+                "footerSpinnerMsg": "Les nouveaux nœuds seront affichés automatiquement..."
             },
             "buttons": {
                 "addLabel": "Ajouter une étiquette",
                 "provisionConnectedNodes": "Provisionner les nœuds"
+            },
+            "notifications": {
+                "provisionSuccess": "Nœuds provisionnés avec succès ! Ils rejoindront le cluster sous peu.",
+                "provisionFailed": "Échec du provisionnement : {error}",
+                "provisionPartial": "{success} nœuds provisionnés sur {total}. {failures} échecs"
             }
         },
         "cloud": {
@@ -129,7 +136,76 @@
                 "numberOfNodes": "Nombre de noeuds",
                 "role": "Rôle",
                 "zone": "Zone",
-                "machineType": "Type de machine"
+                "machineType": "Type de machine",
+                "diskSizeGb": "Taille du disque (Go)",
+                "diskType": "Type de disque"
+            },
+            "cardTitle": "Provisionnement de Nœuds Cloud",
+            "buttons": {
+                "provision": "Provisionner les nœuds",
+                "provisioning": "Provisionnement en cours...",
+                "approve": "Approuver et appliquer",
+                "reject": "Rejeter",
+                "downloadPlan": "Télécharger le plan",
+                "downloadApply": "Télécharger le apply"
+            },
+            "phases": {
+                "terraformPlan": "Plan Terraform",
+                "approvalRequired": "Approbation requise",
+                "terraformApply": "Application Terraform"
+            },
+            "status": {
+                "running": "En cours...",
+                "complete": "Terminé",
+                "error": "Erreur"
+            },
+            "messages": {
+                "waitingPlan": "En attente du démarrage du plan...",
+                "waitingApply": "En attente du démarrage de l'application...",
+                "reviewPlan": "Examinez le plan ci-dessus et approuvez pour continuer avec terraform apply."
+            },
+            "resources": {
+                "title": "Ressources",
+                "plannedChanges": "Changements planifiés",
+                "resourcesCreated": "Ressources créées",
+                "emptyMessages": {
+                    "analyzing": "Analyse des changements planifiés...",
+                    "noResources": "Aucune ressource créée pour le moment...",
+                    "duringProvisioning": "Les ressources apparaîtront ici pendant le provisionnement"
+                },
+                "actions": {
+                    "create": "créer",
+                    "update": "mettre à jour",
+                    "delete": "supprimer"
+                },
+                "statuses": {
+                    "pending": "en attente",
+                    "creating": "création",
+                    "modifying": "modification",
+                    "complete": "terminé",
+                    "failed": "échoué",
+                    "deleting": "suppression"
+                },
+                "details": {
+                    "resourceId": "ID de ressource",
+                    "provider": "Fournisseur",
+                    "started": "Démarré",
+                    "duration": "Durée",
+                    "inProgress": "En cours...",
+                    "error": "Erreur",
+                    "configuration": "Configuration"
+                }
+            },
+            "tooltips": {
+                "provisioning": "Provisionnement en cours...",
+                "invalidForm": "Veuillez remplir tous les champs requis",
+                "infrastructure": {
+                    "unconfigured": "Infrastructure non configurée. Veuillez d'abord configurer les paramètres GCP.",
+                    "pending": "Configuration de l'infrastructure en attente...",
+                    "initializing": "L'infrastructure est en cours d'initialisation. Cela peut prendre quelques minutes.",
+                    "failed": "L'initialisation de l'infrastructure a échoué. Veuillez vérifier les logs et réessayer."
+                },
+                "ready": "Cliquez pour provisionner les nœuds"
             }
         }
     },
@@ -154,7 +230,7 @@
             "serviceAccountFile": "Fichier de compte de service (JSON)"
         },
         "dialogs": {
-            "updateCloudConfiguration":  {
+            "updateCloudConfiguration": {
                 "title": "Mettre à jour la configuration du fournisseur GCP"
             },
             "configurateCloudConfig": {
@@ -200,7 +276,7 @@
                 }
             },
             "dialogs": {
-                "addUser":  {
+                "addUser": {
                     "title": "Ajouter un nouvel utilisateur"
                 },
                 "editUser": {
@@ -248,7 +324,7 @@
                 "createNameTeam": {
                     "title": "Créer une nouvelle équipe"
                 },
-                "addUserToTeam":  {
+                "addUserToTeam": {
                     "title": "Ajouter un nouvel utilisateur à l'équipe"
                 },
                 "deleteTeam": {
@@ -289,12 +365,27 @@
         }
     },
     "dialogs": {
-        "downloadISOOnPremise":  {
+        "downloadISOOnPremise": {
             "title": "Télécharger l'ISO On-Premise",
             "noticeText": "Pour utiliser le mode On-Prem, commencez par télécharger l'ISO (AMD ou ARM) et installez-le sur vos serveurs physiques. Une fois les serveurs démarrés avec l'ISO, ils apparaîtront dans la page de Provisioning pour être configurés.",
             "label": "Choix de l'ISO",
             "precision": "Choisissez l'architecture de l'ISO que vous souhaitez télécharger"
         }
+    },
+    "charts": {
+        "onPremises": {
+            "title": "Noeuds sur site"
+        },
+        "gcp": {
+            "title": "Noeuds GCP"
+        }
+    },
+    "status": {
+        "active": "Actif",
+        "provisioning": "Provisionnement",
+        "failed": "Échoué",
+        "pending": "En attente",
+        "unknown": "Inconnu"
     },
     "actionButtons": {
         "add": "Ajouter",
@@ -311,9 +402,13 @@
         "refresh": "Rafraîchir",
         "search": "Rechercher",
         "goHome": "Aller à l'accueil",
+        "close": "Fermer",
         "download": "Télécharger",
         "downloadISOOnPremise": "Télécharger l'ISO On-Premise",
-        "viewRepo": "Voir le répertoire"
+        "viewRepo": "Voir le répertoire",
+        "showCode": "Afficher le code",
+        "hideCode": "Masquer le code",
+        "copyCode": "Copier le code"
     },
     "rules": {
         "validation": {
@@ -355,6 +450,183 @@
         "404": {
             "title": "404 - Non Trouvé",
             "message": "La page que vous recherchez n'existe pas."
+        }
+    },
+    "ui": {
+        "title": "Composants UI",
+        "buttons": {
+            "title": "Boutons",
+            "subheading": "Différents styles et tailles de boutons.",
+            "sizes": {
+                "title": "Tailles de boutons",
+                "label": "Choisissez une taille de bouton",
+                "types": {
+                    "extraSmall": "Très petit",
+                    "small": "Petit",
+                    "medium": "Moyen",
+                    "large": "Large",
+                    "extraLarge": "Extra large"
+                }
+            },
+            "variants": {
+                "title": "Variantes de boutons",
+                "label": "Choisissez une variante de bouton",
+                "types": {
+                    "flat": "Plat",
+                    "elevated": "Élevé",
+                    "tonal": "Tonal",
+                    "outlined": "Contour",
+                    "text": "Texte"
+                }
+            },
+            "iconsTooltips": {
+                "title": "Boutons avec icônes et infobulles",
+                "icons": {
+                    "label": "Avec icône"
+                },
+                "tooltips": {
+                    "label": "Avec infobulle"
+                }
+            }
+        },
+        "inputs": {
+            "title": "Champs de saisie",
+            "subheading": "Champs de texte et composants de saisie pour la saisie de données utilisateur.",
+            "textfieldInput": {
+                "title": "Champ de texte",
+                "label": "Entrez du texte",
+                "type": {
+                    "label": "Type",
+                    "options": {
+                        "text": "Texte",
+                        "number": "Nombre",
+                        "date": "Date",
+                        "email": "Courriel",
+                        "password": "Mot de passe"
+                    }
+                },
+                "checkboxes": {
+                    "readonly": "Lecture seule",
+                    "withIcon": "Avec icône"
+                }
+            },
+            "autocompleteInput": {
+                "title": "Champ d'auto-complétion",
+                "label": "Choisissez un test",
+                "checkboxes": {
+                    "disabled": "Désactivé",
+                    "multiple": "Sélection multiple"
+                }
+            },
+            "fileInput": {
+                "title": "Champ de fichier",
+                "file": {
+                    "label": "Choisissez un fichier json"
+                }
+            }
+        },
+        "selectionControls": {
+            "title": "Contrôles de sélection",
+            "subheading": "Cases à cocher et boutons radio pour les sélections utilisateur.",
+            "radioButtons": {
+                "title": "Boutons radio",
+                "label": "Choisissez une option",
+                "options": {
+                    "option1": "Option 1",
+                    "option2": "Option 2",
+                    "option3": "Option 3"
+                }
+            },
+            "checkboxes": {
+                "title": "Cases à cocher",
+                "options": {
+                    "test1": "Test 1",
+                    "test2": "Test 2"
+                }
+            }
+        },
+        "dialogs": {
+            "title": "Dialogues",
+            "subheading": "Dialogues modaux pour les interactions et confirmations utilisateur.",
+            "baseDialogs": {
+                "title": "Dialogues de base",
+                "nameLabel": "Nom",
+                "button": {
+                    "open": "Ouvrir le dialogue de base"
+                }
+            },
+            "confirmDialogs": {
+                "title": "Dialogues de confirmation",
+                "message": "Êtes-vous sûr de vouloir procéder à cette action ? Cela ne peut pas être annulé.",
+                "button": {
+                    "open": "Ouvrir le dialogue de confirmation"
+                }
+            }
+        },
+        "tables": {
+            "title": "Tables",
+            "subheading": "Tables de données pour afficher des informations structurées.",
+            "dataTables": {
+                "loadingText": "Chargement des données...",
+                "noDataText": "Aucune donnée disponible.",
+                "itemsPerPageText": "Éléments par page :",
+                "titleToolbar": "Exemple de tableau de données"
+            },
+            "controls": {
+                "searchable": {
+                    "label": "Recherche"
+                },
+                "rowClickable": {
+                    "label": "Ligne cliquable"
+                }
+            }
+        },
+        "alerts": {
+            "title": "Alertes",
+            "subheading": "Composants de notification pour les retours d'information utilisateur.",
+            "notice": {
+                "title": "Notification d'avis",
+                "type": {
+                    "label": "Type",
+                    "options": {
+                        "info": "Info",
+                        "success": "Succès",
+                        "warning": "Avertissement",
+                        "error": "Erreur"
+                    }
+                },
+                "density": {
+                    "label": "Densité",
+                    "options": {
+                        "default": "Par défaut",
+                        "comfortable": "Confortable",
+                        "compact": "Compact"
+                    }
+                },
+                "controls": {
+                    "title": {
+                        "label": "Avec titre"
+                    },
+                    "closable": {
+                        "label": "Fermable"
+                    }
+                }
+            },
+            "snackbar": {
+                "title": "Notification de snackbar",
+                "type": {
+                    "label": "Type",
+                    "options": {
+                        "success": "Succès",
+                        "info": "Info",
+                        "warning": "Avertissement",
+                        "error": "Erreur"
+                    }
+                },
+                "button": {
+                    "showSnackbar": "Afficher le snackbar"
+                }
+            }
         }
     }
 }

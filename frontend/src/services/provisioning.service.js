@@ -5,7 +5,7 @@ import api from './api';
 -------------------------------------*/
 export async function generateISO(payload) {
     try {
-        const response = await api.post('/api/iso/generate', payload);
+        const response = await api.post('/iso/generate', payload);
         return response.data; // Returns { download_url }
     } catch (error) {
         console.error('Error generating ISO:', error);
@@ -18,7 +18,7 @@ export async function getConnectedNodes({ status } = {}) {
         const params = {};
         if (status !== undefined) params.status = status;
 
-        const response = await api.get('/api/nodes', { params });
+        const response = await api.get('/nodes', { params });
         return response.data;
     } catch (error) {
         console.error('Error fetching connected nodes:', error);
@@ -26,9 +26,19 @@ export async function getConnectedNodes({ status } = {}) {
     }
 }
 
+export async function getNodeDisks(nodeId) {
+    try {
+        const response = await api.get(`/api/nodes/${nodeId}/disks`);
+        return response.data.disks || [];
+    } catch (error) {
+        console.error(`Error fetching disks for node ${nodeId}:`, error);
+        throw error;
+    }
+}
+
 export async function provisionNodes({ nodes }) {
     try {
-        const response = await api.post('/api/nodes/provision', { nodes });
+        const response = await api.post('/nodes/provision', { nodes });
         return response.data;
     } catch (error) {
         console.error('Error provisioning nodes:', error);
@@ -38,7 +48,7 @@ export async function provisionNodes({ nodes }) {
 
 export async function updateNodesLabels({ nodes }) {
     try {
-        const response = await api.put('/api/nodes/config', { nodes });
+        const response = await api.put('/nodes/config', { nodes });
         return response.data;
     } catch (error) {
         console.error('Error updating node labels:', error);
@@ -49,7 +59,7 @@ export async function updateNodesLabels({ nodes }) {
 //For testing purposes only - to be removed in production
 export async function createSamplesNodes() {
     try {
-        const response = await api.post('/api/nodes/samples');
+        const response = await api.post('/nodes/samples');
         return response.data;
     } catch (error) {
         console.error('Error creating samples nodes with pending status:', error);
@@ -62,7 +72,7 @@ export async function createSamplesNodes() {
 -------------------------------------*/
 export async function getGCPStatus() {
     try {
-        const response = await api.get('/api/gcp/status');
+        const response = await api.get('/gcp/status');
         return response.data;
     } catch (error) {
         console.error('Error fetching GCP status:', error);
@@ -75,7 +85,7 @@ export async function configureGCPServiceAccountUpload({ region, serviceAccountF
         const formData = new FormData();
         formData.append('region', region);
         formData.append('service_account_file', serviceAccountFile);
-        const response = await api.post('/api/gcp/configure/upload', formData);
+        const response = await api.post('/gcp/configure/upload', formData);
         return response.data;
     } catch (error) {
         console.error('Error configuring GCP service account:', error);
@@ -85,7 +95,7 @@ export async function configureGCPServiceAccountUpload({ region, serviceAccountF
 
 export async function getAvailableGCPResources() {
     try {
-        const response = await api.get('/api/gcp/resources');
+        const response = await api.get('/gcp/resources');
         return response.data;
     } catch (error) {
         console.error('Error fetching GCP resources:', error);

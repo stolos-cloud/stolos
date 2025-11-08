@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"path/filepath"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -473,6 +474,104 @@ func (h *GCPHandlers) ProvisionGCPNodes(c *gin.Context) {
 	})
 }
 
+// GetProvisionPlan godoc
+// @Summary Download terraform plan output
+// @Description Download the terraform plan output as a text file
+// @Tags gcp
+// @Param request_id path string true "Provision request ID"
+// @Produce text/plain
+// @Success 200 {file} string
+// @Failure 404 {object} map[string]string
+// @Router /gcp/nodes/provision/{request_id}/plan [get]
+// @Security BearerAuth
+func (h *GCPHandlers) GetProvisionPlan(c *gin.Context) {
+	requestID := c.Param("request_id")
+
+	// Validate request ID
+	parsedUUID, err := uuid.Parse(requestID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request_id"})
+		return
+	}
+	canonicalRequestID := parsedUUID.String()
+
+	// Check if provision request exists
+	var provisionRequest models.ProvisionRequest
+	if err := h.db.Where("id = ?", canonicalRequestID).First(&provisionRequest).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "provision request not found"})
+		return
+	}
+
+	// Serve the plan file
+	plansDir := "plans"
+	planFileName := fmt.Sprintf("plan-%s.txt", canonicalRequestID)
+	planFilePath := filepath.Join(plansDir, planFileName)
+
+	// Defensive: make sure the resolved path is within the plans directory
+	absPlansDir, err := filepath.Abs(plansDir)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return
+	}
+	absPlanFilePath, err := filepath.Abs(planFilePath)
+	if err != nil || len(absPlanFilePath) < len(absPlansDir) || absPlanFilePath[:len(absPlansDir)] != absPlansDir {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid file path"})
+		return
+	}
+
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", planFileName))
+	c.File(planFilePath)
+}
+
+// GetProvisionApply godoc
+// @Summary Download terraform apply logs
+// @Description Download the terraform apply JSON logs
+// @Tags gcp
+// @Param request_id path string true "Provision request ID"
+// @Produce application/json
+// @Success 200 {file} string
+// @Failure 404 {object} map[string]string
+// @Router /gcp/nodes/provision/{request_id}/apply [get]
+// @Security BearerAuth
+func (h *GCPHandlers) GetProvisionApply(c *gin.Context) {
+	requestID := c.Param("request_id")
+
+	// Validate request ID
+	parsedUUID, err := uuid.Parse(requestID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request_id"})
+		return
+	}
+	canonicalRequestID := parsedUUID.String()
+
+	// Check if provision request exists
+	var provisionRequest models.ProvisionRequest
+	if err := h.db.Where("id = ?", canonicalRequestID).First(&provisionRequest).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "provision request not found"})
+		return
+	}
+
+	// Serve the apply log file
+	appliesDir := "applies"
+	applyFileName := fmt.Sprintf("apply-%s.json", canonicalRequestID)
+	applyFilePath := filepath.Join(appliesDir, applyFileName)
+
+	// Defensive: make sure the resolved path is within the applies directory
+	absAppliesDir, err := filepath.Abs(appliesDir)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return
+	}
+	absApplyFilePath, err := filepath.Abs(applyFilePath)
+	if err != nil || len(absApplyFilePath) < len(absAppliesDir) || absApplyFilePath[:len(absAppliesDir)] != absAppliesDir {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid file path"})
+		return
+	}
+
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", applyFileName))
+	c.File(applyFilePath)
+}
+
 // ProvisionGCPNodesStream godoc
 // @Summary WebSocket stream for GCP node provisioning
 // @Description Connect to this WebSocket endpoint to receive real-time logs and approval requests
@@ -508,6 +607,9 @@ func (h *GCPHandlers) ProvisionGCPNodesStream(c *gin.Context) {
 
 	// Create approval session for GCP provisioning workflow
 	session := wsservices.NewApprovalSession(requestID, client)
+
+	// Update client's session so it can route incoming messages
+	client.SetSession(session)
 
 	// Start provisioning in a goroutine
 	go func() {

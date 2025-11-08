@@ -33,6 +33,7 @@ func SetupRoutes(r *gin.Engine, h *handlers.Handlers) {
 			//setupTemplateRoutes(protected, h)
 			setupTeamRoutes(protected, h)
 			setupUserRoutes(protected, h)
+			setupEventRoutes(protected, h)
 		}
 		setupTemplateRoutes(api, h)
 	}
@@ -58,12 +59,21 @@ func setupNodeRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
 		nodes.GET("", h.NodeHandlers().ListNodes)
 		nodes.POST("", h.NodeHandlers().CreateNodes)
 		nodes.GET("/:id", h.NodeHandlers().GetNode)
+		nodes.DELETE("/:id", h.NodeHandlers().DeleteNode)
 		nodes.PUT("/:id/config", h.NodeHandlers().UpdateActiveNodeConfig)
 		nodes.PUT("/config", h.NodeHandlers().UpdateActiveNodesConfig)
 		nodes.POST("/provision", h.NodeHandlers().ProvisionNodes)
 		nodes.POST("/samples", h.NodeHandlers().CreateSampleNodes) // TODO: remove in production
-		//nodes.GET("/talosconfig", h.NodeHandlers().GetTalosconfig)
+		nodes.GET("/talosconfig", h.NodeHandlers().GetTalosconfig)
+		nodes.GET("/:id/disks", h.NodeHandlers().GetNodeDisks)
 		//nodes.GET("/kubeconfig", h.NodeHandlers().GetKubeconfig)
+	}
+}
+
+func setupEventRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
+	events := api.Group("/events")
+	{
+		events.GET("/stream", middleware.RequireRole(models.RoleAdmin), h.EventHandlers().StreamEvents)
 	}
 }
 
@@ -111,8 +121,10 @@ func setupGCPRoutes(public *gin.RouterGroup, protected *gin.RouterGroup, h *hand
 
 	public.GET("/gcp/resources", h.GCPHandlers().GetGCPResources)
 
-	// WebSocket endpoint - public but validates token from query param
+	// Provisioning endpoints
 	public.GET("/gcp/nodes/provision/:request_id/stream", h.GCPHandlers().ProvisionGCPNodesStream)
+	protected.GET("/gcp/nodes/provision/:request_id/plan", h.GCPHandlers().GetProvisionPlan)
+	protected.GET("/gcp/nodes/provision/:request_id/apply", h.GCPHandlers().GetProvisionApply)
 
 	// Protected routes
 	gcp := protected.Group("/gcp")

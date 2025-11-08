@@ -3,7 +3,7 @@ import { StorageService } from './storage.service';
 
 export async function login(email, password) {
     try {
-        const response = await api.post('/api/auth/login', {
+        const response = await api.post('/auth/login', {
             email,
             password,
         });
@@ -25,7 +25,7 @@ export async function logout() {
 
 export async function getProfile() {
     try {
-        const response = await api.get('/api/auth/profile');
+        const response = await api.get('/auth/profile');
         return response.data.user;
     } catch (error) {
         throw new Error(error.response?.data?.error || 'failedFetchProfile');
@@ -34,7 +34,7 @@ export async function getProfile() {
 
 export async function refreshToken() {
     try {
-        const response = await api.post('/api/auth/refresh');
+        const response = await api.post('/auth/refresh');
         const { token } = response.data;
 
         StorageService.set('token', token);

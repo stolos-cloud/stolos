@@ -102,21 +102,28 @@
             "title": "On-Premises provisioning",
             "subheading": "Manage your on-premises resources",
             "table": {
-                "title": "Connected Nodes",
-                "loadingText": "Loading connected nodes...",
-                "noDataText": "No connected nodes found.",
+                "title": "Pending Nodes",
+                "loadingText": "Loading pending nodes...",
+                "noDataText": "No pending nodes found.",
                 "itemsPerPageText": "Items per page :",
                 "headers": {
                     "ip": "IP",
                     "status": "Status",
                     "mac": "MAC",
+                    "disk": "Install disk",
                     "role": "Role",
                     "labels": "Labels"
-                }
+                },
+                "footerSpinnerMsg": "New nodes will appear automatically..." 
             },
             "buttons": {
                 "addLabel": "Add label",
                 "provisionConnectedNodes": "Provision nodes"
+            },
+            "notifications": {
+                "provisionSuccess": "Nodes provisioned successfully! They will join the cluster shortly.",
+                "provisionFailed": "Provisioning failed: {error}",
+                "provisionPartial": "Provisioned {success} of {total} nodes. {failures} failed"
             }
         },
         "cloud": {
@@ -128,7 +135,76 @@
                 "numberOfNodes": "Number of nodes",
                 "role": "Role",
                 "zone": "Zone",
-                "machineType": "Machine type"
+                "machineType": "Machine type",
+                "diskSizeGb": "Disk size (GB)",
+                "diskType": "Disk type"
+            },
+            "cardTitle": "Cloud Node Provisioning",
+            "buttons": {
+                "provision": "Provision Nodes",
+                "provisioning": "Provisioning...",
+                "approve": "Approve & Apply",
+                "reject": "Reject",
+                "downloadPlan": "Download Plan",
+                "downloadApply": "Download Apply"
+            },
+            "phases": {
+                "terraformPlan": "Terraform Plan",
+                "approvalRequired": "Approval Required",
+                "terraformApply": "Terraform Apply"
+            },
+            "status": {
+                "running": "Running...",
+                "complete": "Complete",
+                "error": "Error"
+            },
+            "messages": {
+                "waitingPlan": "Waiting for plan to start...",
+                "waitingApply": "Waiting for apply to start...",
+                "reviewPlan": "Review the plan above and approve to continue with terraform apply."
+            },
+            "resources": {
+                "title": "Resources",
+                "plannedChanges": "Planned Changes",
+                "resourcesCreated": "Resources Created",
+                "emptyMessages": {
+                    "analyzing": "Analyzing planned changes...",
+                    "noResources": "No resources created yet...",
+                    "duringProvisioning": "Resources will appear here during provisioning"
+                },
+                "actions": {
+                    "create": "create",
+                    "update": "update",
+                    "delete": "delete"
+                },
+                "statuses": {
+                    "pending": "pending",
+                    "creating": "creating",
+                    "modifying": "modifying",
+                    "complete": "complete",
+                    "failed": "failed",
+                    "deleting": "deleting"
+                },
+                "details": {
+                    "resourceId": "Resource ID",
+                    "provider": "Provider",
+                    "started": "Started",
+                    "duration": "Duration",
+                    "inProgress": "In progress...",
+                    "error": "Error",
+                    "configuration": "Configuration"
+                }
+            },
+            "tooltips": {
+                "provisioning": "Provisioning in progress...",
+                "invalidForm": "Please fill in all required fields",
+                "infrastructure": {
+                    "unconfigured": "Infrastructure not configured. Please configure GCP settings first.",
+                    "pending": "Infrastructure configuration pending...",
+                    "initializing": "Infrastructure is being initialized. This may take a few minutes.",
+                    "failed": "Infrastructure initialization failed. Please check logs and try again."
+                },
+                "ready": "Click to provision nodes"
             }
         }
     },
@@ -295,6 +371,21 @@
             "precision": "Choose the architecture of the ISO you want to download"
         }
     },
+    "charts": {
+        "onPremises": {
+            "title": "On-Premises nodes"
+        },
+        "gcp": {
+            "title": "GCP nodes"
+        }
+    },
+    "status": {
+        "active": "Active",
+        "provisioning": "Provisioning",
+        "failed": "Failed",
+        "pending": "Pending",
+        "unknown": "Unknown"
+    },
     "actionButtons": {
         "add": "Add",
         "edit": "Edit",
@@ -310,9 +401,13 @@
         "refresh": "Refresh",
         "search": "Search",
         "goHome": "Go to home",
+        "close": "Close",
         "download": "Download",
         "downloadISOOnPremise": "Download ISO On-Premise",
-        "viewRepo": "View repository"
+        "viewRepo": "View repository",
+        "showCode": "Show code",
+        "hideCode": "Hide code",
+        "copyCode": "Copy code"
     },
     "rules": {
         "validation": {
@@ -354,6 +449,183 @@
         "404": {
             "title": "404 - Not Found",
             "description": "The page you are looking for does not exist."
+        }
+    },
+    "ui": {
+        "title": "UI components",
+        "buttons": {
+            "title": "Buttons",
+            "subheading": "Various button styles and sizes.",
+            "sizes": {
+                "title": "Button sizes",
+                "label": "Choose a button size",
+                "types": {
+                    "extraSmall": "Extra Small",
+                    "small": "Small",
+                    "medium": "Medium",
+                    "large": "Large",
+                    "extraLarge": "Extra large"
+                }
+            },
+            "variants": {
+                "title": "Button variants",
+                "label": "Choose a button variant",
+                "types": {
+                    "flat": "Flat",
+                    "elevated": "Elevated",
+                    "tonal": "Tonal",
+                    "outlined": "Outlined",
+                    "text": "Text"
+                }
+            },
+            "iconsTooltips": {
+                "title": "Buttons with icons and tooltips",
+                "icons": {
+                    "label": "With icon"
+                },
+                "tooltips": {
+                    "label": "With tooltip"
+                }
+            }
+        },
+        "inputs": {
+            "title": "Inputs",
+            "subheading": "Text fields and input components for user data entry.",
+            "textfieldInput": {
+                "title": "TextField input",
+                "label": "Enter some text",
+                "type": {
+                    "label": "Type",
+                    "options": {
+                        "text": "Text",
+                        "number": "Number",
+                        "date": "Date",
+                        "email": "Email",
+                        "password": "Password"
+                    }
+                },
+                "checkboxes": {
+                    "readonly": "Read-only",
+                    "withIcon": "With icon"
+                }
+            },
+            "autocompleteInput": {
+                "title": "AutoComplete input",
+                "label": "Choose a test",
+                "checkboxes": {
+                    "disabled": "Disabled",
+                    "multiple": "Multiple selection"
+                }
+            },
+            "fileInput": {
+                "title": "File input",
+                "file": {
+                    "label": "Choose a json file"
+                }
+            }
+        },
+        "selectionControls": {
+            "title": "Selection controls",
+            "subheading": "Checkboxes and radio buttons for user selections.",
+            "radioButtons": {
+                "title": "Radio buttons",
+                "label": "Choose an option",
+                "options": {
+                    "option1": "Option 1",
+                    "option2": "Option 2",
+                    "option3": "Option 3"
+                }
+            },
+            "checkboxes": {
+                "title": "Checkboxes",
+                "options": {
+                    "test1": "Test 1",
+                    "test2": "Test 2"
+                }
+            }
+        },
+        "dialogs": {
+            "title": "Dialogs",
+            "subheading": "Modal dialogs for user interactions and confirmations.",
+            "baseDialogs": {
+                "title": "Base dialogs",
+                "nameLabel": "Name",
+                "button": {
+                    "open": "Open base dialog"
+                }
+            },
+            "confirmDialogs": {
+                "title": "Confirm dialogs",
+                "message": "Are you sure you want to proceed with this action? This cannot be undone.",
+                "button": {
+                    "open": "Open confirm dialog"
+                }
+            }
+        },
+        "tables": {
+            "title": "Tables",
+            "subheading": "Data tables for displaying structured information.",
+            "dataTables": {
+                "loadingText": "Loading data...",
+                "noDataText": "No data available.",
+                "itemsPerPageText": "Items per page :",
+                "titleToolbar": "Data Table Example"
+            },
+            "controls": {
+                "searchable": {
+                    "label": "Searchable"
+                },
+                "rowClickable": {
+                    "label": "Row clickable"
+                }
+            }
+        },
+        "alerts": {
+            "title": "Alerts",
+            "subheading": "Notification components for user feedback.",
+            "notice": {
+                "title": "Notice notification",
+                "type": {
+                    "label": "Type",
+                    "options": {
+                        "info": "Info",
+                        "success": "Success",
+                        "warning": "Warning",
+                        "error": "Error"
+                    }
+                },
+                "density": {
+                    "label": "Density",
+                    "options": {
+                        "default": "Default",
+                        "comfortable": "Comfortable",
+                        "compact": "Compact"
+                    }
+                },
+                "controls": {
+                    "title": {
+                        "label": "With title"
+                    },
+                    "closable": {
+                        "label": "Closable"
+                    }
+                }
+            },
+            "snackbar": {
+                "title": "Snackbar notification",
+                "type": {
+                    "label": "Type",
+                    "options": {
+                        "success": "Success",
+                        "info": "Info",
+                        "warning": "Warning",
+                        "error": "Error"
+                    }
+                },
+                "button": {
+                    "showSnackbar": "Show snackbar"
+                }
+            }
         }
     }
 }
