@@ -6,6 +6,7 @@ import (
 	"github.com/stolos-cloud/stolos/backend/internal/services"
 	gcpservices "github.com/stolos-cloud/stolos/backend/internal/services/gcp"
 	"github.com/stolos-cloud/stolos/backend/internal/services/gitops"
+	"github.com/stolos-cloud/stolos/backend/internal/services/k8s"
 	"github.com/stolos-cloud/stolos/backend/internal/services/node"
 	talosservice "github.com/stolos-cloud/stolos/backend/internal/services/talos"
 	wsservices "github.com/stolos-cloud/stolos/backend/internal/services/websocket"
@@ -30,6 +31,9 @@ func RegisterHandlers() []any {
 		}),
 		gontainer.NewFactory(func(db *gorm.DB, ns *node.NodeService, ts *talosservice.TalosService, wsManager *wsservices.Manager) *NodeHandlers {
 			return NewNodeHandlers(db, ns, ts, wsManager)
+		}),
+		gontainer.NewFactory(func(db *gorm.DB, k8s *k8s.K8sClient) *TemplatesHandler {
+			return NewTemplatesHandler(k8s, db)
 		}),
 		gontainer.NewFactory(func(wsManager *wsservices.Manager) *EventHandlers {
 			return NewEventHandlers(wsManager)
@@ -66,6 +70,7 @@ func RegisterHandlers() []any {
 			gcpHandlers *GCPHandlers,
 			eventHandlers *EventHandlers,
 			jwtService *middleware.JWTService,
+			templatesHandler *TemplatesHandler,
 			db *gorm.DB,
 			wsManager *wsservices.Manager,
 		) *Handlers {
@@ -77,6 +82,7 @@ func RegisterHandlers() []any {
 				nodeHandlers,
 				gcpHandlers,
 				eventHandlers,
+				templatesHandler,
 				jwtService,
 				db,
 				wsManager,

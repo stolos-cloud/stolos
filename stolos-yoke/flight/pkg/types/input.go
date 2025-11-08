@@ -20,51 +20,51 @@ type StolosSpec struct {
 }
 
 type MetalLB struct {
-	Deploy       bool   `json:"deploy"`
-	ConfigureArp bool   `json:"configureArp"`
+	Deploy       bool   `json:"deploy" Default:"true"`
+	ConfigureArp bool   `json:"configureArp" Default:"true"`
 	ArpIp        string `json:"arpIp"`
-	Namespace    string `json:"namespace"`
+	Namespace    string `json:"namespace" Default:"\"metallb-system\""`
 	Version      string `json:"version"`
 }
 
 type ArgoCD struct {
-	Deploy              bool   `json:"deploy"`
-	Namespace           string `json:"namespace"`
+	Deploy              bool   `json:"deploy" Default:"true"`
+	Namespace           string `json:"namespace" Default:"\"argocd\""`
 	Version             string `json:"version"`
 	Subdomain           string `json:"subdomain"`
 	ImageUpdaterVersion string `json:"imageUpdaterVersion"`
 	RepositoryOwner     string `json:"repositoryOwner"`
 	RepositoryName      string `json:"repositoryName"`
-	RepositoryRevision  string `json:"repositoryRevision"`
+	RepositoryRevision  string `json:"repositoryRevision" Default:"\"main\""`
 }
 
 type Contour struct {
-	Deploy    bool   `json:"deploy"`
-	Namespace string `json:"namespace"`
+	Deploy    bool   `json:"deploy" Default:"true"`
+	Namespace string `json:"namespace" Default:"\"projectcontour\""`
 	Version   string `json:"version"`
 }
 
 type CertManager struct {
-	Deploy               bool   `json:"deploy"`
+	Deploy               bool   `json:"deploy" Default:"true"`
 	Version              string `json:"version"`
-	Namespace            string `json:"namespace"`
-	ClusterIssuerProd    string `json:"clusterIssuerProd"`
-	ClusterIssuerStaging string `json:"clusterIssuerStaging"`
-	DefaultClusterIssuer string `json:"defaultClusterIssuer"`
-	SelfSigned           bool   `json:"selfSigned"`
+	Namespace            string `json:"namespace" Default:"\"cert-manager\""`
+	ClusterIssuerProd    string `json:"clusterIssuerProd" Default:"\"letsencrypt-prod\""`
+	ClusterIssuerStaging string `json:"clusterIssuerStaging" Default:"\"letsencrypt-staging\""`
+	DefaultClusterIssuer string `json:"defaultClusterIssuer" Default:"\"letsencrypt-prod\""`
+	SelfSigned           bool   `json:"selfSigned" Default:"false"`
 	Email                string `json:"email"`
 }
 
 type CNPG struct {
-	Deploy        bool   `json:"deploy"`
-	Namespace     string `json:"namespace"`
+	Deploy        bool   `json:"deploy" Default:"true"`
+	Namespace     string `json:"namespace" Default:"\"cnpg-system\""`
 	Version       string `json:"version"`
 	BarmanVersion string `json:"barmanVersion"`
 }
 
 type StolosPlatform struct {
-	Deploy               bool         `json:"deploy"`
-	Namespace            string       `json:"namespace"`
+	Deploy               bool         `json:"deploy" Default:"true"`
+	Namespace            string       `json:"namespace" Default:"\"stolos-system\""`
 	BackendSubdomain     string       `json:"backendSubdomain"`
 	FrontendSubdomain    string       `json:"frontendSubdomain"`
 	Database             CnpgDbConfig `json:"database"`
@@ -75,6 +75,6 @@ type StolosPlatform struct {
 
 type CnpgDbConfig struct {
 	Image           string `json:"image"`
-	InstanceCount   int    `json:"instanceCount"`
-	SizeInGigabytes int    `json:"sizeInGigabytes"`
+	InstanceCount   int    `json:"instanceCount" Default:"1"`
+	SizeInGigabytes int    `json:"sizeInGigabytes" Default:"5"`
 }

@@ -41,7 +41,6 @@ func NewInfrastructureService(db *gorm.DB, cfg *config.Config, providerManager *
 	}
 }
 
-
 // sets up the base infrastructure (VPC, subnets, etc.) needed for VM provisioning
 func (s *InfrastructureService) InitializeInfrastructure(ctx context.Context, providerName string) error {
 	// Get cluster name from database

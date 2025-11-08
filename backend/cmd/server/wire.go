@@ -10,6 +10,7 @@ import (
 	gcpservices "github.com/stolos-cloud/stolos/backend/internal/services/gcp"
 	"github.com/stolos-cloud/stolos/backend/internal/services/gitops"
 	"github.com/stolos-cloud/stolos/backend/internal/services/job"
+	"github.com/stolos-cloud/stolos/backend/internal/services/k8s"
 	"github.com/stolos-cloud/stolos/backend/internal/services/node"
 	talosservice "github.com/stolos-cloud/stolos/backend/internal/services/talos"
 	wsservices "github.com/stolos-cloud/stolos/backend/internal/services/websocket"
@@ -57,6 +58,7 @@ func RegisterCoreServices() []any {
 		gontainer.NewFactory(func(db *gorm.DB, cfg *config.Config) *gitops.GitOpsService {
 			return gitops.NewGitOpsService(db, cfg)
 		}),
+		gontainer.NewFactory(k8s.NewK8sClient),
 	}
 }
 

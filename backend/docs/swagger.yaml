@@ -78,6 +78,17 @@ definitions:
     required:
     - name
     type: object
+  handlers.DetailTemplate:
+    properties:
+      defaultYaml:
+        type: string
+      description:
+        type: string
+      jsonSchema:
+        $ref: '#/definitions/templates.JsonSchema'
+      name:
+        type: string
+    type: object
   handlers.LoginRequest:
     properties:
       email:
@@ -303,6 +314,16 @@ definitions:
         items:
           type: string
         type: array
+    type: object
+  templates.JsonSchema:
+    additionalProperties: true
+    type: object
+  templates.Template:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
     type: object
 info:
   contact:
@@ -1504,6 +1525,143 @@ paths:
       summary: Remove a user from a team
       tags:
       - teams
+  /templates:
+    get:
+      description: returns a list of available templates on the cluster
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/templates.Template'
+            type: array
+        "500":
+          description: error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Get templates list
+      tags:
+      - templates
+  /templates/{id}:
+    get:
+      description: Get a template from a CRD and returns it, its json schema and a
+        default yaml
+      parameters:
+      - description: template CRD name
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.DetailTemplate'
+        "500":
+          description: error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Get a detailed template
+      tags:
+      - templates
+  /templates/{id}/apply/{instance_name}:
+    post:
+      consumes:
+      - text/plain
+      description: Applies a template deployment
+      parameters:
+      - description: template CRD name
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: deployment name
+        in: query
+        name: instance_name
+        required: true
+        type: string
+      - description: deploy to which team
+        in: query
+        name: team
+        required: true
+        type: string
+      - description: CRD yaml
+        in: body
+        name: request
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "422":
+          description: validation error
+          schema:
+            type: string
+        "500":
+          description: error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Applies a template deployment
+      tags:
+      - templates
+  /templates/{id}/validate/{instance_name}:
+    post:
+      consumes:
+      - text/plain
+      description: Validate a template deployment
+      parameters:
+      - description: template CRD name
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: deployment name
+        in: query
+        name: instance_name
+        required: true
+        type: string
+      - description: deploy to which team
+        in: query
+        name: team
+        required: true
+        type: string
+      - description: CRD yaml
+        in: body
+        name: request
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "422":
+          description: validation error
+          schema:
+            type: string
+        "500":
+          description: error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Validate a template deployment
+      tags:
+      - templates
   /users:
     get:
       description: Get a list of all users

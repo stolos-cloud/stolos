@@ -9,15 +9,15 @@ import (
 
 // Message types sent over WebSocket
 const (
-	MessageTypeLog                   = "log"
-	MessageTypeStatus                = "status"
-	MessageTypePlan                  = "plan"
-	MessageTypeApproval              = "approval_required"
-	MessageTypeComplete              = "complete"
-	MessageTypeError                 = "error"
-	MessageTypeResource              = "resource_update"
-	MessageTypeWorkflow              = "workflow_update"
-	MessageTypeInfrastructureStatus  = "infrastructure_status"
+	MessageTypeLog                  = "log"
+	MessageTypeStatus               = "status"
+	MessageTypePlan                 = "plan"
+	MessageTypeApproval             = "approval_required"
+	MessageTypeComplete             = "complete"
+	MessageTypeError                = "error"
+	MessageTypeResource             = "resource_update"
+	MessageTypeWorkflow             = "workflow_update"
+	MessageTypeInfrastructureStatus = "infrastructure_status"
 )
 
 // WebSocket message structure

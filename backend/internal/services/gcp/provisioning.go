@@ -32,12 +32,12 @@ import (
 )
 
 type ProvisioningService struct {
-	db                 *gorm.DB
-	cfg                *config.Config
-	talosService       *talosservices.TalosService
-	gcpService         *GCPService
-	gitopsService      *gitopsservices.GitOpsService
-	activeProvisions   map[uuid.UUID]*ProvisionSession
+	db               *gorm.DB
+	cfg              *config.Config
+	talosService     *talosservices.TalosService
+	gcpService       *GCPService
+	gitopsService    *gitopsservices.GitOpsService
+	activeProvisions map[uuid.UUID]*ProvisionSession
 }
 
 // ProvisionSession tracks terraform state for an active provision
@@ -272,8 +272,8 @@ func (s *ProvisioningService) ProvisionNodes(
 			}
 
 			workflowUpdate := models.TerraformWorkflowUpdate{
-				Resources:   plannedResources,
-				Summary:     summary,
+				Resources: plannedResources,
+				Summary:   summary,
 			}
 			session.SendWorkflowUpdate(workflowUpdate)
 
@@ -726,7 +726,7 @@ func (s *ProvisioningService) fetchExistingNodeFiles(ctx context.Context, ghClie
 	// Fetch each node-.tf file
 	for _, item := range dirContent {
 		if item.GetType() == "file" && filepath.Ext(item.GetName()) == ".tf" &&
-		   (item.GetName() == "main.tf" || strings.HasPrefix(item.GetName(), "node-")) {
+			(item.GetName() == "main.tf" || strings.HasPrefix(item.GetName(), "node-")) {
 
 			fileContent, _, _, err := ghClient.Repositories.GetContents(ctx, owner, repo, item.GetPath(), &github.RepositoryContentGetOptions{
 				Ref: gitopsConfig.Branch,

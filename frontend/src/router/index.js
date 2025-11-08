@@ -19,6 +19,7 @@ import Error404Page from '@/pages/errors/Error404Page.vue';
 import i18n from '@/plugins/i18n';
 import { createRouter, createWebHistory } from 'vue-router/auto';
 import store from '@/store';
+import DeployTemplate from "@/pages/developer/DeployTemplate.vue";
 
 const routes = [
     {
@@ -53,7 +54,15 @@ const routes = [
     {
         path: '/deployments',
         name: 'deployments',
-        meta: { title: 'deployments.title', requiresAuth: true },
+        meta: { title: 'deployments.title', requiresAuth: false },
+        children: [
+          {
+            path: 'new',
+            name: 'new-deployment',
+            meta: {title: 'new-deployment.title', requiresAuth: false},
+            component: DeployTemplate
+          }
+        ]
     },
     {
         path: '/secrets',
