@@ -14,6 +14,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
+// Used to add prefixes to app namespaces (developers)
 const K8sNamespacePrefix = "app-"
 
 type K8sClient struct {

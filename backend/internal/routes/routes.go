@@ -30,7 +30,6 @@ func SetupRoutes(r *gin.Engine, h *handlers.Handlers) {
 			setupClusterRoutes(protected, h)
 			setupISORoutes(protected, h)
 			setupGCPRoutes(api, protected, h)
-			//setupTemplateRoutes(protected, h)
 			setupTeamRoutes(protected, h)
 			setupUserRoutes(protected, h)
 			setupEventRoutes(protected, h)

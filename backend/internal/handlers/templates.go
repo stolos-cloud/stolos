@@ -152,10 +152,9 @@ func (h *TemplatesHandler) doApplyAction(c *gin.Context, onlyDryRun bool) {
 		return
 	}
 
-	fmt.Printf(c.Query("team"))
 	userTeam, err := gorm.G[models.Team](h.db).Where("name = ?", c.Query("team")).First(context.Background())
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "failed to find team", "details": err.Error()})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "failed to find team"})
 		return
 	}
 
