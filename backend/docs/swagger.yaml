@@ -1541,6 +1541,8 @@ paths:
           description: error
           schema:
             type: string
+      security:
+      - BearerAuth: []
       summary: Get templates list
       tags:
       - templates
@@ -1565,6 +1567,8 @@ paths:
           description: error
           schema:
             type: string
+      security:
+      - BearerAuth: []
       summary: Get a detailed template
       tags:
       - templates
@@ -1608,6 +1612,8 @@ paths:
           description: error
           schema:
             type: string
+      security:
+      - BearerAuth: []
       summary: Applies a template deployment
       tags:
       - templates
@@ -1651,6 +1657,8 @@ paths:
           description: error
           schema:
             type: string
+      security:
+      - BearerAuth: []
       summary: Validate a template deployment
       tags:
       - templates

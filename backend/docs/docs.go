@@ -1852,6 +1852,11 @@ const docTemplate = `{
         },
         "/templates": {
             "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "returns a list of available templates on the cluster",
                 "produces": [
                     "application/json"
@@ -1881,6 +1886,11 @@ const docTemplate = `{
         },
         "/templates/{id}": {
             "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Get a template from a CRD and returns it, its json schema and a default yaml",
                 "produces": [
                     "application/json"
@@ -1916,6 +1926,11 @@ const docTemplate = `{
         },
         "/templates/{id}/apply/{instance_name}": {
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Applies a template deployment",
                 "consumes": [
                     "text/plain"
@@ -1980,6 +1995,11 @@ const docTemplate = `{
         },
         "/templates/{id}/validate/{instance_name}": {
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Validate a template deployment",
                 "consumes": [
                     "text/plain"

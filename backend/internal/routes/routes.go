@@ -34,8 +34,8 @@ func SetupRoutes(r *gin.Engine, h *handlers.Handlers) {
 			setupTeamRoutes(protected, h)
 			setupUserRoutes(protected, h)
 			setupEventRoutes(protected, h)
+			setupTemplateRoutes(protected, h)
 		}
-		setupTemplateRoutes(api, h)
 	}
 }
 

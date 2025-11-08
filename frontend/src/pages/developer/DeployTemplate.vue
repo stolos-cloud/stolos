@@ -7,7 +7,8 @@ import JsonWorker from "monaco-editor/esm/vs/language/json/json.worker?worker"
 import YamlWorker from 'monaco-yaml/yaml.worker?worker'
 import { useTemplateRef, onMounted } from 'vue'
 import { getTemplate } from '../../services/templates.service'
-// import * as YAMLWorker from 'monaco-yaml/yaml.worker'
+
+const TEMPLATE_ID = "backends.stolos.cloud"
 
 function yamlToSnippet(yamlText) {
   const lines = yamlText.split('\n');
@@ -45,7 +46,7 @@ self.MonacoEnvironment = {
 const container = useTemplateRef('container')
 onMounted(async () => {
   console.log(container.value)
-  const template = await getTemplate("stolosplatforms.stolos.cloud")
+  const template = await getTemplate(TEMPLATE_ID)
   console.log(template)
 
   configureMonacoYaml(monaco, {

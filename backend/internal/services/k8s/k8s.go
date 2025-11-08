@@ -14,7 +14,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-const K8sTeamsPrefix = "team-"
+const K8sNamespacePrefix = "app-"
 
 type K8sClient struct {
 	Config             *rest.Config

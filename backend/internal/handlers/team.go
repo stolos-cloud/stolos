@@ -52,7 +52,7 @@ func (h *TeamHandlers) CreateTeam(c *gin.Context) {
 	}
 
 	var namespaceRegex = regexp.MustCompile(`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`)
-	maxSize := 63 - len(k8s.K8sTeamsPrefix)
+	maxSize := 63 - len(k8s.K8sNamespacePrefix)
 	if len(req.Name) < 1 || len(req.Name) > 63 || !namespaceRegex.MatchString(req.Name) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Name between 1-%d characters and can only be alphanumeric characters or \"-\"", maxSize)})
 		return

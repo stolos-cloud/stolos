@@ -44,6 +44,7 @@ func NewTemplatesHandler(k8s *k8s.K8sClient, db *gorm.DB) *TemplatesHandler {
 // @Success 200 {object} []templates.Template
 // @Failure 500 {object} string "error"
 // @Router /templates [get]
+// @Security BearerAuth
 func (h *TemplatesHandler) GetTemplatesList(c *gin.Context) {
 
 	templatesList, err := templates.ListTemplates(h.k8sClient, templateGroup)
@@ -63,6 +64,7 @@ func (h *TemplatesHandler) GetTemplatesList(c *gin.Context) {
 // @Success 200 {object} DetailTemplate
 // @Failure 500 {object} string "error"
 // @Router /templates/{id} [get]
+// @Security BearerAuth
 func (h *TemplatesHandler) GetTemplate(c *gin.Context) {
 
 	template, err := templates.GetTemplate(h.k8sClient, c.Param("name"))
@@ -106,6 +108,7 @@ func (h *TemplatesHandler) GetTemplate(c *gin.Context) {
 // @Param team query string true "deploy to which team"
 // @Param request body string true "CRD yaml"
 // @Router /templates/{id}/validate/{instance_name} [post]
+// @Security BearerAuth
 func (h *TemplatesHandler) ValidateTemplate(c *gin.Context) {
 	h.doApplyAction(c, true)
 }
@@ -124,6 +127,7 @@ func (h *TemplatesHandler) ValidateTemplate(c *gin.Context) {
 // @Param team query string true "deploy to which team"
 // @Param request body string true "CRD yaml"
 // @Router /templates/{id}/apply/{instance_name} [post]
+// @Security BearerAuth
 func (h *TemplatesHandler) ApplyTemplate(c *gin.Context) {
 	h.doApplyAction(c, false)
 }
@@ -148,9 +152,10 @@ func (h *TemplatesHandler) doApplyAction(c *gin.Context, onlyDryRun bool) {
 		return
 	}
 
-	userTeam, err := gorm.G[models.Team](h.db).Where("name = ?", c.Param("team")).First(context.Background())
+	fmt.Printf(c.Query("team"))
+	userTeam, err := gorm.G[models.Team](h.db).Where("name = ?", c.Query("team")).First(context.Background())
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "failed to find team"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "failed to find team", "details": err.Error()})
 		return
 	}
 
@@ -168,8 +173,8 @@ func (h *TemplatesHandler) doApplyAction(c *gin.Context, onlyDryRun bool) {
 	if cr["metadata"] == nil {
 		cr["metadata"] = make(map[string]interface{})
 	}
-	cr["metadata"].(map[string]interface{})["name"] = c.Param("instance_name")
-	cr["metadata"].(map[string]interface{})["namespace"] = k8s.K8sTeamsPrefix + userTeam.Name
+	cr["metadata"].(map[string]interface{})["name"] = c.Query("instance_name")
+	cr["metadata"].(map[string]interface{})["namespace"] = k8s.K8sNamespacePrefix + userTeam.Name
 
 	apiVersion := crdTemplate.GetCRD().Spec.Group + "/" + crdTemplate.GetCRD().Spec.Versions[0].Name
 	cr["kind"] = crdTemplate.GetCRD().Spec.Names.Kind
@@ -186,5 +191,5 @@ func (h *TemplatesHandler) doApplyAction(c *gin.Context, onlyDryRun bool) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	c.JSON(http.StatusOK, gin.H{"status": "ok", "cr": cr})
 }
