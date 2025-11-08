@@ -1,5 +1,3 @@
-//go:build airway
-
 package stolos_yoke
 
 import (
