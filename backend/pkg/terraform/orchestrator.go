@@ -18,7 +18,7 @@ import (
 // Terraform execution
 // GitOps integration
 type Orchestrator struct {
-	executor       *Executor
+	executor        *Executor
 	templateBaseDir string
 }
 

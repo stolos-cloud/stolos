@@ -106,7 +106,6 @@ func (e *Executor) GetPlanJSON(ctx context.Context) ([]byte, error) {
 	return jsonBytes, nil
 }
 
-
 // PlanJSON runs terraform plan with JSON output for machine-readable resource tracking
 func (e *Executor) PlanJSON(ctx context.Context, w io.Writer) (bool, error) {
 	hasChanges, err := e.tf.PlanJSON(ctx, w)
@@ -146,7 +145,7 @@ func (e *Executor) ForceUnlock(ctx context.Context, lockID string) error {
 }
 
 // Output retrieves the outputs of the Terraform state in JSON format
-// Had to do a workaround since tfexec.Outputs() does not return outputs 
+// Had to do a workaround since tfexec.Outputs() does not return outputs
 // properly. Would always run into an error like: Unexpected EOF.
 func (e *Executor) Output(ctx context.Context) (map[string]tfexec.OutputMeta, error) {
 	env := os.Environ()

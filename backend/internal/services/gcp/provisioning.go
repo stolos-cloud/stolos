@@ -32,12 +32,12 @@ import (
 )
 
 type ProvisioningService struct {
-	db                 *gorm.DB
-	cfg                *config.Config
-	talosService       *talosservices.TalosService
-	gcpService         *GCPService
-	gitopsService      *gitopsservices.GitOpsService
-	activeProvisions   map[uuid.UUID]*ProvisionSession
+	db               *gorm.DB
+	cfg              *config.Config
+	talosService     *talosservices.TalosService
+	gcpService       *GCPService
+	gitopsService    *gitopsservices.GitOpsService
+	activeProvisions map[uuid.UUID]*ProvisionSession
 }
 
 // ProvisionSession tracks terraform state for an active provision
@@ -215,9 +215,20 @@ func (s *ProvisioningService) ProvisionNodes(
 	}
 	session.SendLog("Talos configurations uploaded successfully")
 
+	// Get GitOps config and GitHub client (used for both createTerraformFiles and commitTerraformFiles)
+	gitopsConfig, err := s.gitopsService.GetConfigOrDefault()
+	if err != nil {
+		return fmt.Errorf("failed to get GitOps config: %w", err)
+	}
+
+	ghClient, err := s.gitopsService.GetGitHubClient()
+	if err != nil {
+		return fmt.Errorf("failed to create GitHub client: %w", err)
+	}
+
 	// Create terraform files
 	session.SendLog("Creating Terraform configuration files...")
-	if err := s.createTerraformFiles(ctx, requestID, gcpConfig, nodes); err != nil {
+	if err := s.createTerraformFiles(ctx, requestID, gcpConfig, nodes, ghClient, gitopsConfig); err != nil {
 		return fmt.Errorf("failed to create terraform files: %w", err)
 	}
 
@@ -272,8 +283,8 @@ func (s *ProvisioningService) ProvisionNodes(
 			}
 
 			workflowUpdate := models.TerraformWorkflowUpdate{
-				Resources:   plannedResources,
-				Summary:     summary,
+				Resources: plannedResources,
+				Summary:   summary,
 			}
 			session.SendWorkflowUpdate(workflowUpdate)
 
@@ -342,7 +353,7 @@ func (s *ProvisioningService) ProvisionNodes(
 
 	// Commit terraform files to git repo after approval
 	session.SendLog("Committing terraform files to GitOps repository...")
-	if err := s.commitTerraformFiles(ctx, requestID); err != nil {
+	if err := s.commitTerraformFiles(ctx, requestID, ghClient, gitopsConfig); err != nil {
 		return fmt.Errorf("failed to commit terraform files: %w", err)
 	}
 	session.SendLog("Terraform files committed successfully")
@@ -569,18 +580,7 @@ type InstanceDetails struct {
 }
 
 // createTerraformFiles creates terraform configuration files
-func (s *ProvisioningService) createTerraformFiles(ctx context.Context, requestID uuid.UUID, gcpConfig *models.GCPConfig, nodes []NodeConfig) error {
-	// Get GitOps config
-	gitopsConfig, err := s.gitopsService.GetConfigOrDefault()
-	if err != nil {
-		return fmt.Errorf("failed to get GitOps config: %w", err)
-	}
-
-	// Initialize GitHub client
-	ghClient, err := s.gitopsService.GetGitHubClient()
-	if err != nil {
-		return fmt.Errorf("failed to create GitHub client: %w", err)
-	}
+func (s *ProvisioningService) createTerraformFiles(ctx context.Context, requestID uuid.UUID, gcpConfig *models.GCPConfig, nodes []NodeConfig, ghClient *githubpkg.Client, gitopsConfig *models.GitOpsConfig) error {
 
 	existingFiles, err := s.fetchExistingNodeFiles(ctx, ghClient, gitopsConfig)
 	if err != nil {
@@ -726,7 +726,7 @@ func (s *ProvisioningService) fetchExistingNodeFiles(ctx context.Context, ghClie
 	// Fetch each node-.tf file
 	for _, item := range dirContent {
 		if item.GetType() == "file" && filepath.Ext(item.GetName()) == ".tf" &&
-		   (item.GetName() == "main.tf" || strings.HasPrefix(item.GetName(), "node-")) {
+			(item.GetName() == "main.tf" || strings.HasPrefix(item.GetName(), "node-")) {
 
 			fileContent, _, _, err := ghClient.Repositories.GetContents(ctx, owner, repo, item.GetPath(), &github.RepositoryContentGetOptions{
 				Ref: gitopsConfig.Branch,
@@ -750,22 +750,10 @@ func (s *ProvisioningService) fetchExistingNodeFiles(ctx context.Context, ghClie
 }
 
 // commitTerraformFiles commits terraform files to GitOps repo using GitHub API
-func (s *ProvisioningService) commitTerraformFiles(ctx context.Context, requestID uuid.UUID) error {
+func (s *ProvisioningService) commitTerraformFiles(ctx context.Context, requestID uuid.UUID, ghClient *githubpkg.Client, gitopsConfig *models.GitOpsConfig) error {
 	provSession, ok := s.activeProvisions[requestID]
 	if !ok {
 		return fmt.Errorf("provision session not found")
-	}
-
-	// Get GitOps config
-	gitopsConfig, err := s.gitopsService.GetConfigOrDefault()
-	if err != nil {
-		return fmt.Errorf("failed to get GitOps config: %w", err)
-	}
-
-	// Initialize GitHub client
-	ghClient, err := s.gitopsService.GetGitHubClient()
-	if err != nil {
-		return fmt.Errorf("failed to create GitHub client: %w", err)
 	}
 
 	// Build commit message

@@ -33,6 +33,7 @@ func SetupRoutes(r *gin.Engine, h *handlers.Handlers) {
 			setupTeamRoutes(protected, h)
 			setupUserRoutes(protected, h)
 			setupEventRoutes(protected, h)
+			setupTemplateRoutes(protected, h)
 		}
 	}
 }
@@ -145,5 +146,15 @@ func setupGCPRoutes(public *gin.RouterGroup, protected *gin.RouterGroup, h *hand
 		gcp.POST("/resources/refresh", h.GCPHandlers().RefreshGCPResources)
 
 		gcp.POST("/nodes/provision", h.GCPHandlers().ProvisionGCPNodes)
+	}
+}
+
+func setupTemplateRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
+	templateRoutes := api.Group("/templates")
+	{
+		templateRoutes.GET("/", h.TemplatesHandlers().GetTemplatesList)
+		templateRoutes.GET("/:name", h.TemplatesHandlers().GetTemplate)
+		templateRoutes.POST("/:id/validate/:instance_name", h.TemplatesHandlers().ValidateTemplate)
+		templateRoutes.POST("/:id/apply/:instance_name", h.TemplatesHandlers().ApplyTemplate)
 	}
 }

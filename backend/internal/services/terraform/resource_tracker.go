@@ -16,7 +16,7 @@ import (
 
 // ResourceTracker handles parsing Terraform JSON output and sending resource updates
 type ResourceTracker struct {
-	session *wsservices.ApprovalSession
+	session   *wsservices.ApprovalSession
 	resources map[string]*models.TerraformResourceUpdate
 	workflow  *models.TerraformWorkflowUpdate
 }
@@ -35,13 +35,13 @@ func NewResourceTracker(session *wsservices.ApprovalSession) *ResourceTracker {
 
 // TerraformJSONMessage represents a single line of Terraform's JSON output
 type TerraformJSONMessage struct {
-	Type        string                 `json:"type"`
-	Level       string                 `json:"@level"`
-	Message     string                 `json:"@message"`
-	Module      string                 `json:"@module,omitempty"`
-	Timestamp   string                 `json:"@timestamp"`
-	Hook        map[string]any `json:"hook,omitempty"`
-	Diagnostic  *TerraformDiagnostic   `json:"diagnostic,omitempty"`
+	Type       string               `json:"type"`
+	Level      string               `json:"@level"`
+	Message    string               `json:"@message"`
+	Module     string               `json:"@module,omitempty"`
+	Timestamp  string               `json:"@timestamp"`
+	Hook       map[string]any       `json:"hook,omitempty"`
+	Diagnostic *TerraformDiagnostic `json:"diagnostic,omitempty"`
 }
 
 // TerraformDiagnostic represents diagnostic information
@@ -86,7 +86,6 @@ func (rt *ResourceTracker) StreamApplyJSON(ctx context.Context, r io.Reader) err
 
 	return scanner.Err()
 }
-
 
 // processApplyMessage handles messages during the apply phase
 func (rt *ResourceTracker) processApplyMessage(msg TerraformJSONMessage) error {
@@ -149,7 +148,6 @@ func (rt *ResourceTracker) processApplyMessage(msg TerraformJSONMessage) error {
 	return nil
 }
 
-
 // startResourceOperation marks a resource as being created/modified/deleted
 func (rt *ResourceTracker) startResourceOperation(addr string, resourceType string) {
 	now := time.Now()
@@ -157,11 +155,11 @@ func (rt *ResourceTracker) startResourceOperation(addr string, resourceType stri
 	resource, exists := rt.resources[addr]
 	if !exists {
 		resource = &models.TerraformResourceUpdate{
-			ID:        addr,
-			Name:      extractResourceName(addr),
-			Type:      resourceType,
-			Provider:  extractProviderFromType(resourceType),
-			Action:    "create",
+			ID:       addr,
+			Name:     extractResourceName(addr),
+			Type:     resourceType,
+			Provider: extractProviderFromType(resourceType),
+			Action:   "create",
 		}
 		rt.resources[addr] = resource
 	}

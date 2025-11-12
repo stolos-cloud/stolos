@@ -6,6 +6,7 @@ import { StorageService } from './storage.service';
     Axios Instance Configuration for authentication
 ----------------------------------------------------*/
 const api = axios.create({ timeout: 10000 });
+export const API_BASE_VERSION = "/api/v1"
 
 api.interceptors.request.use(
     config => {
@@ -33,5 +34,9 @@ api.interceptors.response.use(
         return Promise.reject(error);
     }
 );
+
+const httpBaseURL = URL.parse(API_BASE_VERSION, import.meta.env.VITE_API_BASE_URL).toString();
+api.defaults.baseURL = httpBaseURL;
+export const WS_BASE_URL = httpBaseURL.replace(/^http/, 'ws');
 
 export default api;

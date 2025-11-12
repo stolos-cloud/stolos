@@ -31,11 +31,11 @@ func ParsePlanJSON(planJSON []byte) ([]models.TerraformResourceUpdate, error) {
 
 		// Determine action
 		var action string
-		
+
 		if change.Change != nil && len(change.Change.Actions) > 0 {
 			if len(change.Change.Actions) == 2 &&
-			   change.Change.Actions[0] == tfjson.ActionCreate &&
-			   change.Change.Actions[1] == tfjson.ActionDelete {
+				change.Change.Actions[0] == tfjson.ActionCreate &&
+				change.Change.Actions[1] == tfjson.ActionDelete {
 				action = "replace"
 			} else {
 				action = string(change.Change.Actions[0])

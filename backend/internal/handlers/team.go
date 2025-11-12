@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
+	"regexp"
 	"slices"
 
 	"github.com/gin-gonic/gin"
@@ -9,6 +11,7 @@ import (
 	"github.com/stolos-cloud/stolos/backend/internal/api"
 	"github.com/stolos-cloud/stolos/backend/internal/middleware"
 	"github.com/stolos-cloud/stolos/backend/internal/models"
+	"github.com/stolos-cloud/stolos/backend/internal/services/k8s"
 	"gorm.io/gorm"
 )
 
@@ -45,6 +48,13 @@ func (h *TeamHandlers) CreateTeam(c *gin.Context) {
 	var req CreateTeamRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var namespaceRegex = regexp.MustCompile(`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`)
+	maxSize := 63 - len(k8s.K8sNamespacePrefix)
+	if len(req.Name) < 1 || len(req.Name) > 63 || !namespaceRegex.MatchString(req.Name) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Name between 1-%d characters and can only be alphanumeric characters or \"-\"", maxSize)})
 		return
 	}
 
