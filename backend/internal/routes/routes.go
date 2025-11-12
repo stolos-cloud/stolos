@@ -30,7 +30,7 @@ func SetupRoutes(r *gin.Engine, h *handlers.Handlers) {
 			setupClusterRoutes(protected, h)
 			setupISORoutes(protected, h)
 			setupGCPRoutes(api, protected, h)
-			setupTeamRoutes(protected, h)
+			setupNamespaceRoutes(protected, h)
 			setupUserRoutes(protected, h)
 			setupEventRoutes(protected, h)
 			setupTemplateRoutes(protected, h)
@@ -91,15 +91,15 @@ func setupAuthRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
 	}
 }
 
-func setupTeamRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
-	teams := api.Group("/teams")
+func setupNamespaceRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
+	namespaces := api.Group("/namespaces")
 	{
-		teams.GET("", h.TeamHandlers().GetTeams)
-		teams.POST("", middleware.RequireRole(models.RoleAdmin), h.TeamHandlers().CreateTeam)
-		teams.GET("/:id", h.TeamHandlers().GetTeam)
-		teams.POST("/:id/users", middleware.RequireRole(models.RoleAdmin), h.TeamHandlers().AddUserToTeam)
-		teams.DELETE("/:id/users/:user_id", middleware.RequireRole(models.RoleAdmin), h.TeamHandlers().RemoveUserFromTeam)
-		teams.DELETE("/:id", middleware.RequireRole(models.RoleAdmin), h.TeamHandlers().DeleteTeam)
+		namespaces.GET("", h.NamespaceHandlers().GetNamespaces)
+		namespaces.POST("", h.NamespaceHandlers().CreateNamespace) // Developers can create namespaces
+		namespaces.GET("/:id", h.NamespaceHandlers().GetNamespace)
+		namespaces.POST("/:id/users", h.NamespaceHandlers().AddUserToNamespace) // Namespace members can add users
+		namespaces.DELETE("/:id/users/:user_id", h.NamespaceHandlers().RemoveUserFromNamespace) // Namespace members can remove users
+		namespaces.DELETE("/:id", h.NamespaceHandlers().DeleteNamespace) // Developers can delete their own namespaces
 	}
 }
 

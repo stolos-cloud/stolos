@@ -21,7 +21,7 @@ type User struct {
 	Email        string         `json:"email" gorm:"not null;uniqueIndex:idx_users_email,where:deleted_at IS NULL"`
 	PasswordHash string         `json:"-" gorm:"not null"`
 	Role         Role           `json:"role" gorm:"not null;default:'developer'"`
-	Teams        []Team         `json:"teams,omitempty" gorm:"many2many:user_teams;"`
+	Namespaces   []Namespace    `json:"namespaces,omitempty" gorm:"many2many:user_namespaces;"`
 	CreatedAt    time.Time      `json:"created_at"`
 	UpdatedAt    time.Time      `json:"updated_at"`
 	DeletedAt    gorm.DeletedAt `json:"-" gorm:"index"`
@@ -34,28 +34,28 @@ func (u *User) BeforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-type Team struct {
+type Namespace struct {
 	ID        uuid.UUID      `json:"id" gorm:"type:uuid;primary_key"`
 	Name      string         `json:"name" gorm:"not null;uniqueIndex"`
-	Users     []User         `json:"users,omitempty" gorm:"many2many:user_teams;"`
+	Users     []User         `json:"users,omitempty" gorm:"many2many:user_namespaces;"`
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
 }
 
-func (t *Team) BeforeCreate(tx *gorm.DB) error {
-	if t.ID == (uuid.UUID{}) {
-		t.ID = uuid.New()
+func (n *Namespace) BeforeCreate(tx *gorm.DB) error {
+	if n.ID == (uuid.UUID{}) {
+		n.ID = uuid.New()
 	}
 	return nil
 }
 
-// UserTeam is the join table for many-to-many relationship
-type UserTeam struct {
-	UserID uuid.UUID `gorm:"type:uuid;primaryKey"`
-	TeamID uuid.UUID `gorm:"type:uuid;primaryKey"`
-	User   User      `gorm:"foreignKey:UserID"`
-	Team   Team      `gorm:"foreignKey:TeamID"`
+// UserNamespace is the join table for many-to-many relationship
+type UserNamespace struct {
+	UserID      uuid.UUID `gorm:"type:uuid;primaryKey"`
+	NamespaceID uuid.UUID `gorm:"type:uuid;primaryKey"`
+	User        User      `gorm:"foreignKey:UserID"`
+	Namespace   Namespace `gorm:"foreignKey:NamespaceID"`
 }
 
 func (u *User) SetPassword(password string) error {

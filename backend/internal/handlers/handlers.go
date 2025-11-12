@@ -8,7 +8,7 @@ import (
 
 type Handlers struct {
 	authHandlers      *AuthHandlers
-	teamHandlers      *TeamHandlers
+	namespaceHandlers *NamespaceHandlers
 	userHandlers      *UserHandlers
 	isoHandlers       *ISOHandlers
 	nodeHandlers      *NodeHandlers
@@ -22,7 +22,7 @@ type Handlers struct {
 
 func NewHandlers(
 	authHandlers *AuthHandlers,
-	teamHandlers *TeamHandlers,
+	namespaceHandlers *NamespaceHandlers,
 	userHandlers *UserHandlers,
 	isoHandlers *ISOHandlers,
 	nodeHandlers *NodeHandlers,
@@ -35,7 +35,7 @@ func NewHandlers(
 ) *Handlers {
 	return &Handlers{
 		authHandlers:      authHandlers,
-		teamHandlers:      teamHandlers,
+		namespaceHandlers: namespaceHandlers,
 		userHandlers:      userHandlers,
 		isoHandlers:       isoHandlers,
 		nodeHandlers:      nodeHandlers,
@@ -52,8 +52,8 @@ func (h *Handlers) AuthHandlers() *AuthHandlers {
 	return h.authHandlers
 }
 
-func (h *Handlers) TeamHandlers() *TeamHandlers {
-	return h.teamHandlers
+func (h *Handlers) NamespaceHandlers() *NamespaceHandlers {
+	return h.namespaceHandlers
 }
 
 func (h *Handlers) UserHandlers() *UserHandlers {
