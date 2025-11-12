@@ -12,9 +12,6 @@
                     </div>
                 </v-col>
             </v-row>
-            <template #actions>
-                <BaseButton variant="outlined" :text="$t('actionButtons.close')" @click="closeDialog" />
-            </template>
         </BaseDialog>
     </div>
 </template>
@@ -51,9 +48,6 @@ watch(() => props.modelValue, val => isOpen.value = val);
 watch(isOpen, val => emit('update:modelValue', val));
 
 // Methods
-function closeDialog() {
-    emit('update:modelValue', false);
-}
 function formatDateShort(dateString) {
     if (!dateString) return '';
     const options = { year: 'numeric', month: '2-digit', day: '2-digit' };

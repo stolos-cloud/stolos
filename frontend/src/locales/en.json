@@ -246,8 +246,41 @@
             "cancel": "Cancel"
         }
     },
-    "templates": {
-        "title": "Templates"
+    "templateDefinitions": {
+        "title": "Template definitions",
+        "subheading": "Manage your template definitions",
+        "table": {
+            "title": "Application templates",
+            "loadingText": "Loading template definitions...",
+            "noDataText": "No templates found.",
+            "itemsPerPageText": "Templates per page :",
+            "headers": {
+                "name": "Name",
+                "version": "Version",
+                "metadata": "Metadata",
+                "deployedApps": "Deployed applications"
+            },
+            "footerMessage": "Any CRD with group matching {group} will be displayed."
+        },
+        "dialogs": {
+            "createTemplate":  {
+                "title": "Create a new template"
+            },
+            "viewDetailsTemplate": {
+                "title": "{ template } - Details"
+            }
+        },
+        "formfields": {
+            "templateName": "Template name",
+            "scaffold": "Scaffold"
+        },
+        "notifications": {
+            "createSuccess": "Your template was scaffolded successfully! The generated code is available at : <a href='{repoLink}' target='_blank'>{repoLink}</a>",
+            "createError": "Failed to create template"
+        },
+        "buttons": {
+            "createNewTemplate": "Create new template"
+        }
     },
     "secretsSecurity": {
         "title": "Secrets & Security"
@@ -407,7 +440,8 @@
         "viewRepo": "View repository",
         "showCode": "Show code",
         "hideCode": "Hide code",
-        "copyCode": "Copy code"
+        "copyCode": "Copy code",
+        "viewDocs": "View documentation"
     },
     "rules": {
         "validation": {

@@ -8,7 +8,7 @@
             </div>
             <v-virtual-scroll
                 :items="usersTeam"
-                height="200"
+                max-height="200"
                 v-if="usersTeam.length > 0"
             >
                 <template v-slot:default="{ item }">
@@ -45,9 +45,6 @@
             <div v-else class="no-members">
                 <p>{{ $t('administration.teams.dialogs.viewDetailsTeam.messages.noMembers') }}</p>
             </div>
-            <template #actions>
-                <BaseButton variant="outlined" :text="$t('actionButtons.cancel')" @click="closeDialog" />
-            </template>
         </BaseDialog>
         <BaseConfirmDialog ref="confirmDialog" />
     </div>
@@ -93,9 +90,6 @@ watch(isOpen, val => {
 });
 
 // Methods
-function closeDialog() {
-    emit('update:modelValue', false);
-}
 function getTeamDetailsFromTeamId(teamId) {
     getTeamDetails(teamId)
         .then((teamDetails) => {
@@ -128,7 +122,6 @@ function deleteUserFromTeam(user) {
             console.error("Error deleting user from team:", error);
         })
         .finally(() => {
-            closeDialog();
             hideOverlay();
         });
 }

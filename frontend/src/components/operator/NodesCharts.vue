@@ -2,8 +2,8 @@
     <v-row class="mt-2">
         <v-col v-for="provider in providers" :key="provider.key" cols="12" md="6" sm="6">
             <v-card class="pa-1 border elevation-0">
-                <v-card-title class="text-h6">
-                    {{ provider.title }}
+                <v-card-title>
+                    <BaseTitle :level="6" :title="provider.title" />
                 </v-card-title>
                 <v-card-text>
                     <BaseRadialBarChart 

@@ -2,7 +2,7 @@
     <v-app>
         <router-view />
         <BaseOverlay v-model="overlay" />
-        <BaseNotification v-model="notification.visible" :text="notification.text" :type="notification.type" />
+        <BaseNotification v-model="notification.visible" :text="notification.text" :type="notification.type" :closable="notification.closable" />
     </v-app>
 </template>
 

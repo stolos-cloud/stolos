@@ -9,7 +9,7 @@
             :titleToolbar="$t('provisioning.onPremises.table.title')" :actionsButtonForTable="actionsButtonForTable">
             <!-- Slot for status -->
             <template #[`item.status`]="{ item }">
-                <v-chip :color="getStatusColor(item.status)">
+                <v-chip :color="getStatusColor(item.status)" label size="small">
                     {{ item.status }}
                 </v-chip>
             </template>
@@ -30,17 +30,17 @@
             <template #[`item.labels`]="{ item }">
                 <div class="d-flex flex-wrap align-center">
                     <v-chip v-for="(label, index) in item.labels" :key="index" class="ma-1" closable
-                        @click:close="item.labels.splice(index, 1)">
+                        @click:close="item.labels.splice(index, 1)" label size="small">
                         {{ label }}
                     </v-chip>
                     <template v-if="!item.addingLabel">
-                        <v-chip class="ma-1" elevation="2" @click="item.addingLabel = true">
+                        <v-chip class="ma-1" elevation="2" @click="item.addingLabel = true" label size="small">
                             {{ $t('provisioning.onPremises.buttons.addLabel') }}
                         </v-chip>
                     </template>
                     <template v-else>
                         <v-text-field v-model="item.newLabel" density="compact" placeholder="New label" variant="solo"
-                            rounded hide-details max-width="120" autofocus @keyup.enter="addLabel(item)"
+                             hide-details max-width="120" autofocus @keyup.enter="addLabel(item)"
                             @blur="addLabel(item); item.addingLabel = false" />
                     </template>
                 </div>

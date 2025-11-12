@@ -15,7 +15,7 @@
             @click:row="(event, item) => showDetailsNodeDialog(item.item)"
         >
             <template #[`item.status`]="{ item }">
-                <v-chip :color="getStatusColor(item.status)">
+                <v-chip :color="getStatusColor(item.status)" label size="small">
                     <template #prepend>
                         <v-progress-circular style="margin-right: 10px;"
                             v-if="normalizeStatus(item.status) === 'provisioning'"

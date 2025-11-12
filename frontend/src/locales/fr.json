@@ -247,8 +247,9 @@
             "cancel": "Annuler"
         }
     },
-    "templates": {
-        "title": "Modèles"
+    "templateDefinitions": {
+        "title": "Définitions de modèles",
+        "subheading": "Gérer vos définitions de modèles"
     },
     "secretsSecurity": {
         "title": "Secrets & sécurité"
@@ -408,7 +409,8 @@
         "viewRepo": "Voir le répertoire",
         "showCode": "Afficher le code",
         "hideCode": "Masquer le code",
-        "copyCode": "Copier le code"
+        "copyCode": "Copier le code",
+        "viewDocs": "Voir la documentation"
     },
     "rules": {
         "validation": {
