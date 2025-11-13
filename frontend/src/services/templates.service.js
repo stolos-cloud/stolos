@@ -20,9 +20,9 @@ export async function getTemplate(id) {
   }
 }
 
-export async function validateTemplate(id, instance_name, team, cr) {
+export async function validateTemplate(id, instance_name, namespace, cr) {
   try {
-    const response = await api.post(`/templates/${id}/validate/${instance_name}?team=${team}`, cr);
+    const response = await api.post(`/templates/${id}/validate/${instance_name}?namespace=${namespace}`, cr);
     return response.data;
   } catch (error) {
     console.error('Error validating templates:', error);
@@ -30,9 +30,9 @@ export async function validateTemplate(id, instance_name, team, cr) {
   }
 }
 
-export async function applyTemplate(id, instance_name, team, cr) {
+export async function applyTemplate(id, instance_name, namespace, cr) {
   try {
-    const response = await api.post(`/templates/${id}/apply/${instance_name}?team=${team}`, cr);
+    const response = await api.post(`/templates/${id}/apply/${instance_name}?namespace=${namespace}`, cr);
     return response.data;
   } catch (error) {
     console.error('Error validating templates:', error);

@@ -222,7 +222,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
-import api from '@/services/api';
+import api, { WS_BASE_URL } from '@/services/api';
 import { StorageService } from '@/services/storage.service';
 import { TextField } from '@/models/TextField.js';
 import { Select } from '@/models/Select.js';
@@ -302,7 +302,7 @@ const diskTypes = computed(() => [
 // Fetch initial infrastructure status
 const fetchInfrastructureStatus = async () => {
     try {
-        const response = await api.get('/api/gcp/status');
+        const response = await api.get('/gcp/status');
         if (response.data?.gcp?.infrastructure_status) {
             infrastructureStatus.value = response.data.gcp.infrastructure_status;
         }
@@ -315,7 +315,7 @@ const fetchInfrastructureStatus = async () => {
 const connectEventWebSocket = () => {
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const token = StorageService.get('token');
-    const wsUrl = `${wsProtocol}//${window.location.host}/api/events/stream?token=${token}`;
+    const wsUrl = `${wsProtocol}//${api.defaults.baseURL}/api/v1/events/stream?token=${token}`;
 
     eventWs.value = new WebSocket(wsUrl);
 
@@ -564,7 +564,7 @@ const submitProvisionRequest = async () => {
 
     try {
         // Step 1: POST to create provision request
-        const response = await api.post('/api/gcp/nodes/provision', form.value);
+        const response = await api.post('/gcp/nodes/provision', form.value);
         const requestId = response.data.request_id;
         currentRequestId.value = requestId;
 
@@ -589,10 +589,8 @@ const submitProvisionRequest = async () => {
 };
 
 const connectWebSocket = requestId => {
-    // Get WebSocket URL (convert http to ws)
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const token = StorageService.get('token');
-    const wsUrl = `${wsProtocol}//${window.location.host}/api/gcp/nodes/provision/${requestId}/stream?token=${token}`;
+    const wsUrl = `${WS_BASE_URL}/gcp/nodes/provision/${requestId}/stream?token=${token}`;
 
     planLogs.value.push({
         type: 'log',
@@ -804,7 +802,7 @@ const rejectProvisioning = () => {
 const downloadPlan = async () => {
     try {
         const token = StorageService.get('token');
-        const url = `/api/gcp/nodes/provision/${currentRequestId.value}/plan`;
+        const url = `/gcp/nodes/provision/${currentRequestId.value}/plan`;
 
         const response = await fetch(url, {
             headers: {
@@ -833,7 +831,7 @@ const downloadPlan = async () => {
 const downloadApply = async () => {
     try {
         const token = StorageService.get('token');
-        const url = `/api/gcp/nodes/provision/${currentRequestId.value}/apply`;
+        const url = `/gcp/nodes/provision/${currentRequestId.value}/apply`;
 
         const response = await fetch(url, {
             headers: {
@@ -858,5 +856,4 @@ const downloadApply = async () => {
         console.error('Failed to download apply logs:', error);
     }
 };
-
 </script>

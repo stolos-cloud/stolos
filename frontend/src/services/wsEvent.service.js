@@ -1,4 +1,5 @@
 import { StorageService } from '@/services/storage.service';
+import { WS_BASE_URL } from '@/services/api';
 
 const DEFAULT_RECONNECT_DELAY = 2000;
 const WILDCARD_EVENT = '*';
@@ -126,8 +127,7 @@ class WsEventService {
     buildEndpoint() {
         const token = StorageService.get('token');
         if (!token) return null;
-        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        return `${wsProtocol}//${window.location.host}/api/events/stream?token=${token}`;
+        return `${WS_BASE_URL}/events/stream?token=${token}`;
     }
 }
 

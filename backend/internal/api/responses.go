@@ -6,49 +6,49 @@ import (
 )
 
 type UserResponse struct {
-	ID    uuid.UUID   `json:"id"`
-	Email string      `json:"email"`
-	Role  models.Role `json:"role"`
-	Teams []TeamInfo  `json:"teams"`
+	ID         uuid.UUID       `json:"id"`
+	Email      string          `json:"email"`
+	Role       models.Role     `json:"role"`
+	Namespaces []NamespaceInfo `json:"namespaces"`
 }
 
-type TeamInfo struct {
+type NamespaceInfo struct {
 	ID   uuid.UUID `json:"id"`
 	Name string    `json:"name"`
 }
 
-type TeamResponse struct {
+type NamespaceResponse struct {
 	ID    uuid.UUID      `json:"id"`
 	Name  string         `json:"name"`
 	Users []UserResponse `json:"users,omitempty"`
 }
 
 func ToUserResponse(user *models.User) UserResponse {
-	teams := make([]TeamInfo, len(user.Teams))
-	for i, team := range user.Teams {
-		teams[i] = TeamInfo{
-			ID:   team.ID,
-			Name: team.Name,
+	namespaces := make([]NamespaceInfo, len(user.Namespaces))
+	for i, ns := range user.Namespaces {
+		namespaces[i] = NamespaceInfo{
+			ID:   ns.ID,
+			Name: ns.Name,
 		}
 	}
 
 	return UserResponse{
-		ID:    user.ID,
-		Email: user.Email,
-		Role:  user.Role,
-		Teams: teams,
+		ID:         user.ID,
+		Email:      user.Email,
+		Role:       user.Role,
+		Namespaces: namespaces,
 	}
 }
 
-func ToTeamResponse(team *models.Team, includeUsers bool) TeamResponse {
-	response := TeamResponse{
-		ID:   team.ID,
-		Name: team.Name,
+func ToNamespaceResponse(namespace *models.Namespace, includeUsers bool) NamespaceResponse {
+	response := NamespaceResponse{
+		ID:   namespace.ID,
+		Name: namespace.Name,
 	}
 
 	if includeUsers {
-		users := make([]UserResponse, len(team.Users))
-		for i, user := range team.Users {
+		users := make([]UserResponse, len(namespace.Users))
+		for i, user := range namespace.Users {
 			users[i] = ToUserResponse(&user)
 		}
 		response.Users = users

@@ -1,12 +1,12 @@
 <template>
-    <div class="add-user-to-team-dialog">
-        <BaseDialog v-model="isOpen" :title="$t('administration.teams.dialogs.addUserToTeam.title')" closable>
+    <div class="add-user-to-namespace-dialog">
+        <BaseDialog v-model="isOpen" :title="$t('administration.namespaces.dialogs.addUserToNamespace.title')" closable>
             <v-form v-model="isValidForm">
                 <BaseAutoComplete :AutoComplete="formFields.userChoiceEmail" />
             </v-form>
             <template #actions>
                 <BaseButton variant="outlined" :text="$t('actionButtons.cancel')" @click="closeDialog" />
-                <BaseButton :text="$t('actionButtons.add')" :disabled="!isValidForm" @click="addUserToTeam" />
+                <BaseButton :text="$t('actionButtons.add')" :disabled="!isValidForm" @click="addUserToNamespace" />
             </template>
         </BaseDialog>
     </div>
@@ -17,7 +17,7 @@ import { ref, reactive, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { FormValidationRules } from "@/composables/FormValidationRules.js";
 import { AutoComplete } from "@/models/AutoComplete.js";
-import { addUserIdToTeam } from "@/services/teams.service";
+import { addUserIdToNamespace } from "@/services/namespaces.service";
 import { getUsers } from "@/services/users.service";
 import { GlobalNotificationHandler } from "@/composables/GlobalNotificationHandler";
 import { GlobalOverlayHandler } from "@/composables/GlobalOverlayHandler";
@@ -32,7 +32,7 @@ const props = defineProps({
         type: Boolean,
         required: true
     },
-    team: {
+    namespace: {
         type: Object
     }
 });
@@ -45,9 +45,9 @@ const usersData = ref([]);
 // Form state
 const formFields = reactive({
     userChoiceEmail: new AutoComplete({
-        label: t('administration.teams.formfields.emailList'),
+        label: t('administration.namespaces.formfields.emailList'),
         items: usersData,
-        noDataText: t('administration.teams.formfields.noDataText'),
+        noDataText: t('administration.namespaces.formfields.noDataText'),
         required: true,
         rules: autoCompleteRules
     }),
@@ -60,8 +60,8 @@ const emit = defineEmits(['update:modelValue', 'userAdded']);
 watch(() => props.modelValue, val => isOpen.value = val);
 watch(isOpen, val => {
     emit('update:modelValue', val);
-    if(val && props.team) {
-        filterUsersNotInTeam();
+    if(val && props.namespace) {
+        filterUsersNotInNamespace();
     }
 });
 
@@ -70,30 +70,30 @@ function closeDialog() {
     formFields.userChoiceEmail.value = undefined;
     emit('update:modelValue', false);
 }
-function filterUsersNotInTeam() {
+function filterUsersNotInNamespace() {
     getUsers()
     .then((response) => {
-        const teamUserIds = props.team?.users?.map(user => user.id) || [];
+        const namespaceUserIds = props.namespace?.users?.map(user => user.id) || [];
         usersData.value = response.users
-            .filter(user => !teamUserIds.includes(user.id) && user.role !== 'admin')
-            .map(user => ({ label: user.email, value: user.id }));        
+            .filter(user => !namespaceUserIds.includes(user.id) && user.role !== 'admin')
+            .map(user => ({ label: user.email, value: user.id }));
     })
     .catch((error) => {
         console.error("Error fetching users:", error);
     });
 }
-function addUserToTeam() {
+function addUserToNamespace() {
     if (!isValidForm.value) return;
     showOverlay();
 
     const userId = formFields.userChoiceEmail.value;
-    addUserIdToTeam(props.team.id, { user_id: userId })
+    addUserIdToNamespace(props.namespace.id, { user_id: userId })
     .then(() => {
-        showNotification(t('administration.teams.notifications.addUserSuccess'), 'success');
+        showNotification(t('administration.namespaces.notifications.addUserSuccess'), 'success');
         emit('userAdded');
     })
     .catch((error) => {
-        console.error("Error adding user to team:", error);
+        console.error("Error adding user to namespace:", error);
     })
     .finally(() => {
         closeDialog();

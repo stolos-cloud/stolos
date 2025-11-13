@@ -7,7 +7,7 @@ import CloudProviderPage from '@/pages/operator/CloudProviderPage.vue';
 import SecretsSecurityPage from '@/pages/operator/SecretsSecurityPage.vue';
 import TemplatesPage from '@/pages/operator/TemplatesPage.vue';
 import UsersManagementPage from '@/pages/operator/UsersManagementPage.vue';
-import TeamsManagementPage from '@/pages/operator/TeamsManagementPage.vue';
+import NamespacesManagementPage from '@/pages/operator/NamespacesManagementPage.vue';
 import UIButtonsPage from '@/pages/ui/UIButtonsPage.vue';
 import UIInputsPage from '@/pages/ui/UIInputsPage.vue';
 import UISelectionControlsPage from '@/pages/ui/UISelectionControlsPage.vue';
@@ -143,10 +143,10 @@ const routes = [
                 meta: { title: 'administration.users.title', requiresAuth: true, roles: ['admin'] },
             },
             {
-                path: 'teams',
-                name: 'administration-teams',
-                component: TeamsManagementPage,
-                meta: { title: 'administration.teams.title', requiresAuth: true, roles: ['admin'] },
+                path: 'namespaces',
+                name: 'administration-namespaces',
+                component: NamespacesManagementPage,
+                meta: { title: 'administration.namespaces.title', requiresAuth: true, roles: ['admin', 'developer'] },
             },
         ],
     },
