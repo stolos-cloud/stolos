@@ -26,7 +26,7 @@ const props = defineProps({
         type: Boolean,
         required: true
     },
-    team: {
+    namespace: {
         type: Object
     }
 });

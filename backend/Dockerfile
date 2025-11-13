@@ -3,12 +3,15 @@ WORKDIR /app
 RUN apk add --no-cache git build-base
 COPY backend/go.mod backend/go.sum ./backend/
 COPY bootstrap/go.mod bootstrap/go.sum ./bootstrap/
-RUN cd backend && go mod download
+RUN --mount=type=cache,target=/go/pkg/mod \
+    cd backend && go mod download
 COPY backend/ ./backend/
 COPY bootstrap/ ./bootstrap/
 ARG TARGETOS TARGETARCH
 
-RUN cd backend && CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    cd backend && CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
     go build -trimpath -ldflags="-s -w" -o main ./cmd/server
 
 FROM --platform=$BUILDPLATFORM alpine:3.20 AS tf

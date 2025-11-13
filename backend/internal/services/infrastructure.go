@@ -306,7 +306,6 @@ func (s *InfrastructureService) PublishNodeModuleToRepo(ctx context.Context, pro
 	}
 	defer os.RemoveAll(workDir)
 
-	// Create orchestrator (no env vars needed for template rendering only)
 	orchestrator, err := tfpkg.NewOrchestrator(tfpkg.OrchestratorConfig{
 		WorkDir:         workDir,
 		TemplateBaseDir: "terraform-templates",
