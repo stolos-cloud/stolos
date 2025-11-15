@@ -64,6 +64,7 @@ func CreateDeployment(input types.Stolos) *appsv1.Deployment {
 								{Name: "ADMIN_EMAIL", Value: input.Spec.StolosPlatform.DefaultAdminEmail},
 								{Name: "ADMIN_PASSWORD", Value: input.Spec.StolosPlatform.DefaultAdminPassword},
 								{Name: "DB_SSL_MODE", Value: "disable"},
+								{Name: "TALOS_FOLDER", Value: "/app/talos-configs"},
 								{
 									Name: "DB_PASSWORD",
 									ValueFrom: &corev1.EnvVarSource{
@@ -80,6 +81,14 @@ func CreateDeployment(input types.Stolos) *appsv1.Deployment {
 								{
 									SecretRef: &corev1.SecretEnvSource{
 										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "stolos-backend-secrets",
+										},
+										Optional: utils.PtrTo(true),
+									},
+								},
+								{
+									SecretRef: &corev1.SecretEnvSource{
+										LocalObjectReference: corev1.LocalObjectReference{
 											Name: "stolos-system-config",
 										},
 									},
@@ -87,9 +96,10 @@ func CreateDeployment(input types.Stolos) *appsv1.Deployment {
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
-									Name:      "gitops-workspace",
-									MountPath: "/root/gitops-workspace",
-								}, // TODO add stolos-config-secret mount
+									Name:      "talos-configs",
+									MountPath: "/app/talos-configs",
+									ReadOnly:  true,
+								},
 							},
 							LivenessProbe: &corev1.Probe{
 								ProbeHandler: corev1.ProbeHandler{
@@ -125,9 +135,12 @@ func CreateDeployment(input types.Stolos) *appsv1.Deployment {
 					},
 					Volumes: []corev1.Volume{
 						{
-							Name: "gitops-workspace",
+							Name: "talos-configs",
 							VolumeSource: corev1.VolumeSource{
-								EmptyDir: &corev1.EmptyDirVolumeSource{},
+								Secret: &corev1.SecretVolumeSource{
+									SecretName: "stolos-talos-config",
+									Optional:   utils.PtrTo(false),
+								},
 							},
 						},
 					},
@@ -298,4 +311,36 @@ func CreateDatabase(input types.Stolos) *cnpg.Cluster {
 			},
 		},
 	}
+}
+
+func CreateBackendSecrets(input types.Stolos) *corev1.Secret {
+	secretName := "stolos-backend-secrets"
+	existingSecret, err := utils.GetExistingSecret(secretName, input.Spec.StolosPlatform.Namespace)
+
+	if err == nil && existingSecret != nil {
+		if _, ok := existingSecret.Data["JWT_SECRET_KEY"]; ok {
+			return existingSecret
+		}
+	}
+
+	// Generate new JWT secret since it doesn't exist
+	jwtSecret := utils.GenerateRandomString(32)
+
+	secret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      secretName,
+			Namespace: input.Spec.StolosPlatform.Namespace,
+			Labels: map[string]string{
+				"app": "stolos-backend",
+			},
+		},
+		StringData: map[string]string{
+			"JWT_SECRET_KEY": jwtSecret,
+		},
+	}
+
+	gvks, _, _ := scheme.Scheme.ObjectKinds(&secret)
+	secret.SetGroupVersionKind(gvks[0])
+
+	return &secret
 }
