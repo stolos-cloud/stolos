@@ -29,15 +29,19 @@ func NewScaffoldsHandler(k8s *k8s.K8sClient, gitOps *gitops.GitOpsService, db *g
 // @Description returns a list of available template scaffolds in the GitOps repository
 // @Tags scaffolds
 // @Produce json
-// @Success 200 {object} []*github.RepositoryContent
-// @Failure 500 {object} string "error"
+// @Success 200 {array} string
+// @Failure 500 {object} map[string]string
 // @Router /scaffolds [get]
 // @Security BearerAuth
 func (h *ScaffoldsHandler) GetScaffoldsList(c *gin.Context) {
 
-	bob, _ := h.gitOps.GetTemplateScaffolds()
+	scaffolds, err := h.gitOps.GetTemplateScaffolds()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 
-	c.JSON(http.StatusOK, bob)
+	c.JSON(http.StatusOK, scaffolds)
 }
 
 // Future: Adding, removing, etc of Templates Scaffolds

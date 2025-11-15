@@ -176,7 +176,7 @@ func (s *GitOpsService) GetGitHubClient() (*githubpkg.Client, error) {
 	)
 }
 
-func (s *GitOpsService) GetLatestSHA() (string, error) {
+func (s *GitOpsService) GetLatestCommitSHA() (string, error) {
 	ctx := context.Background()
 	ghClient, err := s.GetGitHubClient()
 	config, err := s.GetConfigOrDefault()
@@ -193,7 +193,7 @@ func (s *GitOpsService) GetLatestSHA() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to get base commit: %w", err)
 	}
-	return baseCommit.GetTree().GetSHA(), nil
+	return baseCommit.GetSHA(), nil
 }
 
 const (
@@ -203,14 +203,35 @@ const (
 	TemplateDeployments string = "apps"
 )
 
-func (s *GitOpsService) GetTemplateScaffolds() ([]*github.RepositoryContent, error) {
+func (s *GitOpsService) GetTemplateScaffolds() ([]string, error) {
 	ctx := context.Background()
-	ghClient, _ := s.GetGitHubClient()
-	config, _ := s.GetConfigOrDefault()
+	ghClient, err := s.GetGitHubClient()
+	if err != nil {
+		return nil, fmt.Errorf("get github client: %w", err)
+	}
+
+	config, err := s.GetConfigOrDefault()
+	if err != nil {
+		return nil, fmt.Errorf("get gitops config: %w", err)
+	}
 
 	_, directoryContent, _, err := ghClient.Repositories.GetContents(ctx, config.RepoOwner, config.RepoName, TemplateScaffold, nil)
+	if err != nil {
+		return nil, fmt.Errorf("fetch scaffold contents: %w", err)
+	}
 
-	return directoryContent, err
+	var directories []string
+	for _, content := range directoryContent {
+		if content == nil {
+			continue
+		}
+
+		if strings.EqualFold(content.GetType(), "dir") {
+			directories = append(directories, content.GetName())
+		}
+	}
+
+	return directories, nil
 }
 
 // GetDefaultBranchHeadRef returns the reference object for the default branch of a repo.
@@ -245,7 +266,7 @@ func (s *GitOpsService) DuplicateDirectory(srcPrefix, dstPrefix string, overwrit
 	gh, _ := s.GetGitHubClient()
 
 	ref, _ := GetDefaultBranchHeadRef(ctx, gh.Client, owner, repo)
-	headSHA, _ := s.GetLatestSHA()
+	headSHA, _ := s.GetLatestCommitSHA()
 
 	// 1. Get recursive git tree
 	tree, _, err := gh.Git.GetTree(ctx, owner, repo, headSHA, true /*recursive*/)

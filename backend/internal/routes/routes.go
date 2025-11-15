@@ -98,9 +98,9 @@ func setupNamespaceRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
 		namespaces.GET("", h.NamespaceHandlers().GetNamespaces)
 		namespaces.POST("", h.NamespaceHandlers().CreateNamespace) // Developers can create namespaces
 		namespaces.GET("/:id", h.NamespaceHandlers().GetNamespace)
-		namespaces.POST("/:id/users", h.NamespaceHandlers().AddUserToNamespace) // Namespace members can add users
+		namespaces.POST("/:id/users", h.NamespaceHandlers().AddUserToNamespace)                 // Namespace members can add users
 		namespaces.DELETE("/:id/users/:user_id", h.NamespaceHandlers().RemoveUserFromNamespace) // Namespace members can remove users
-		namespaces.DELETE("/:id", h.NamespaceHandlers().DeleteNamespace) // Developers can delete their own namespaces
+		namespaces.DELETE("/:id", h.NamespaceHandlers().DeleteNamespace)                        // Developers can delete their own namespaces
 	}
 }
 
@@ -157,6 +157,7 @@ func setupTemplateRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
 		templateRoutes.GET("/:name", h.TemplatesHandlers().GetTemplate)
 		templateRoutes.POST("/:id/validate/:instance_name", h.TemplatesHandlers().ValidateTemplate)
 		templateRoutes.POST("/:id/apply/:instance_name", h.TemplatesHandlers().ApplyTemplate)
+		templateRoutes.POST("/create", h.TemplatesHandlers().CreateTemplateFromScaffold)
 	}
 }
 
