@@ -63,10 +63,13 @@
                     "title": "Détails du noeud",
                     "subheading": "Informations générales",
                     "nodeInfo": {
+                        "id": "ID du noeud",
                         "ipAddress": "Adresse IP",
                         "macAddress": "Adresse MAC",
-                        "instanceId": "ID d'instance",
+                        "instanceId": "ID d'instance Cloud",
                         "architecture": "Architecture",
+                        "labels": "Étiquettes",
+                        "noLabels": "Aucune étiquette",
                         "createdAt": "Créé le",
                         "updatedAt": "Mis à jour le"
                     }
@@ -262,7 +265,7 @@
     "administration": {
         "title": "Administration",
         "users": {
-            "title": "Gestion des utilisateurs",
+            "title": "Utilisateurs",
             "subheading": "Gérer les utilisateurs et leurs rôles",
             "table": {
                 "title": "Utilisateurs",
@@ -307,7 +310,7 @@
             }
         },
         "namespaces": {
-            "title": "Gestion des namespaces",
+            "title": "Namespaces",
             "subheading": "Gérer les namespaces et leurs membres",
             "table": {
                 "title": "Namespaces",
