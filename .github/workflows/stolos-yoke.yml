@@ -37,26 +37,26 @@ jobs:
 
       - name: Build flight
         run: |
-            # Build flight 
-            echo "Building flight "
-            go mod download
-            GOOS=wasip1 GOARCH=wasm go build -o flight.wasm ./cmd/main/
+          # Build flight 
+          echo "Building flight "
+          go mod download
+          GOOS=wasip1 GOARCH=wasm go build -o flight.wasm ./cmd/main/
 
       - name: Publish flight
         run: |
-            # Push wasm to oci registry
-            IMAGE="ghcr.io/stolos-cloud/stolosplatform-yoke:$GITHUB_SHA"
+          # Push wasm to oci registry
+          IMAGE="ghcr.io/stolos-cloud/stolosplatform-yoke:$GITHUB_SHA"
 
-            echo "Pushing ${IMAGE} to GHCR..."
-            ./yoke stow flight.wasm "oci://${IMAGE}"
+          echo "Pushing ${IMAGE} to GHCR..."
+          ./yoke stow flight.wasm "oci://${IMAGE}"
+
       - name: Publish airway
         run: |
-            # Generate airway.yml
-            echo "Generating airway.yml for ${IMAGE}..."
-            go run -tags airway ./cmd/main/ -flight-url "oci://$IMAGE" | yq -P > airway.yml
-            git add airway.yml || true
-            cd -
-          done
+          # Generate airway.yml
+          echo "Generating airway.yml for ${IMAGE}..."
+          go run -tags airway ./cmd/main/ -flight-url "oci://$IMAGE" | yq -P > airway.yml
+          git add airway.yml || true
+          cd -
         env:
           CHANGED: ${{ steps.changes.outputs.changed }}
 
