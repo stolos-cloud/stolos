@@ -79,7 +79,8 @@ const developerMenu = [
     { title: 'scaling.title', icon: 'mdi-trending-up', route: '/scaling' },
     { title: 'workflows.title', icon: 'mdi-file-tree', route: '/workflows' },
     { title: 'functionsVms.title',  icon: 'mdi-desktop-classic', route: '/functions-vms' },
-    { title: 'secrets.title',  icon: 'mdi-key', route: '/secrets' }
+    { title: 'secrets.title',  icon: 'mdi-key', route: '/secrets' },
+    { title: 'administration.namespaces.title', icon: 'mdi-folder-multiple', route: '/administration/namespaces' }
 ];
 
 const operatorMenu = [
@@ -95,7 +96,7 @@ const operatorMenu = [
   { title: 'secretsSecurity.title',  icon: 'mdi-shield', route: '/secrets-security' },
   { title: 'administration.title', icon: 'mdi-account-supervisor-circle', children: [
       { title: 'administration.users.title', route: '/administration/users' },
-      { title: 'administration.teams.title', route: '/administration/teams' }
+      { title: 'administration.namespaces.title', route: '/administration/namespaces' }
     ]
   }
 ];
@@ -116,7 +117,7 @@ const drawerModel = computed({
 
 </script>
 
-<style scoped> 
+<style scoped>
 .active-nav {
   border-left: 4px solid #f97316;
   font-weight: 600;

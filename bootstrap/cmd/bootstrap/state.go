@@ -20,6 +20,7 @@ type SaveState struct {
 	MachinesDisks          talos.MachinesDisks             `json:"MachinesDisks"`
 	GitHubApp              github.AppManifest              `json:"GitHubApp"`
 	GitHubAppInstallResult github.AppInstallCallbackResult `json:"GitHubAppInstallResult"`
+	GitHubRepoCreated      bool                            `json:"GitHubRepoCreated"`
 }
 
 var ConfigBundle *bundle.Bundle

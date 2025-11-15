@@ -20,8 +20,8 @@ func RegisterHandlers() []any {
 		gontainer.NewFactory(func(db *gorm.DB, jwt *middleware.JWTService) *AuthHandlers {
 			return NewAuthHandlers(db, jwt)
 		}),
-		gontainer.NewFactory(func(db *gorm.DB) *TeamHandlers {
-			return NewTeamHandlers(db)
+		gontainer.NewFactory(func(db *gorm.DB, gitopsService *gitops.GitOpsService) *NamespaceHandlers {
+			return NewNamespaceHandlers(db, gitopsService)
 		}),
 		gontainer.NewFactory(func(db *gorm.DB) *UserHandlers {
 			return NewUserHandlers(db)
@@ -63,7 +63,7 @@ func RegisterHandlers() []any {
 		// Handler aggregator
 		gontainer.NewFactory(func(
 			authHandlers *AuthHandlers,
-			teamHandlers *TeamHandlers,
+			namespaceHandlers *NamespaceHandlers,
 			userHandlers *UserHandlers,
 			isoHandlers *ISOHandlers,
 			nodeHandlers *NodeHandlers,
@@ -76,7 +76,7 @@ func RegisterHandlers() []any {
 		) *Handlers {
 			return NewHandlers(
 				authHandlers,
-				teamHandlers,
+				namespaceHandlers,
 				userHandlers,
 				isoHandlers,
 				nodeHandlers,

@@ -1,15 +1,15 @@
 <template>
-    <div class="view-details-team-dialog">
-        <BaseDialog v-model="isOpen" :title="$t('administration.teams.dialogs.viewDetailsTeam.title')" closable>
+    <div class="view-details-namespace-dialog">
+        <BaseDialog v-model="isOpen" :title="$t('administration.namespaces.dialogs.viewDetailsNamespace.title')" closable>
             <div class="d-flex align-center justify-center">
-                <BaseTitle :level="3" :title="$t('administration.teams.dialogs.viewDetailsTeam.usersTitle')" />
+                <BaseTitle :level="3" :title="$t('administration.namespaces.dialogs.viewDetailsNamespace.usersTitle')" />
                 <v-spacer></v-spacer>
-                <span>{{ $t('administration.teams.dialogs.viewDetailsTeam.totalMembersLabel', { count: usersTeam.length }) }}</span>
+                <span>{{ $t('administration.namespaces.dialogs.viewDetailsNamespace.totalMembersLabel', { count: usersNamespace.length }) }}</span>
             </div>
             <v-virtual-scroll
-                :items="usersTeam"
-                max-height="200"
-                v-if="usersTeam.length > 0"
+                :items="usersNamespace"
+                height="200"
+                v-if="usersNamespace.length > 0"
             >
                 <template v-slot:default="{ item }">
                     <v-list lines="two">
@@ -31,10 +31,10 @@
                                 </div>
                             </template>
                             <template v-slot:append>
-                                <v-btn 
-                                    v-tooltip="{ text: $t('administration.teams.buttons.deleteUserFromTeam') }" 
-                                    icon="mdi-delete" 
-                                    size="small" variant="text" 
+                                <v-btn
+                                    v-tooltip="{ text: $t('administration.namespaces.buttons.deleteUserFromNamespace') }"
+                                    icon="mdi-delete"
+                                    size="small" variant="text"
                                     @click="showConfirmDelete(item)"
                                 />
                             </template>
@@ -43,7 +43,7 @@
                 </template>
             </v-virtual-scroll>
             <div v-else class="no-members">
-                <p>{{ $t('administration.teams.dialogs.viewDetailsTeam.messages.noMembers') }}</p>
+                <p>{{ $t('administration.namespaces.dialogs.viewDetailsNamespace.messages.noMembers') }}</p>
             </div>
         </BaseDialog>
         <BaseConfirmDialog ref="confirmDialog" />
@@ -53,7 +53,7 @@
 <script setup>
 import { ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { getTeamDetails, deleteUserFromTeamByUserId } from "@/services/teams.service";
+import { getNamespaceDetails, deleteUserFromNamespaceByUserId } from "@/services/namespaces.service";
 import { GlobalNotificationHandler } from "@/composables/GlobalNotificationHandler";
 import { GlobalOverlayHandler } from "@/composables/GlobalOverlayHandler";
 
@@ -66,60 +66,60 @@ const props = defineProps({
         type: Boolean,
         required: true
     },
-    team: {
+    namespace: {
         type: Object
     }
 });
 
 // State
 const isOpen = ref(props.modelValue);
-const usersTeam = ref([]);
+const usersNamespace = ref([]);
 const confirmDialog = ref(null);
 const copiedItem = ref(null);
 
 // Emits
-const emit = defineEmits(['update:modelValue', 'userDeletedFromTeam']);
+const emit = defineEmits(['update:modelValue', 'userDeletedFromNamespace']);
 
 // Watchers
 watch(() => props.modelValue, val => isOpen.value = val);
 watch(isOpen, val => {
     emit('update:modelValue', val);
-    if(val && props.team) {
-        getTeamDetailsFromTeamId(props.team.id);
+    if(val && props.namespace) {
+        getNamespaceDetailsFromNamespaceId(props.namespace.id);
     }
 });
 
 // Methods
-function getTeamDetailsFromTeamId(teamId) {
-    getTeamDetails(teamId)
-        .then((teamDetails) => {
-            const response = teamDetails;
-            usersTeam.value = response.team?.users || [];            
+function getNamespaceDetailsFromNamespaceId(namespaceId) {
+    getNamespaceDetails(namespaceId)
+        .then((namespaceDetails) => {
+            const response = namespaceDetails;
+            usersNamespace.value = response.namespace?.users || [];
         })
         .catch((error) => {
-            console.error("Error fetching team details:", error);
+            console.error("Error fetching namespace details:", error);
         });
 }
 function showConfirmDelete(user) {
     confirmDialog.value.open({
-        title: t('administration.teams.dialogs.deleteUserFromTeam.title'),
-        message: t('administration.teams.dialogs.deleteUserFromTeam.confirmationText', { userEmail: user.email }),
+        title: t('administration.namespaces.dialogs.deleteUserFromNamespace.title'),
+        message: t('administration.namespaces.dialogs.deleteUserFromNamespace.confirmationText', { userEmail: user.email }),
         confirmText: t('actionButtons.confirm'),
         onConfirm: () => {
-            deleteUserFromTeam(user);
+            deleteUserFromNamespace(user);
         }
     })
 }
-function deleteUserFromTeam(user) {
+function deleteUserFromNamespace(user) {
     showOverlay();
 
-    deleteUserFromTeamByUserId(props.team.id, user.id)
+    deleteUserFromNamespaceByUserId(props.namespace.id, user.id)
         .then(() => {
-            showNotification(t('administration.teams.notifications.deleteUserSuccess'), 'success');
-            emit('userDeletedFromTeam');
+            showNotification(t('administration.namespaces.notifications.deleteUserSuccess'), 'success');
+            emit('userDeletedFromNamespace');
         })
         .catch((error) => {
-            console.error("Error deleting user from team:", error);
+            console.error("Error deleting user from namespace:", error);
         })
         .finally(() => {
             hideOverlay();

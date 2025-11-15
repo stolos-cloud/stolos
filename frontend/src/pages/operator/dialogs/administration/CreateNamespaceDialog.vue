@@ -1,12 +1,12 @@
 <template>
-    <div class="create-team-dialog">
-        <BaseDialog v-model="isOpen" :title="$t('administration.teams.dialogs.createTeam.title')" closable>
+    <div class="create-namespace-dialog">
+        <BaseDialog v-model="isOpen" :title="$t('administration.namespaces.dialogs.createNamespace.title')" closable>
             <v-form v-model="isValidForm">
-                <BaseTextfield :Textfield="formFields.teamName" />
+                <BaseTextfield :Textfield="formFields.namespaceName" />
             </v-form>
             <template #actions>
                 <BaseButton variant="outlined" :text="$t('actionButtons.cancel')" @click="closeDialog" />
-                <BaseButton  :text="$t('actionButtons.create')" :disabled="!isValidForm" @click="createTeam" />
+                <BaseButton  :text="$t('actionButtons.create')" :disabled="!isValidForm" @click="createNamespace" />
             </template>
         </BaseDialog>
     </div>
@@ -17,7 +17,7 @@ import { ref, reactive, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { FormValidationRules } from "@/composables/FormValidationRules.js";
 import { TextField } from "@/models/TextField.js";
-import { createNewTeam } from "@/services/teams.service";
+import { createNewNamespace } from "@/services/namespaces.service";
 import { GlobalNotificationHandler } from "@/composables/GlobalNotificationHandler";
 import { GlobalOverlayHandler } from "@/composables/GlobalOverlayHandler";
 
@@ -39,8 +39,8 @@ const isOpen = ref(props.modelValue);
 
 // Form state
 const formFields = reactive({
-    teamName: new TextField({
-        label: t('administration.teams.formfields.teamName'),
+    namespaceName: new TextField({
+        label: t('administration.namespaces.formfields.namespaceName'),
         type: "text",
         required: true,
         rules: textfieldRules
@@ -48,7 +48,7 @@ const formFields = reactive({
 });
 
 // Emits
-const emit = defineEmits(['update:modelValue', 'teamCreated']);
+const emit = defineEmits(['update:modelValue', 'namespaceCreated']);
 
 // Watchers
 watch(() => props.modelValue, val => isOpen.value = val);
@@ -56,21 +56,21 @@ watch(isOpen, val => emit('update:modelValue', val));
 
 // Methods
 function closeDialog() {
-    formFields.teamName.value = undefined;
+    formFields.namespaceName.value = undefined;
     emit('update:modelValue', false);
 }
-function createTeam() {
+function createNamespace() {
     if(!isValidForm.value) return;
     showOverlay();
 
-    const teamName = formFields.teamName.value;
-    createNewTeam({ name: teamName })
+    const namespaceName = formFields.namespaceName.value;
+    createNewNamespace({ name: namespaceName })
         .then(() => {
-            showNotification(t('administration.teams.notifications.createTeamSuccess'), 'success');
-            emit('teamCreated');
+            showNotification(t('administration.namespaces.notifications.createNamespaceSuccess'), 'success');
+            emit('namespaceCreated');
         })
         .catch((error) => {
-            console.error("Error creating team:", error);
+            console.error("Error creating namespace:", error);
         })
         .finally(() => {
             closeDialog();

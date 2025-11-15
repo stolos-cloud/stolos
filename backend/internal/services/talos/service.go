@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/google/uuid"
 	factoryClient "github.com/siderolabs/image-factory/pkg/client"
@@ -186,10 +187,6 @@ func (s *TalosService) GetMachineryClient(nodeIP string) (*machineryClient.Clien
 
 // GetReachableMachineryClient iterates over nodes to find the first reachable Talos machinery client.
 func (s *TalosService) GetReachableMachineryClient(ctx context.Context) (*machineryClient.Client, *models.Node, error) {
-	if ctx == nil {
-		ctx = context.Background()
-	}
-
 	var nodes []models.Node
 	if err := s.db.Where("ip_address <> ''").Find(&nodes).Error; err != nil {
 		return nil, nil, fmt.Errorf("failed to load nodes: %w", err)
@@ -455,8 +452,27 @@ func (s *TalosService) MigrateTalosConfigFromFiles() error {
 }
 
 // CreateMachineConfigPatch creates a machine config patch for a node.
-// It applies hostname, disk, and network settings (including static subnets for hybrid cloud).
-func CreateMachineConfigPatch(hostname, installDisk string) (configpatcher.Patch, error) {
+// It applies hostname, disk, network settings, and node labels (including static subnets for hybrid cloud).
+func CreateMachineConfigPatch(hostname, installDisk string, labels []string) (configpatcher.Patch, error) {
+	kubeletConfig := &v1alpha1.KubeletConfig{
+		KubeletNodeIP: &v1alpha1.KubeletNodeIPConfig{
+			// Use static private network subnets for node IP selection
+			KubeletNodeIPValidSubnets: []string{
+				"10.0.0.0/8",     // RFC 1918 Class A private networks
+				"172.16.0.0/12",  // RFC 1918 Class B private networks
+				"192.168.0.0/16", // RFC 1918 Class C private networks
+				"fdd6::/16",      // KubeSpan IPv6 overlay network
+			},
+		},
+	}
+
+	// Add node labels if provided
+	if len(labels) > 0 {
+		kubeletConfig.KubeletExtraArgs = map[string]string{
+			"node-labels": strings.Join(labels, ","),
+		}
+	}
+
 	cfg := &v1alpha1.Config{
 		ConfigVersion: "v1alpha1",
 		MachineConfig: &v1alpha1.MachineConfig{
@@ -468,17 +484,7 @@ func CreateMachineConfigPatch(hostname, installDisk string) (configpatcher.Patch
 				// Explicitly set diskSelector to nil to remove hardware-specific busPath
 				InstallDiskSelector: nil,
 			},
-			MachineKubelet: &v1alpha1.KubeletConfig{
-				KubeletNodeIP: &v1alpha1.KubeletNodeIPConfig{
-					// Use static private network subnets for node IP selection
-					KubeletNodeIPValidSubnets: []string{
-						"10.0.0.0/8",     // RFC 1918 Class A private networks
-						"172.16.0.0/12",  // RFC 1918 Class B private networks
-						"192.168.0.0/16", // RFC 1918 Class C private networks
-						"fdd6::/16",      // KubeSpan IPv6 overlay network
-					},
-				},
-			},
+			MachineKubelet: kubeletConfig,
 		},
 	}
 

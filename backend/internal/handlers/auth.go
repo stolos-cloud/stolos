@@ -59,7 +59,7 @@ func (h *AuthHandlers) Login(c *gin.Context) {
 	}
 
 	var user models.User
-	if err := h.db.Preload("Teams").First(&user, "email = ?", strings.ToLower(req.Email)).Error; err != nil {
+	if err := h.db.Preload("Namespaces").First(&user, "email = ?", strings.ToLower(req.Email)).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
 			return
@@ -105,8 +105,8 @@ func (h *AuthHandlers) RefreshToken(c *gin.Context) {
 		return
 	}
 
-	// Reload user with teams to get latest team memberships
-	h.db.Preload("Teams").First(user, user.ID)
+	// Reload user with Namespaces to get latest namespace memberships
+	h.db.Preload("Namespaces").First(user, user.ID)
 
 	token, err := h.jwtService.GenerateToken(user)
 	if err != nil {
