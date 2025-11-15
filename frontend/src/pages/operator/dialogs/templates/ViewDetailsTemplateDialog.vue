@@ -102,9 +102,9 @@ const isOpen = ref(props.modelValue);
 // Emits
 const emit = defineEmits(['update:modelValue']);
 const templates = ref([
-    { id: 'template-1', email: 'user1@example.com' },
-    { id: 'template-2', email: 'user2@example.com' },
-    { id: 'template-3', email: 'user3@example.com' }
+    { id: 'template-1', email: 'app1' },
+    { id: 'template-2', email: 'app2' },
+    { id: 'template-3', email: 'app3' }
 ]);
 const yamlContent = ref({
     "name": "example-template",

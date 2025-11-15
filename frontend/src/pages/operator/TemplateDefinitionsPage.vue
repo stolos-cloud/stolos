@@ -68,16 +68,18 @@ function showViewDetailsTemplateDialog(template) {
     dialogViewDetailsTemplate.value = true;
 }
 function fetchTemplates() {
-    getTeams()
-        .then(response => {
-        templates.value = response.teams
-            .filter(team => team.name !== "administrators")
-            .map(team => ({
-                ...team,
-                numberOfUsers: team.users?.length || 0
-            }));
-    }).catch(error => {
-        console.error("Error fetching templates:", error);
-    });
+    templates.value = [{
+        name: "name1",
+        version: "1.0",
+        metadata: "",
+        deployedApps: "3"
+    },
+    {
+        name: "name2",
+        version: "1.0",
+        metadata: "",
+        deployedApps: "2"
+    }];
+
 }
 </script>
