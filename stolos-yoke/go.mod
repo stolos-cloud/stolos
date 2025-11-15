@@ -1,4 +1,4 @@
-module github.com/stolos-cloud/stolos/stolos-yoke/flight
+module github.com/stolos-cloud/stolos/stolos-yoke
 
 go 1.25.0
 

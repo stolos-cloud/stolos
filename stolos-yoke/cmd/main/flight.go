@@ -5,43 +5,55 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
+	"time"
 
-	"github.com/invopop/jsonschema"
-	"github.com/stolos-cloud/stolos/stolos-yoke/flight/pkg/argocd"
-	cert_manager "github.com/stolos-cloud/stolos/stolos-yoke/flight/pkg/cert-manager"
-	"github.com/stolos-cloud/stolos/stolos-yoke/flight/pkg/cnpg"
-	"github.com/stolos-cloud/stolos/stolos-yoke/flight/pkg/contour"
-	"github.com/stolos-cloud/stolos/stolos-yoke/flight/pkg/metallb"
-	"github.com/stolos-cloud/stolos/stolos-yoke/flight/pkg/stolos"
-	types "github.com/stolos-cloud/stolos/stolos-yoke/flight/pkg/types"
+	"github.com/stolos-cloud/stolos/stolos-yoke/pkg/argocd"
+	cert_manager "github.com/stolos-cloud/stolos/stolos-yoke/pkg/cert-manager"
+	"github.com/stolos-cloud/stolos/stolos-yoke/pkg/cnpg"
+	"github.com/stolos-cloud/stolos/stolos-yoke/pkg/contour"
+	"github.com/stolos-cloud/stolos/stolos-yoke/pkg/metallb"
+	"github.com/stolos-cloud/stolos/stolos-yoke/pkg/stolos"
+	types "github.com/stolos-cloud/stolos/stolos-yoke/pkg/types"
+	stolos_yoke "github.com/stolos-cloud/stolos/yoke-base/pkg/stolos-yoke"
+	airway "github.com/yokecd/yoke/pkg/apis/airway/v1alpha1"
 	"github.com/yokecd/yoke/pkg/flight"
 	k8s "github.com/yokecd/yoke/pkg/flight/wasi/k8s"
+	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/utils/ptr"
 )
 
 func main() {
-	if runtime.GOARCH != "wasm" {
-		schema := jsonschema.Reflect(&types.Stolos{})
-		schemaBytes, _ := schema.MarshalJSON()
-		_ = os.WriteFile("schema.json", schemaBytes, 0644)
-		os.Exit(0)
+
+	airway := stolos_yoke.AirwayInputs{
+		NamePlural:             "stolosplatforms",
+		NameSingular:           "stolosplatform",
+		Kind:                   "StolosPlatform",
+		Version:                "v1alpha",
+		DisplayName:            "Stolos Platform",
+		Timeout:                ptr.To(1 * time.Minute),
+		AirwayMode:             ptr.To(airway.AirwayModeSubscription),
+		ClusterAccess:          true,
+		ResourceAccessMatchers: []string{"*"},
+		FixDriftInterval:       ptr.To(5 * time.Minute),
+		CrossNamespace:         true,
+		Scope:                  ptr.To(apiextv1.ClusterScoped),
 	}
-	if err := run(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-	}
+
+	stolos_yoke.Run[types.Stolos](airway, run)
+
 }
 
-func run() error {
+func run() ([]byte, error) {
 
 	var input types.Stolos
 	err := yaml.NewYAMLToJSONDecoder(os.Stdin).Decode(&input)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	argoApp := &types.Application{}
@@ -92,13 +104,11 @@ func run() error {
 				existingCrds[res.GroupVersionKind()] = true
 			} else {
 				fmt.Fprint(os.Stderr, err.Error())
-				os.Exit(1)
 			}
-
 		}
 	}
 
-	return json.NewEncoder(os.Stdout).Encode(resultResources)
+	return json.Marshal(resultResources)
 }
 
 func selfArgoApp(input types.Stolos) *types.Application {

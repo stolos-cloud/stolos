@@ -19,11 +19,14 @@ type AirwayInputs struct {
 	DisplayName            string
 	Kind                   string
 	Version                string
-	AirwayMode             *airways.AirwayMode // optional
-	ClusterAccess          bool                // optional
-	ResourceAccessMatchers []string            // optional
-	Timeout                *time.Duration      // optional
-	FixDriftInterval       *time.Duration      // optional
+	AirwayMode             *airways.AirwayMode     // optional
+	ClusterAccess          bool                    // optional
+	ResourceAccessMatchers []string                // optional
+	Timeout                *time.Duration          // optional
+	FixDriftInterval       *time.Duration          // optional
+	CrossNamespace         bool                    // optional
+	Scope                  *apiextv1.ResourceScope // optional, defaults to NamespaceScoped
+
 }
 
 func BuildAirwayFor[crdType any](inputs AirwayInputs, flightUrl string) ([]byte, error) {
@@ -46,6 +49,10 @@ func BuildAirwayFor[crdType any](inputs AirwayInputs, flightUrl string) ([]byte,
 
 	if inputs.FixDriftInterval == nil {
 		inputs.FixDriftInterval = ptr.To[time.Duration](5 * time.Minute)
+	}
+
+	if inputs.Scope == nil {
+		inputs.Scope = ptr.To(apiextv1.NamespaceScoped)
 	}
 
 	return json.Marshal(airways.Airway{

@@ -1,8 +1,11 @@
 go 1.25.0
 
 use (
-	stolos-yoke/flight
+	stolos-yoke
 	backend
 	bootstrap
-	stolos-yoke/airway
+	stolos-yoke-test/airway
+	stolos-yoke-test/flight
+	yoke-base
+
 )
