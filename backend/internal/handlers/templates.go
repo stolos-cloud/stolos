@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stolos-cloud/stolos/backend/internal/middleware"
 	"github.com/stolos-cloud/stolos/backend/internal/models"
+	"github.com/stolos-cloud/stolos/backend/internal/services/gitops"
 	"github.com/stolos-cloud/stolos/backend/internal/services/k8s"
 	"github.com/stolos-cloud/stolos/backend/internal/services/templates"
 	"gorm.io/gorm"
@@ -19,8 +20,9 @@ import (
 const templateGroup = "stolos.cloud"
 
 type TemplatesHandler struct {
-	k8sClient *k8s.K8sClient
-	db        *gorm.DB
+	k8sClient     *k8s.K8sClient
+	gitOpsService *gitops.GitOpsService
+	db            *gorm.DB
 }
 
 type DetailTemplate struct {
@@ -29,10 +31,11 @@ type DetailTemplate struct {
 	DefaultYaml string               `json:"defaultYaml"`
 }
 
-func NewTemplatesHandler(k8s *k8s.K8sClient, db *gorm.DB) *TemplatesHandler {
+func NewTemplatesHandler(k8s *k8s.K8sClient, gitOpsService *gitops.GitOpsService, db *gorm.DB) *TemplatesHandler {
 	return &TemplatesHandler{
-		k8sClient: k8s,
-		db:        db,
+		k8sClient:     k8s,
+		gitOpsService: gitOpsService,
+		db:            db,
 	}
 }
 
@@ -191,4 +194,40 @@ func (h *TemplatesHandler) doApplyAction(c *gin.Context, onlyDryRun bool) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"status": "ok", "cr": cr})
+}
+
+// CreateTemplateFromScaffold godoc
+// @Summary Create a template directory based on pre-existing scaffold directory
+// @Description Creates a new template directory by copying files from the chosen scaffold directory.
+// @Tags templates
+// @Param scaffoldName query string true "name of the scaffold directory. see scaffolds API to list available options."
+// @Param templateName query string true "name of the template directory to create."
+// @Produce json
+// @Success 200 {object} string "done"
+// @Failure 500 {object} string "error"
+// @Router /templates/create [post]
+// @Security BearerAuth
+func (h *TemplatesHandler) CreateTemplateFromScaffold(c *gin.Context) {
+
+	scaffoldName := c.Query("scaffoldName")
+	templateName := c.Query("templateName")
+
+	scaffolds, err := h.gitOpsService.GetTemplateScaffolds()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list scaffolds"})
+		return
+	}
+
+	if !slices.Contains(scaffolds, scaffoldName) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "scaffold does not exist"})
+		return
+	}
+
+	err = h.gitOpsService.DuplicateDirectory(fmt.Sprintf("scaffolds/%s", scaffoldName), fmt.Sprintf("templates/%s", templateName), false)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, "done")
 }

@@ -15,6 +15,7 @@ type Handlers struct {
 	gcpHandlers       *GCPHandlers
 	eventHandlers     *EventHandlers
 	templatesHandlers *TemplatesHandler
+	scaffoldsHandlers *ScaffoldsHandler
 	jwtService        *middleware.JWTService
 	db                *gorm.DB
 	wsManager         *wsservices.Manager
@@ -29,6 +30,7 @@ func NewHandlers(
 	gcpHandlers *GCPHandlers,
 	eventHandlers *EventHandlers,
 	templatesHandlers *TemplatesHandler,
+	scaffoldsHandlers *ScaffoldsHandler,
 	jwtService *middleware.JWTService,
 	db *gorm.DB,
 	wsManager *wsservices.Manager,
@@ -42,6 +44,7 @@ func NewHandlers(
 		gcpHandlers:       gcpHandlers,
 		eventHandlers:     eventHandlers,
 		templatesHandlers: templatesHandlers,
+		scaffoldsHandlers: scaffoldsHandlers,
 		jwtService:        jwtService,
 		db:                db,
 		wsManager:         wsManager,
@@ -85,3 +88,5 @@ func (h *Handlers) DB() *gorm.DB {
 }
 
 func (h *Handlers) TemplatesHandlers() *TemplatesHandler { return h.templatesHandlers }
+
+func (h *Handlers) ScaffoldsHandlers() *ScaffoldsHandler { return h.scaffoldsHandlers }
