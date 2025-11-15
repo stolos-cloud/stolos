@@ -6,14 +6,14 @@
     "userPreferences": {
         "myAccount": "My account",
         "language": "Language",
-        "languages": { 
+        "languages": {
             "en": "English",
             "fr": "French"
         },
         "theme": {
             "dark": "Dark mode",
             "light": "Light mode"
-        }, 
+        },
         "logout": "Logout"
     },
     "login": {
@@ -63,16 +63,19 @@
                     "title": "Node details",
                     "subheading": "General informations",
                     "nodeInfo": {
+                        "id": "Node ID",
                         "ipAddress": "IP address",
                         "macAddress": "MAC address",
-                        "instanceId": "Instance ID",
+                        "instanceId": "Cloud Instance ID",
                         "architecture": "Architecture",
+                        "labels": "Labels",
+                        "noLabels": "No labels",
                         "createdAt": "Created at",
                         "updatedAt": "Updated at"
                     }
                 }
             }
-        }            
+        }
     },
     "applications": {
         "title": "Applications"
@@ -114,7 +117,7 @@
                     "role": "Role",
                     "labels": "Labels"
                 },
-                "footerSpinnerMsg": "New nodes will appear automatically..." 
+                "footerSpinnerMsg": "New nodes will appear automatically..."
             },
             "buttons": {
                 "addLabel": "Add label",
@@ -229,7 +232,7 @@
             "serviceAccountFile": "Service account file (JSON)"
         },
         "dialogs": {
-            "updateCloudConfiguration":  {
+            "updateCloudConfiguration": {
                 "title": "Update GCP provider configuration"
             },
             "configurateCloudConfig": {
@@ -261,7 +264,7 @@
     "administration": {
         "title": "Administration",
         "users": {
-            "title": "Users management",
+            "title": "Users",
             "subheading": "Manage users and their roles",
             "table": {
                 "title": "Users",
@@ -275,7 +278,7 @@
                 }
             },
             "dialogs": {
-                "addUser":  {
+                "addUser": {
                     "title": "Add new user"
                 },
                 "editUser": {
@@ -306,7 +309,7 @@
             }
         },
         "namespaces": {
-            "title": "Namespaces management",
+            "title": "Namespaces",
             "subheading": "Manage developer namespaces and their members",
             "table": {
                 "title": "Namespaces",
@@ -323,7 +326,7 @@
                 "createNamespace": {
                     "title": "Create a new namespace"
                 },
-                "addUserToNamespace":  {
+                "addUserToNamespace": {
                     "title": "Add new user to namespace"
                 },
                 "deleteNamespace": {
@@ -364,7 +367,7 @@
         }
     },
     "dialogs": {
-        "downloadISOOnPremise":  {
+        "downloadISOOnPremise": {
             "title": "Download ISO On-Premise",
             "noticeText": "For using the On-Prem mode, start by downloading the ISO (AMD or ARM) and install it on your physical servers. Once the servers are started with the ISO, they will appear in Provisioning page to be configured.",
             "label": "ISO Choice",

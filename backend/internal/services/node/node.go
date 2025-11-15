@@ -225,14 +225,21 @@ func (s *NodeService) ProvisionNodes(configs []models.OnPremNodeProvisionConfig)
 
 		// Update role and labels
 		node.Role = cfg.Role
-		if len(cfg.Labels) > 0 {
-			if labelsJSON, err := json.Marshal(cfg.Labels); err != nil {
-				result.Error = fmt.Sprintf("failed to marshal labels: %v", err)
-				results = append(results, result)
-				continue
-			} else {
-				node.Labels = string(labelsJSON)
-			}
+
+		// Merge automatic labels with user-provided labels
+		autoLabels := []string{
+			fmt.Sprintf("provider=%s", node.Provider),
+			fmt.Sprintf("role=%s", cfg.Role),
+		}
+
+		allLabels := append(autoLabels, cfg.Labels...)
+
+		if labelsJSON, err := json.Marshal(allLabels); err != nil {
+			result.Error = fmt.Sprintf("failed to marshal labels: %v", err)
+			results = append(results, result)
+			continue
+		} else {
+			node.Labels = string(labelsJSON)
 		}
 		if err := s.db.Save(&node).Error; err != nil {
 			result.Error = fmt.Sprintf("failed to update node in DB: %v", err)
@@ -309,8 +316,15 @@ func (s *NodeService) ProvisionNodes(configs []models.OnPremNodeProvisionConfig)
 			continue
 		}
 
-		// Create typed config patch with hostname, disk, and network settings
-		typedPatch, err := talos.CreateMachineConfigPatch(nodeName, cfg.InstallDisk)
+		// Parse labels from database (stored as JSON string)
+		var nodeLabels []string
+		if node.Labels != "" {
+			if err := json.Unmarshal([]byte(node.Labels), &nodeLabels); err != nil {
+				log.Printf("ProvisionNodes: failed to parse labels for node %s: %v", node.Name, err)
+			}
+		}
+
+		typedPatch, err := talos.CreateMachineConfigPatch(nodeName, cfg.InstallDisk, nodeLabels)
 		if err != nil {
 			result.Error = fmt.Sprintf("failed to create config patch: %v", err)
 			results = append(results, result)

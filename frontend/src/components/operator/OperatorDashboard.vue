@@ -41,10 +41,12 @@
                 </v-chip>
             </template>        
             <template #[`item.labels`]="{ item }">
-                <v-chip 
+                <v-chip
                     v-for="(label, index) in item.labels"
                     :key="index"
+                    :color="getLabelColor(label)"
                     class="ma-1"
+                    label
                 >
                     {{ label }}
                 </v-chip>
@@ -59,11 +61,13 @@ import { getConnectedNodes } from '@/services/provisioning.service';
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { StatusColorHandler } from '@/composables/StatusColorHandler';
+import { LabelColorHandler } from '@/composables/LabelColorHandler';
 import ViewDetailsNodeDialog from '../../pages/operator/dialogs/node/ViewDetailsNodeDialog.vue';
 import wsEventService from '@/services/wsEvent.service';
 
 const { t } = useI18n();
 const { getStatusColor } = StatusColorHandler();
+const { getLabelColor } = LabelColorHandler();
 
 // State
 const search = ref('');
