@@ -27,7 +27,9 @@ jobs:
           go-version: '1.22'
 
       - name: CD
-        run: cd stolos-yokes
+        run: |
+          ls
+          cd stolos-yokes
 
       - name: Setup yoke
         run: |
