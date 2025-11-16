@@ -4,8 +4,6 @@ use (
 	stolos-yoke
 	backend
 	bootstrap
-	stolos-yoke-test/airway
-	stolos-yoke-test/flight
 	yoke-base
 
 )
