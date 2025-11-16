@@ -29,7 +29,7 @@ jobs:
       - name: Setup yoke
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.repository_owner }}" --password-stdin
-          curl -L -o - 'https://github.com/yokecd/yoke/releases/download/latest/yoke_latest_darwin_arm64.gz' | gunzip  > yoke && \
+          curl -L -o - 'https://github.com/yokecd/yoke/releases/download/latest/yoke_latest_linux_x86.gz' | gunzip  > yoke && \
           chmod +x yoke
 
       - name: Build flight
