@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5S
+        uses: actions/checkout@v5
         with:
           fetch-depth: 2
           token: ${{ secrets.GITHUB_TOKEN }}
