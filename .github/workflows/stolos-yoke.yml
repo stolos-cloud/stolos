@@ -14,6 +14,8 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    env:
+      IMAGE: "ghcr.io/stolos-cloud/stolosplatform-yoke:${{ github.sha }}"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -44,7 +46,6 @@ jobs:
       - name: Publish flight
         run: |
           # Push wasm to oci registry
-          IMAGE="ghcr.io/stolos-cloud/stolosplatform-yoke:$GITHUB_SHA"
           echo "Pushing ${IMAGE} to GHCR..."
           ./yoke stow stolos-yoke/flight.wasm "oci://${IMAGE}"
 
