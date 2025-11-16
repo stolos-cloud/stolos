@@ -4,8 +4,8 @@ on:
     branches:
       - main
       - yoke-cicd
-    paths:
-      - stolos-yoke
+    # paths:
+    #   - stolos-yoke
 
 permissions:
   contents: write
@@ -46,7 +46,6 @@ jobs:
         run: |
           # Push wasm to oci registry
           IMAGE="ghcr.io/stolos-cloud/stolosplatform-yoke:$GITHUB_SHA"
-
           echo "Pushing ${IMAGE} to GHCR..."
           ./yoke stow flight.wasm "oci://${IMAGE}"
 
