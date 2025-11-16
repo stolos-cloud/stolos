@@ -36,20 +36,22 @@ jobs:
         run: |
           # Build flight 
           echo "Building flight "
+          cd stolos-yoke
           go mod download
-          GOOS=wasip1 GOARCH=wasm go build -o flight.wasm ./stolos-yoke/cmd/main/
+          GOOS=wasip1 GOARCH=wasm go build -o flight.wasm ./cmd/main/
 
       - name: Publish flight
         run: |
           # Push wasm to oci registry
           IMAGE="ghcr.io/stolos-cloud/stolosplatform-yoke:$GITHUB_SHA"
           echo "Pushing ${IMAGE} to GHCR..."
-          ./yoke stow flight.wasm "oci://${IMAGE}"
+          ./yoke stow stolos-yoke/flight.wasm "oci://${IMAGE}"
 
       - name: Publish airway
         run: |
           # Generate airway.yml
           echo "Generating airway.yml for ${IMAGE}..."
+          cd stolos-yoke
           go run -tags airway ./cmd/main/ -flight-url "oci://$IMAGE" | yq -P > airway.yml
           git add airway.yml || true
         env:
