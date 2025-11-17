@@ -45,6 +45,7 @@ func AllArgoCD(input types.Stolos) []flight.Resource {
 		DeployArgoHelm(input),
 		DeployArgocdProxy(input),
 		DeployArgocdCert(input),
+		DeploySystemApps(input),
 	}
 	all = append(all, DeployArgoCDImageUpdaterResources(input)...)
 
@@ -238,4 +239,31 @@ func DeployArgoCDImageUpdaterResources(input types.Stolos) []flight.Resource {
 	}
 
 	return results
+}
+
+func DeploySystemApps(input types.Stolos) flight.Resource {
+	app := types.Application{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "argocd",
+			Namespace: input.Spec.ArgoCD.Namespace,
+			Annotations: map[string]string{
+				"argocd.argoproj.io/sync-wave": "-10",
+			},
+		},
+		Spec: types.ApplicationSpec{
+			Source: &types.ApplicationSource{
+				RepoURL: fmt.Sprintf("https://github.com/%s/%s", input.Spec.ArgoCD.RepositoryOwner, input.Spec.ArgoCD.RepositoryName),
+				Ref:     input.Spec.ArgoCD.RepositoryRevision,
+				Path:    "system/argoapps",
+			},
+			Destination: types.ApplicationDestination{
+				Server:    "https://kubernetes.default.svc",
+				Namespace: input.Spec.ArgoCD.Namespace,
+			},
+			Project:    "default",
+			SyncPolicy: DefaultSyncPolicy,
+		},
+	}
+
+	return &app
 }
