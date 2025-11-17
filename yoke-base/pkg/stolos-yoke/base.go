@@ -84,7 +84,7 @@ func BuildAirwayFor[crdType any](inputs AirwayInputs, flightUrl string) ([]byte,
 					Singular: inputs.NameSingular,
 					Kind:     inputs.Kind,
 				},
-				Scope: apiextv1.NamespaceScoped,
+				Scope: *inputs.Scope,
 				Versions: []apiextv1.CustomResourceDefinitionVersion{
 					{
 						Name:    inputs.Version,
