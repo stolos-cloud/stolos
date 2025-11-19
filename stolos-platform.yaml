@@ -1,0 +1,53 @@
+#$schema: ./test.json
+apiVersion: stolos.cloud/v1alpha
+kind: StolosPlatform
+metadata:
+  name: example
+spec:
+  argocd:
+    deploy: true
+    imageUpdaterVersion: ""
+    namespace: argocd
+    repositoryName: ""
+    repositoryOwner: ""
+    repositoryRevision: main
+    subdomain: ""
+    version: ""
+  baseDomain: ""
+  certManager:
+    clusterIssuerProd: letsencrypt-prod
+    clusterIssuerStaging: letsencrypt-staging
+    defaultClusterIssuer: letsencrypt-prod
+    deploy: true
+    email: ""
+    namespace: cert-manager
+    selfSigned: false
+    version: ""
+  clusterName: ""
+  cnpg:
+    barmanVersion: ""
+    deploy: true
+    namespace: cnpg-system
+    version: ""
+  contour:
+    deploy: true
+    namespace: projectcontour
+    version: ""
+  metallb:
+    arpIp: ""
+    configureArp: true
+    deploy: true
+    namespace: metallb-system
+    version: ""
+  stolosPlatform:
+    backendSubdomain: ""
+    database:
+      image: ""
+      instanceCount: 1
+      sizeInGigabytes: 5
+    defaultAdminEmail: ""
+    defaultAdminPassword: ""
+    deploy: true
+    frontendSubdomain: ""
+    namespace: stolos-system
+    pathToYaml: ""

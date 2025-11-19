@@ -29,7 +29,7 @@ import (
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/platform"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/platform_talos"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/talos"
-	"github.com/stolos-cloud/stolos/stolos-yoke/flight/pkg/types"
+	"github.com/stolos-cloud/stolos/stolos-yoke/pkg/types"
 	"github.com/yokecd/yoke/pkg/yoke"
 	"golang.org/x/oauth2"
 	corev1 "k8s.io/api/core/v1"
@@ -1008,6 +1008,9 @@ func RunPortalStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 			},
 		}
 
+		mapStolosCR, err := runtime.DefaultUnstructuredConverter.ToUnstructured(&stolosCR)
+		unstructuredStolosCR := unstructured.Unstructured{Object: mapStolosCR}
+
 		githubClient, err := github.NewClientFromApp(
 			context.Background(),
 			gitHubAppManifest.ID,
@@ -1018,7 +1021,7 @@ func RunPortalStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 			m.Logger.Errorf("Failed to create GitHub client from app: %v", err)
 		}
 
-		err = githubClient.CreateInitialConfig(&stolosCR, &bootstrapInfos.GitHubInfo)
+		err = githubClient.CreateInitialConfig(&unstructuredStolosCR, &bootstrapInfos.GitHubInfo)
 		if err != nil {
 			m.Logger.Errorf("Failed to create stolos config on github: %v", err)
 		}
@@ -1027,9 +1030,6 @@ func RunPortalStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 		if err != nil {
 			m.Logger.Errorf("Failed to create Kubernetes client: %s", err)
 		}
-
-		mapStolosCR, err := runtime.DefaultUnstructuredConverter.ToUnstructured(&stolosCR)
-		unstructuredStolosCR := unstructured.Unstructured{Object: mapStolosCR}
 
 		_, err = k8sClientDyn.Resource(schema.GroupVersionResource{
 			Group:    "stolos.cloud",
