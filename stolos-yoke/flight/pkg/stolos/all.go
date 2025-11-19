@@ -11,12 +11,13 @@ import (
 func AllStolos(input types.Stolos) []flight.Resource {
 	return []flight.Resource{
 		CreateStolosNamespace(input),
+		CreateDatabase(input),
+		CreateBackendSecrets(input),
 		CreateDeployment(input),
 		CreateBackendService(input),
 		CreateBackendGrpcService(input),
 		CreateBackendHttpProxy(input),
 		CreateBackendCertificate(input),
-		CreateDatabase(input),
 		CreateFrontendDeployment(input),
 		CreateFrontendService(input),
 		CreateHTTPProxy(input),
