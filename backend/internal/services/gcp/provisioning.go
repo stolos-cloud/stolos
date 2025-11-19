@@ -145,6 +145,14 @@ func (s *ProvisioningService) ProvisionNodes(
 	session.SendLog(fmt.Sprintf("Generating configurations for %d node(s)...", req.Number))
 	nodes := make([]NodeConfig, 0, req.Number)
 
+	// Merge automatic labels with user-provided labels
+	autoLabels := []string{
+		"provider=gcp",
+		fmt.Sprintf("role=%s", req.Role),
+		fmt.Sprintf("disk_type=%s", req.DiskType),
+	}
+	allLabels := append(autoLabels, req.Labels...)
+
 	for i := 0; i < req.Number; i++ {
 		// Get a fresh config bundle for each node
 		session.SendLog("Loading Talos machine configuration bundle...")
@@ -167,12 +175,12 @@ func (s *ProvisioningService) ProvisionNodes(
 		// GCP always uses /dev/sda for boot disk
 		diskPath := "/dev/sda"
 
-		// Create typed config patch with hostname, disk, and network settings
-		typedPatch, err := talosservices.CreateMachineConfigPatch(nodeName, diskPath)
+		// Create typed config patch with hostname, disk, network settings, and labels
+		typedPatch, err := talosservices.CreateMachineConfigPatch(nodeName, diskPath, allLabels)
 		if err != nil {
 			return fmt.Errorf("failed to create config patch: %w", err)
 		}
-		session.SendLog(fmt.Sprintf("Created typed config patch for hostname: %s, disk: %s", nodeName, diskPath))
+		session.SendLog(fmt.Sprintf("Created typed config patch for hostname: %s, disk: %s, labels: %v", nodeName, diskPath, allLabels))
 
 		// Apply typed patch to bundle based on machine type
 		isControlPlane := machineType == machineconf.TypeControlPlane
@@ -197,7 +205,7 @@ func (s *ProvisioningService) ProvisionNodes(
 			Zone:              req.Zone,
 			MachineType:       req.MachineType,
 			Role:              req.Role,
-			Labels:            req.Labels,
+			Labels:            allLabels,
 			DiskSizeGB:        req.DiskSizeGB,
 			DiskType:          req.DiskType,
 			TalosConfig:       machineConfig,
@@ -215,9 +223,20 @@ func (s *ProvisioningService) ProvisionNodes(
 	}
 	session.SendLog("Talos configurations uploaded successfully")
 
+	// Get GitOps config and GitHub client (used for both createTerraformFiles and commitTerraformFiles)
+	gitopsConfig, err := s.gitopsService.GetConfigOrDefault()
+	if err != nil {
+		return fmt.Errorf("failed to get GitOps config: %w", err)
+	}
+
+	ghClient, err := s.gitopsService.GetGitHubClient()
+	if err != nil {
+		return fmt.Errorf("failed to create GitHub client: %w", err)
+	}
+
 	// Create terraform files
 	session.SendLog("Creating Terraform configuration files...")
-	if err := s.createTerraformFiles(ctx, requestID, gcpConfig, nodes); err != nil {
+	if err := s.createTerraformFiles(ctx, requestID, gcpConfig, nodes, ghClient, gitopsConfig); err != nil {
 		return fmt.Errorf("failed to create terraform files: %w", err)
 	}
 
@@ -342,7 +361,7 @@ func (s *ProvisioningService) ProvisionNodes(
 
 	// Commit terraform files to git repo after approval
 	session.SendLog("Committing terraform files to GitOps repository...")
-	if err := s.commitTerraformFiles(ctx, requestID); err != nil {
+	if err := s.commitTerraformFiles(ctx, requestID, ghClient, gitopsConfig); err != nil {
 		return fmt.Errorf("failed to commit terraform files: %w", err)
 	}
 	session.SendLog("Terraform files committed successfully")
@@ -569,18 +588,7 @@ type InstanceDetails struct {
 }
 
 // createTerraformFiles creates terraform configuration files
-func (s *ProvisioningService) createTerraformFiles(ctx context.Context, requestID uuid.UUID, gcpConfig *models.GCPConfig, nodes []NodeConfig) error {
-	// Get GitOps config
-	gitopsConfig, err := s.gitopsService.GetConfigOrDefault()
-	if err != nil {
-		return fmt.Errorf("failed to get GitOps config: %w", err)
-	}
-
-	// Initialize GitHub client
-	ghClient, err := s.gitopsService.GetGitHubClient()
-	if err != nil {
-		return fmt.Errorf("failed to create GitHub client: %w", err)
-	}
+func (s *ProvisioningService) createTerraformFiles(ctx context.Context, requestID uuid.UUID, gcpConfig *models.GCPConfig, nodes []NodeConfig, ghClient *githubpkg.Client, gitopsConfig *models.GitOpsConfig) error {
 
 	existingFiles, err := s.fetchExistingNodeFiles(ctx, ghClient, gitopsConfig)
 	if err != nil {
@@ -750,22 +758,10 @@ func (s *ProvisioningService) fetchExistingNodeFiles(ctx context.Context, ghClie
 }
 
 // commitTerraformFiles commits terraform files to GitOps repo using GitHub API
-func (s *ProvisioningService) commitTerraformFiles(ctx context.Context, requestID uuid.UUID) error {
+func (s *ProvisioningService) commitTerraformFiles(ctx context.Context, requestID uuid.UUID, ghClient *githubpkg.Client, gitopsConfig *models.GitOpsConfig) error {
 	provSession, ok := s.activeProvisions[requestID]
 	if !ok {
 		return fmt.Errorf("provision session not found")
-	}
-
-	// Get GitOps config
-	gitopsConfig, err := s.gitopsService.GetConfigOrDefault()
-	if err != nil {
-		return fmt.Errorf("failed to get GitOps config: %w", err)
-	}
-
-	// Initialize GitHub client
-	ghClient, err := s.gitopsService.GetGitHubClient()
-	if err != nil {
-		return fmt.Errorf("failed to create GitHub client: %w", err)
 	}
 
 	// Build commit message

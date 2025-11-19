@@ -1,13 +1,13 @@
 basePath: /api/v1
 definitions:
-  api.TeamInfo:
+  api.NamespaceInfo:
     properties:
       id:
         type: string
       name:
         type: string
     type: object
-  api.TeamResponse:
+  api.NamespaceResponse:
     properties:
       id:
         type: string
@@ -24,12 +24,12 @@ definitions:
         type: string
       id:
         type: string
+      namespaces:
+        items:
+          $ref: '#/definitions/api.NamespaceInfo'
+        type: array
       role:
         $ref: '#/definitions/models.Role'
-      teams:
-        items:
-          $ref: '#/definitions/api.TeamInfo'
-        type: array
     type: object
   config.GCPMachineType:
     properties:
@@ -57,7 +57,7 @@ definitions:
           type: string
         type: array
     type: object
-  handlers.AddUserToTeamRequest:
+  handlers.AddUserToNamespaceRequest:
     properties:
       user_id:
         type: string
@@ -71,7 +71,7 @@ definitions:
       user:
         $ref: '#/definitions/api.UserResponse'
     type: object
-  handlers.CreateTeamRequest:
+  handlers.CreateNamespaceRequest:
     properties:
       name:
         type: string
@@ -916,6 +916,326 @@ paths:
       summary: Generate a custom Talos ISO
       tags:
       - iso
+  /namespaces:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a list of all namespaces. Admins see all namespaces, developers
+        see only their namespaces.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              items:
+                $ref: '#/definitions/api.NamespaceResponse'
+              type: array
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get list of namespaces
+      tags:
+      - namespaces
+    post:
+      consumes:
+      - application/json
+      description: Create a new namespace with the provided name and initialize GitOps
+        configuration
+      parameters:
+      - description: Namespace creation request
+        in: body
+        name: namespace
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateNamespaceRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create a new namespace
+      tags:
+      - namespaces
+  /namespaces/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a specific namespace by ID. Namespace must have no associated
+        deployments.
+      parameters:
+      - description: Namespace ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete a namespace
+      tags:
+      - namespaces
+    get:
+      consumes:
+      - application/json
+      description: Retrieve details of a specific namespace by ID, including its users
+      parameters:
+      - description: Namespace ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              $ref: '#/definitions/api.NamespaceResponse'
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get namespace details
+      tags:
+      - namespaces
+  /namespaces/{id}/users:
+    post:
+      consumes:
+      - application/json
+      description: Add a user to a specific namespace by user ID
+      parameters:
+      - description: Namespace ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: User addition request
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.AddUserToNamespaceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Add a user to a namespace
+      tags:
+      - namespaces
+  /namespaces/{id}/users/{user_id}:
+    delete:
+      consumes:
+      - application/json
+      description: Remove a user from a specific namespace by user ID
+      parameters:
+      - description: Namespace ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: User ID (UUID)
+        in: path
+        name: user_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remove a user from a namespace
+      tags:
+      - namespaces
   /nodes:
     get:
       consumes:
@@ -1207,324 +1527,6 @@ paths:
       summary: Returns talosconfig File in TALOS_FOLDER
       tags:
       - nodes
-  /teams:
-    get:
-      consumes:
-      - application/json
-      description: Retrieve a list of all teams. Admins see all teams, users see only
-        their teams.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties:
-              items:
-                $ref: '#/definitions/api.TeamResponse'
-              type: array
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Get list of teams
-      tags:
-      - teams
-    post:
-      consumes:
-      - application/json
-      description: Create a new team with the provided name
-      parameters:
-      - description: Team creation request
-        in: body
-        name: team
-        required: true
-        schema:
-          $ref: '#/definitions/handlers.CreateTeamRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "409":
-          description: Conflict
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Create a new team
-      tags:
-      - teams
-  /teams/{id}:
-    delete:
-      consumes:
-      - application/json
-      description: Delete a specific team by ID. Team must have no associated deployments.
-      parameters:
-      - description: Team ID (UUID)
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "403":
-          description: Forbidden
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Not Found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "409":
-          description: Conflict
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Delete a team
-      tags:
-      - teams
-    get:
-      consumes:
-      - application/json
-      description: Retrieve details of a specific team by ID, including its users
-      parameters:
-      - description: Team ID (UUID)
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties:
-              $ref: '#/definitions/api.TeamResponse'
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "403":
-          description: Forbidden
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Not Found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Get team details
-      tags:
-      - teams
-  /teams/{id}/users:
-    post:
-      consumes:
-      - application/json
-      description: Add a user to a specific team by user ID
-      parameters:
-      - description: Team ID (UUID)
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: User addition request
-        in: body
-        name: user
-        required: true
-        schema:
-          $ref: '#/definitions/handlers.AddUserToTeamRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "403":
-          description: Forbidden
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Not Found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "409":
-          description: Conflict
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Add a user to a team
-      tags:
-      - teams
-  /teams/{id}/users/{user_id}:
-    delete:
-      consumes:
-      - application/json
-      description: Remove a user from a specific team by user ID
-      parameters:
-      - description: Team ID (UUID)
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: User ID (UUID)
-        in: path
-        name: user_id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "403":
-          description: Forbidden
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Not Found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Remove a user from a team
-      tags:
-      - teams
   /templates:
     get:
       description: returns a list of available templates on the cluster
@@ -1588,9 +1590,9 @@ paths:
         name: instance_name
         required: true
         type: string
-      - description: deploy to which team
+      - description: deploy to which namespace
         in: query
-        name: team
+        name: namespace
         required: true
         type: string
       - description: CRD yaml
@@ -1633,9 +1635,9 @@ paths:
         name: instance_name
         required: true
         type: string
-      - description: deploy to which team
+      - description: deploy to which namespace
         in: query
-        name: team
+        name: namespace
         required: true
         type: string
       - description: CRD yaml

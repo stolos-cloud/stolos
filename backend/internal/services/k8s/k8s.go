@@ -45,7 +45,7 @@ func NewK8sClient() (*K8sClient, error) {
 		k8sClient.DynamicClient, err = dynamic.NewForConfig(k8sClient.Config)
 	}
 
-	return &k8sClient, nil
+	return &k8sClient, err
 }
 
 func (k8sClient K8sClient) ApplyCR(crd map[string]interface{}, gvr schema.GroupVersionResource, onlyDryRun bool) error {

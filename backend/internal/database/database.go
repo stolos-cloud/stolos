@@ -93,23 +93,24 @@ func createDefaultAdmin(db *gorm.DB) error {
 		return fmt.Errorf("failed to create admin user: %w", err)
 	}
 
-	// Create administrators team if it doesn't exist and add admin to it
-	var adminTeam models.Team
-	err = db.Where("name = ?", "administrators").First(&adminTeam).Error
-	if err == gorm.ErrRecordNotFound {
-		adminTeam = models.Team{Name: "administrators"}
-		if err := db.Create(&adminTeam).Error; err != nil {
-			log.Printf("Warning: Failed to create administrators team: %v", err)
+	// Create administrators namespace if it doesn't exist and add admin to it
+	var adminNamespace models.Namespace
+	err = db.Where("name = ?", "administrators").First(&adminNamespace).Error
+	switch err {
+	case gorm.ErrRecordNotFound:
+		adminNamespace = models.Namespace{Name: "administrators"}
+		if err := db.Create(&adminNamespace).Error; err != nil {
+			log.Printf("Warning: Failed to create administrators namespace: %v", err)
 		} else {
-			// Add admin to team
-			if err := db.Model(&admin).Association("Teams").Append(&adminTeam); err != nil {
-				log.Printf("Warning: Failed to add admin to administrators team: %v", err)
+			// Add admin to namespace
+			if err := db.Model(&admin).Association("Namespaces").Append(&adminNamespace); err != nil {
+				log.Printf("Warning: Failed to add admin to administrators namespace: %v", err)
 			}
 		}
-	} else if err == nil {
-		// Team exists, add admin to it
-		if err := db.Model(&admin).Association("Teams").Append(&adminTeam); err != nil {
-			log.Printf("Warning: Failed to add admin to existing administrators team: %v", err)
+	case nil:
+		// Namespace exists, add admin to it
+		if err := db.Model(&admin).Association("Namespaces").Append(&adminNamespace); err != nil {
+			log.Printf("Warning: Failed to add admin to existing administrators namespace: %v", err)
 		}
 	}
 
@@ -137,9 +138,9 @@ func runMigrations(db *gorm.DB) error {
 		&models.GCPResources{},
 		&models.GitOpsConfig{},
 		&models.ProvisionRequest{},
-		&models.Team{},
+		&models.Namespace{},
 		&models.User{},
-		&models.UserTeam{},
+		&models.UserNamespace{},
 		&models.Deployment{},
 	)
 }

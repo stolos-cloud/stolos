@@ -63,10 +63,13 @@
                     "title": "Détails du noeud",
                     "subheading": "Informations générales",
                     "nodeInfo": {
+                        "id": "ID du noeud",
                         "ipAddress": "Adresse IP",
                         "macAddress": "Adresse MAC",
-                        "instanceId": "ID d'instance",
+                        "instanceId": "ID d'instance Cloud",
                         "architecture": "Architecture",
+                        "labels": "Étiquettes",
+                        "noLabels": "Aucune étiquette",
                         "createdAt": "Créé le",
                         "updatedAt": "Mis à jour le"
                     }
@@ -262,7 +265,7 @@
     "administration": {
         "title": "Administration",
         "users": {
-            "title": "Gestion des utilisateurs",
+            "title": "Utilisateurs",
             "subheading": "Gérer les utilisateurs et leurs rôles",
             "table": {
                 "title": "Utilisateurs",
@@ -306,61 +309,61 @@
                 "deleteUser": "Supprimer un utilisateur"
             }
         },
-        "teams": {
-            "title": "Gestion des équipes",
-            "subheading": "Gérer les équipes des développeurs et leurs membres",
+        "namespaces": {
+            "title": "Namespaces",
+            "subheading": "Gérer les namespaces et leurs membres",
             "table": {
-                "title": "Équipes",
-                "loadingText": "Chargement des équipes...",
-                "noDataText": "Aucune équipe trouvée.",
+                "title": "Namespaces",
+                "loadingText": "Chargement des namespaces...",
+                "noDataText": "Aucun namespace trouvé.",
                 "itemsPerPageText": "Articles par page :",
                 "headers": {
-                    "teams": "Équipes",
+                    "namespaces": "Namespaces",
                     "numberOfMembers": "Nombre de membres",
                     "actions": "Actions"
                 }
             },
             "dialogs": {
-                "createNameTeam": {
-                    "title": "Créer une nouvelle équipe"
+                "createNameNamespace": {
+                    "title": "Créer une nouvelle namespace"
                 },
-                "addUserToTeam": {
-                    "title": "Ajouter un nouvel utilisateur à l'équipe"
+                "addUserToNamespace": {
+                    "title": "Ajouter un nouvel utilisateur dans le namespace"
                 },
-                "deleteTeam": {
-                    "title": "Supprimer l'équipe",
-                    "confirmationText": "Êtes-vous sûr de vouloir supprimer l'équipe {teamName} ? Cette action ne peut pas être annulée."
+                "deleteNamespace": {
+                    "title": "Supprimer le namespace",
+                    "confirmationText": "Êtes-vous sûr de vouloir supprimer le namespace {namespaceName} ? Cette action ne peut pas être annulée."
                 },
-                "viewDetailsTeam": {
-                    "title": "Détails de l'équipe",
-                    "usersTitle": "Membres de l'équipe",
+                "viewDetailsNamespace": {
+                    "title": "Détails du namespace",
+                    "usersTitle": "Membres du namespace",
                     "totalMembersLabel": "Aucun membre | 1 membre au total | {count} membres au total",
                     "messages": {
-                        "noMembers": "Cette équipe n'a pas de membres."
+                        "noMembers": "Ce namespace n'a pas de membres."
                     }
                 },
-                "deleteUserFromTeam": {
-                    "title": "Supprimer l'utilisateur de l'équipe",
-                    "confirmationText": "Êtes-vous sûr de vouloir supprimer {email} de l'équipe ? Cette action ne peut pas être annulée."
+                "deleteUserFromNamespace": {
+                    "title": "Supprimer l'utilisateur du namespace",
+                    "confirmationText": "Êtes-vous sûr de vouloir supprimer {email} du namespace ? Cette action ne peut pas être annulée."
                 }
             },
             "formfields": {
-                "teamName": "Nom de l'équipe",
+                "namespaceName": "Nom du namespace",
                 "emailList": "Liste des utilisateurs par courriel",
                 "noDataText": "Aucun utilisateur disponible à ajouter"
             },
             "notifications": {
-                "createTeamSuccess": "Équipe créée avec succès",
-                "addUserSuccess": "Utilisateur ajouté à l'équipe avec succès",
-                "deleteUserSuccess": "Utilisateur supprimé de l'équipe avec succès",
-                "deleteTeamSuccess": "Équipe supprimée avec succès",
-                "deleteTeamError": "Échec de la suppression de l'équipe"
+                "createNamespaceSuccess": "Namespace créé avec succès",
+                "addUserSuccess": "Utilisateur ajouté au namespace avec succès",
+                "deleteUserSuccess": "Utilisateur supprimé du namespace avec succès",
+                "deleteNamespaceSuccess": "Namespace supprimé avec succès",
+                "deleteNamespaceError": "Échec de la suppression du namespace"
             },
             "buttons": {
-                "createNewTeam": "Créer une nouvelle équipe",
-                "addUserToTeam": "Ajouter un utilisateur",
-                "deleteUserFromTeam": "Supprimer un utilisateur",
-                "deleteTeam": "Supprimer l'équipe"
+                "createNewNamespace": "Créer un nouveau namespace",
+                "addUserToNamespace": "Ajouter un utilisateur",
+                "deleteUserFromNamespace": "Supprimer un utilisateur",
+                "deleteNamespace": "Supprimer le namespace"
             }
         }
     },

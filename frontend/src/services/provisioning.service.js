@@ -28,7 +28,7 @@ export async function getConnectedNodes({ status } = {}) {
 
 export async function getNodeDisks(nodeId) {
     try {
-        const response = await api.get(`/api/nodes/${nodeId}/disks`);
+        const response = await api.get(`/nodes/${nodeId}/disks`);
         return response.data.disks || [];
     } catch (error) {
         console.error(`Error fetching disks for node ${nodeId}:`, error);

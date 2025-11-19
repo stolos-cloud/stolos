@@ -6,14 +6,14 @@
     "userPreferences": {
         "myAccount": "My account",
         "language": "Language",
-        "languages": { 
+        "languages": {
             "en": "English",
             "fr": "French"
         },
         "theme": {
             "dark": "Dark mode",
             "light": "Light mode"
-        }, 
+        },
         "logout": "Logout"
     },
     "login": {
@@ -63,16 +63,19 @@
                     "title": "Node details",
                     "subheading": "General informations",
                     "nodeInfo": {
+                        "id": "Node ID",
                         "ipAddress": "IP address",
                         "macAddress": "MAC address",
-                        "instanceId": "Instance ID",
+                        "instanceId": "Cloud Instance ID",
                         "architecture": "Architecture",
+                        "labels": "Labels",
+                        "noLabels": "No labels",
                         "createdAt": "Created at",
                         "updatedAt": "Updated at"
                     }
                 }
             }
-        }            
+        }
     },
     "applications": {
         "title": "Applications"
@@ -114,7 +117,7 @@
                     "role": "Role",
                     "labels": "Labels"
                 },
-                "footerSpinnerMsg": "New nodes will appear automatically..." 
+                "footerSpinnerMsg": "New nodes will appear automatically..."
             },
             "buttons": {
                 "addLabel": "Add label",
@@ -229,7 +232,7 @@
             "serviceAccountFile": "Service account file (JSON)"
         },
         "dialogs": {
-            "updateCloudConfiguration":  {
+            "updateCloudConfiguration": {
                 "title": "Update GCP provider configuration"
             },
             "configurateCloudConfig": {
@@ -261,7 +264,7 @@
     "administration": {
         "title": "Administration",
         "users": {
-            "title": "Users management",
+            "title": "Users",
             "subheading": "Manage users and their roles",
             "table": {
                 "title": "Users",
@@ -275,7 +278,7 @@
                 }
             },
             "dialogs": {
-                "addUser":  {
+                "addUser": {
                     "title": "Add new user"
                 },
                 "editUser": {
@@ -305,66 +308,66 @@
                 "deleteUser": "Delete user"
             }
         },
-        "teams": {
-            "title": "Teams management",
-            "subheading": "Manage developer teams and their members",
+        "namespaces": {
+            "title": "Namespaces",
+            "subheading": "Manage developer namespaces and their members",
             "table": {
-                "title": "Teams",
-                "loadingText": "Loading teams...",
-                "noDataText": "No teams found.",
+                "title": "Namespaces",
+                "loadingText": "Loading namespaces...",
+                "noDataText": "No namespaces found.",
                 "itemsPerPageText": "Items per page :",
                 "headers": {
-                    "teams": "Teams",
+                    "namespaces": "Namespaces",
                     "numberOfMembers": "Number of members",
                     "actions": "Actions"
                 }
             },
             "dialogs": {
-                "createTeam": {
-                    "title": "Create a new team"
+                "createNamespace": {
+                    "title": "Create a new namespace"
                 },
-                "addUserToTeam":  {
-                    "title": "Add new user to team"
+                "addUserToNamespace": {
+                    "title": "Add new user to namespace"
                 },
-                "deleteTeam": {
-                    "title": "Delete team",
-                    "confirmationText": "Are you sure you want to delete the team {teamName} ? This action cannot be undone."
+                "deleteNamespace": {
+                    "title": "Delete namespace",
+                    "confirmationText": "Are you sure you want to delete the namespace {namespaceName} ? This action cannot be undone."
                 },
-                "viewDetailsTeam": {
-                    "title": "Team details",
-                    "usersTitle": "Team members",
+                "viewDetailsNamespace": {
+                    "title": "Namespace details",
+                    "usersTitle": "Namespace members",
                     "totalMembersLabel": "No members | 1 total member | {count} total members",
                     "messages": {
-                        "noMembers": "This team has no members."
+                        "noMembers": "This namespace has no members."
                     }
                 },
-                "deleteUserFromTeam": {
-                    "title": "Delete user from team",
-                    "confirmationText": "Are you sure you want to delete {userEmail} from the team? This action cannot be undone."
+                "deleteUserFromNamespace": {
+                    "title": "Delete user from namespace",
+                    "confirmationText": "Are you sure you want to delete {userEmail} from the namespace? This action cannot be undone."
                 }
             },
             "formfields": {
-                "teamName": "Team name",
+                "namespaceName": "Namespace name",
                 "emailList": "Email user list",
                 "noDataText": "No users available to add"
             },
             "notifications": {
-                "createTeamSuccess": "Team created successfully",
-                "addUserSuccess": "User added to team successfully",
-                "deleteUserSuccess": "User deleted from team successfully",
-                "deleteTeamSuccess": "Team deleted successfully",
-                "deleteTeamError": "Failed to delete team"
+                "createNamespaceSuccess": "Namespace created successfully",
+                "addUserSuccess": "User added to namespace successfully",
+                "deleteUserSuccess": "User deleted from namespace successfully",
+                "deleteNamespaceSuccess": "Namespace deleted successfully",
+                "deleteNamespaceError": "Failed to delete namespace"
             },
             "buttons": {
-                "createNewTeam": "Create new team",
-                "addUserToTeam": "Add user",
-                "deleteUserFromTeam": "Delete user",
-                "deleteTeam": "Delete team"
+                "createNewNamespace": "Create new namespace",
+                "addUserToNamespace": "Add user",
+                "deleteUserFromNamespace": "Delete user",
+                "deleteNamespace": "Delete namespace"
             }
         }
     },
     "dialogs": {
-        "downloadISOOnPremise":  {
+        "downloadISOOnPremise": {
             "title": "Download ISO On-Premise",
             "noticeText": "For using the On-Prem mode, start by downloading the ISO (AMD or ARM) and install it on your physical servers. Once the servers are started with the ISO, they will appear in Provisioning page to be configured.",
             "label": "ISO Choice",

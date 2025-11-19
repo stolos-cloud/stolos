@@ -21,7 +21,7 @@ Move .env.template to .env and adjust settings as needed.
 If env `DB_HOST` is not set, it defaults to sqlite.
 
 ```bash
-go run cmd/server/main.go
+go run cmd/server
 ```
 
 To use Postgres, set:

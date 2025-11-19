@@ -114,6 +114,11 @@ func main() {
 				if err != nil {
 				}
 				bootstrapInfos.GitHubInfo = *githubInfo
+				saveState.BootstrapInfo = *bootstrapInfos
+				err = marshal.MarshalToFile(_bootstrapStateFile, saveState)
+				if err != nil {
+					m.Logger.Errorf("Error saving state: %s", err)
+				}
 			}
 		},
 	}
@@ -148,6 +153,23 @@ func main() {
 		IsDone:      false,
 		AutoAdvance: true,
 		OnEnter: func(m *tui.Model, s *tui.Step) tea.Cmd {
+			// Check if we should restore from saved state
+			if doRestoreProgress && saveState.GitHubApp.ID != 0 {
+				m.Logger.Info("State file found, restoring GitHub App from saved state")
+				gitHubAppManifest = &saveState.GitHubApp
+				// Restore the GitHub User from the saved state
+				ctx := context.Background()
+				var err error
+				gitHubUser, err = github.GetGitHubUser(ctx, bootstrapInfos.GitHubInfo.RepoOwner, nil)
+				if err != nil {
+					m.Logger.Warnf("Could not fetch GitHub User, but continuing with saved state: %v", err)
+				}
+				m.Logger.Successf("Restored GitHub App: %s (ID: %d)", gitHubAppManifest.Name, gitHubAppManifest.ID)
+				s.IsDone = true
+				s.AutoAdvance = true
+				return nil
+			}
+
 			m.Logger.Infof("Starting GitHub App Manifest Flow...")
 			go func() {
 				ctx := context.Background()
@@ -176,6 +198,11 @@ func main() {
 				}
 
 				saveState.GitHubApp = *gitHubAppManifest
+				saveState.BootstrapInfo = *bootstrapInfos
+				err = marshal.MarshalToFile(_bootstrapStateFile, saveState)
+				if err != nil {
+					m.Logger.Errorf("Error saving state: %s", err)
+				}
 				m.Logger.Successf("GitHub App created successfully! App name: %s, App ID: %d", gitHubAppManifest.Name, gitHubAppManifest.ID)
 				s.IsDone = true
 			}()
@@ -190,6 +217,15 @@ func main() {
 		IsDone:      false,
 		AutoAdvance: true,
 		OnEnter: func(m *tui.Model, s *tui.Step) tea.Cmd {
+			// Check if we should restore from saved state
+			if doRestoreProgress && saveState.GitHubAppInstallResult.InstallationID != "" {
+				m.Logger.Info("State file found, restoring GitHub App installation from saved state")
+				m.Logger.Successf("Restored GitHub App Installation (ID: %s)", saveState.GitHubAppInstallResult.InstallationID)
+				s.IsDone = true
+				s.AutoAdvance = true
+				return nil
+			}
+
 			m.Logger.Infof("Opening the GitHub app install page...")
 
 			go func() {
@@ -201,6 +237,11 @@ func main() {
 					return
 				}
 				saveState.GitHubAppInstallResult = *postInstallResult
+				saveState.BootstrapInfo = *bootstrapInfos
+				err = marshal.MarshalToFile(_bootstrapStateFile, saveState)
+				if err != nil {
+					m.Logger.Errorf("Error saving state: %s", err)
+				}
 				m.Logger.Successf("GitHub App installed successfully! Installation ID: %s", postInstallResult.InstallationID)
 
 				s.IsDone = true
@@ -227,6 +268,11 @@ func main() {
 				if err != nil {
 				}
 				bootstrapInfos.GCPInfo = *gcpInfo
+				saveState.BootstrapInfo = *bootstrapInfos
+				err = marshal.MarshalToFile(_bootstrapStateFile, saveState)
+				if err != nil {
+					m.Logger.Errorf("Error saving state: %s", err)
+				}
 			}
 		},
 	}
@@ -288,6 +334,11 @@ func main() {
 				if err != nil {
 				}
 				bootstrapInfos.TalosInfo = *talosInfo
+				saveState.BootstrapInfo = *bootstrapInfos
+				err = marshal.MarshalToFile(_bootstrapStateFile, saveState)
+				if err != nil {
+					m.Logger.Errorf("Error saving state: %s", err)
+				}
 			}
 		},
 	}
@@ -462,6 +513,23 @@ func RunGCPSAStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 }
 
 func RunGitHubRepoStepWithApp(m *tui.Model, s *tui.Step) tea.Cmd {
+	// Check if we should restore from saved state
+	if doRestoreProgress && saveState.GitHubRepoCreated {
+		m.Logger.Info("State file found, GitHub repository already created")
+		// Restore the GitHub config
+		githubConfig = github.NewGithubAppConfig(
+			bootstrapInfos.GitHubInfo.RepoOwner,
+			bootstrapInfos.GitHubInfo.RepoName,
+			strconv.FormatInt(gitHubAppManifest.ID, 10),
+			gitHubAppManifest.PEM,
+			saveState.GitHubAppInstallResult.InstallationID,
+		)
+		m.Logger.Successf("Restored GitHub repository: https://github.com/%s/%s.git", bootstrapInfos.GitHubInfo.RepoOwner, bootstrapInfos.GitHubInfo.RepoName)
+		s.IsDone = true
+		s.AutoAdvance = true
+		return nil
+	}
+
 	m.Logger.Infof("Creating GitHub repository %s...", bootstrapInfos.GitHubInfo.RepoName)
 
 	go func() {
@@ -501,6 +569,14 @@ func RunGitHubRepoStepWithApp(m *tui.Model, s *tui.Step) tea.Cmd {
 			gitHubAppManifest.PEM,
 			saveState.GitHubAppInstallResult.InstallationID,
 		)
+
+		// Mark repo as created in state
+		saveState.GitHubRepoCreated = true
+		saveState.BootstrapInfo = *bootstrapInfos
+		err = marshal.MarshalToFile(_bootstrapStateFile, saveState)
+		if err != nil {
+			m.Logger.Errorf("Error saving state: %s", err)
+		}
 
 		m.Logger.Successf("Repository created: https://github.com/%s/%s.git", bootstrapInfos.GitHubInfo.RepoOwner, bootstrapInfos.GitHubInfo.RepoName)
 		s.IsDone = true
@@ -583,6 +659,7 @@ func RunWaitForServersStep(model *tui.Model, step *tui.Step) tea.Cmd {
 				if !ok {
 					saveState.MachinesDisks[ip] = ""
 					step.Body = step.Body + fmt.Sprintf("\nNode: %s", ip)
+					saveState.BootstrapInfo = *bootstrapInfos
 					err := marshal.MarshalToFile(_bootstrapStateFile, saveState)
 					if err != nil {
 						model.Logger.Errorf("Error saving state: %s", err)
@@ -693,6 +770,7 @@ func ExitConfigureServer(serverIp string, disks *[]*storage.Disk) func(model *tu
 			model.Logger.Errorf("Invalid role: %d", config.Role)
 		}
 
+		saveState.BootstrapInfo = *bootstrapInfos
 		err = marshal.MarshalToFile(_bootstrapStateFile, saveState)
 		if err != nil {
 			model.Logger.Errorf("Error saving state: %s", err)

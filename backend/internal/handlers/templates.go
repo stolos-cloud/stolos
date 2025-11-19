@@ -105,7 +105,7 @@ func (h *TemplatesHandler) GetTemplate(c *gin.Context) {
 // @Failure 422 {object} string "validation error"
 // @Param id path string true "template CRD name"
 // @Param instance_name query string true "deployment name"
-// @Param team query string true "deploy to which team"
+// @Param namespace query string true "deploy to which namespace"
 // @Param request body string true "CRD yaml"
 // @Router /templates/{id}/validate/{instance_name} [post]
 // @Security BearerAuth
@@ -124,7 +124,7 @@ func (h *TemplatesHandler) ValidateTemplate(c *gin.Context) {
 // @Failure 422 {object} string "validation error"
 // @Param id path string true "template CRD name"
 // @Param instance_name query string true "deployment name"
-// @Param team query string true "deploy to which team"
+// @Param namespace query string true "deploy to which namespace"
 // @Param request body string true "CRD yaml"
 // @Router /templates/{id}/apply/{instance_name} [post]
 // @Security BearerAuth
@@ -152,9 +152,9 @@ func (h *TemplatesHandler) doApplyAction(c *gin.Context, onlyDryRun bool) {
 		return
 	}
 
-	userTeam, err := gorm.G[models.Team](h.db).Where("name = ?", c.Query("team")).First(context.Background())
+	userNamespace, err := gorm.G[models.Namespace](h.db).Where("name = ?", c.Query("namespace")).First(context.Background())
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "failed to find team"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "failed to find namespace"})
 		return
 	}
 
@@ -165,15 +165,15 @@ func (h *TemplatesHandler) doApplyAction(c *gin.Context, onlyDryRun bool) {
 		return
 	}
 
-	if !slices.Contains(claims.Teams, userTeam.ID) {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User cannot deploy to this team"})
+	if !slices.Contains(claims.Namespaces, userNamespace.ID) {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User cannot deploy to this namespace"})
 	}
 
 	if cr["metadata"] == nil {
 		cr["metadata"] = make(map[string]interface{})
 	}
 	cr["metadata"].(map[string]interface{})["name"] = c.Query("instance_name")
-	cr["metadata"].(map[string]interface{})["namespace"] = k8s.K8sNamespacePrefix + userTeam.Name
+	cr["metadata"].(map[string]interface{})["namespace"] = k8s.K8sNamespacePrefix + userNamespace.Name
 
 	apiVersion := crdTemplate.GetCRD().Spec.Group + "/" + crdTemplate.GetCRD().Spec.Versions[0].Name
 	cr["kind"] = crdTemplate.GetCRD().Spec.Names.Kind

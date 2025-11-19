@@ -2,9 +2,12 @@ package utils
 
 import (
 	"bytes"
+	"crypto/rand"
+	"encoding/hex"
 	"io"
 
 	yokeK8s "github.com/yokecd/yoke/pkg/flight/wasi/k8s"
+	corev1 "k8s.io/api/core/v1"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -45,6 +48,32 @@ func CheckCrdPresence(crdName string) bool {
 		Name:       crdName,
 	})
 
-	panic(err)
-	return err == nil && crd != nil
+	if err != nil {
+		panic(err)
+	}
+	return crd != nil
+}
+
+// GetExistingSecret to fetch an existing secret
+func GetExistingSecret(name, namespace string) (*corev1.Secret, error) {
+	secret, err := yokeK8s.Lookup[corev1.Secret](yokeK8s.ResourceIdentifier{
+		ApiVersion: "v1",
+		Kind:       "Secret",
+		Name:       name,
+		Namespace:  namespace,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+	return secret, nil
+}
+
+// GenerateRandomString generates a cryptographically secure random string
+func GenerateRandomString(length int) string {
+	bytes := make([]byte, length)
+	if _, err := rand.Read(bytes); err != nil {
+		panic("Failed to generate random secret: " + err.Error())
+	}
+	return hex.EncodeToString(bytes)
 }

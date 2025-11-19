@@ -34,7 +34,7 @@ type UpdateUserRoleRequest struct {
 // @Security BearerAuth
 func (h *UserHandlers) ListUsers(c *gin.Context) {
 	var users []models.User
-	if err := h.db.Preload("Teams").Find(&users).Error; err != nil {
+	if err := h.db.Preload("Namespaces").Find(&users).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch users"})
 		return
 	}
@@ -68,7 +68,7 @@ func (h *UserHandlers) GetUser(c *gin.Context) {
 	}
 
 	var user models.User
-	if err := h.db.Preload("Teams").First(&user, "id = ?", userUUID).Error; err != nil {
+	if err := h.db.Preload("Namespaces").First(&user, "id = ?", userUUID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 			return
@@ -124,8 +124,8 @@ func (h *UserHandlers) UpdateUserRole(c *gin.Context) {
 		return
 	}
 
-	// Reload user with teams
-	h.db.Preload("Teams").First(&user, user.ID)
+	// Reload user with namespaces
+	h.db.Preload("Namespaces").First(&user, user.ID)
 
 	c.JSON(http.StatusOK, gin.H{"user": api.ToUserResponse(&user)})
 }
@@ -160,9 +160,9 @@ func (h *UserHandlers) DeleteUser(c *gin.Context) {
 		return
 	}
 
-	// Remove user from all teams
-	if err := h.db.Model(&user).Association("Teams").Clear(); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to remove user from teams"})
+	// Remove user from all namespaces
+	if err := h.db.Model(&user).Association("Namespaces").Clear(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to remove user from namespaces"})
 		return
 	}
 
@@ -217,8 +217,8 @@ func (h *UserHandlers) CreateUser(c *gin.Context) {
 		return
 	}
 
-	// Reload user with teams
-	h.db.Preload("Teams").First(&user, user.ID)
+	// Reload user with namespaces
+	h.db.Preload("Namespaces").First(&user, user.ID)
 
 	c.JSON(http.StatusCreated, gin.H{"user": api.ToUserResponse(&user)})
 }

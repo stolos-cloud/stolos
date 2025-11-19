@@ -13,18 +13,18 @@ export const user = {
         role: null,
         id: null,
         token: null,
-        teams: [],
+        namespaces: [],
         isAuthenticated: false,
         theme: StorageService.get('theme') || 'dark',
         language: StorageService.get('language') || 'en',
     },
     mutations: {
-        SET_USER(state, { email, role, id, token, teams }) {
+        SET_USER(state, { email, role, id, token, namespaces }) {
             state.email = email;
             state.role = role;
             state.id = id;
             state.token = token;
-            state.teams = teams;
+            state.namespaces = namespaces;
             state.isAuthenticated = true;
         },
         SET_EMAIL(state, email) {
@@ -33,8 +33,8 @@ export const user = {
         SET_ROLE(state, role) {
             state.role = role;
         },
-        SET_TEAMS(state, teams) {
-            state.teams = teams;
+        SET_NAMESPACES(state, namespaces) {
+            state.namespaces = namespaces;
         },
         SET_THEME(state, theme) {
             state.theme = theme;
@@ -49,7 +49,7 @@ export const user = {
             state.role = null;
             state.id = null;
             state.token = null;
-            state.teams = [];
+            state.namespaces = [];
             state.isAuthenticated = false;
         },
     },
@@ -60,8 +60,8 @@ export const user = {
         setRole({ commit }, role) {
             commit('SET_ROLE', role);
         },
-        setTeams({ commit }, teams) {
-            commit('SET_TEAMS', teams);
+        setNamespaces({ commit }, namespaces) {
+            commit('SET_NAMESPACES', namespaces);
         },
         setTheme({ commit }, theme) {
             commit('SET_THEME', theme);
@@ -81,7 +81,7 @@ export const user = {
                     email: user.email,
                     role: user.role,
                     id: user.id,
-                    teams: user.teams,
+                    namespaces: user.namespaces,
                     token,
                 });
             } catch (error) {
@@ -94,7 +94,7 @@ export const user = {
                     email: user.email,
                     role: user.role,
                     id: user.id,
-                    teams: user.teams,
+                    namespaces: user.namespaces,
                     token,
                 });
             });
@@ -110,7 +110,7 @@ export const user = {
                     email: state.email,
                     role: state.role,
                     id: state.id,
-                    teams: state.teams,
+                    namespaces: state.namespaces,
                     token,
                 });
             });
@@ -122,7 +122,7 @@ export const user = {
         getId: state => state.id,
         getToken: state => state.token,
         isAuthenticated: state => state.isAuthenticated,
-        getTeams: state => state.teams,
+        getNamespaces: state => state.namespaces,
         getTheme: state => state.theme,
         getLanguage: state => state.language,
     },

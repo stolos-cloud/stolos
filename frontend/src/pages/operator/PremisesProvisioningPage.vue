@@ -29,7 +29,7 @@
             <!-- Slot for labels -->
             <template #[`item.labels`]="{ item }">
                 <div class="d-flex flex-wrap align-center">
-                    <v-chip v-for="(label, index) in item.labels" :key="index" class="ma-1" closable
+                    <v-chip v-for="(label, index) in item.labels" :key="index" :color="getLabelColor(label)" class="ma-1" label closable
                         @click:close="item.labels.splice(index, 1)">
                         {{ label }}
                     </v-chip>
@@ -65,6 +65,7 @@ import { useStore } from 'vuex';
 import { GlobalNotificationHandler } from "@/composables/GlobalNotificationHandler";
 import { GlobalOverlayHandler } from "@/composables/GlobalOverlayHandler";
 import { StatusColorHandler } from '@/composables/StatusColorHandler';
+import { LabelColorHandler } from '@/composables/LabelColorHandler';
 import DownloadISOOnPremDialog from '@/pages/operator/dialogs/download/DownloadISOOnPremDialog.vue';
 import wsEventService from '@/services/wsEvent.service';
 
@@ -73,6 +74,7 @@ const store = useStore();
 const { showNotification } = GlobalNotificationHandler();
 const { showOverlay, hideOverlay } = GlobalOverlayHandler();
 const { getStatusColor } = StatusColorHandler();
+const { getLabelColor } = LabelColorHandler();
 
 // State
 const loading = ref(false);
