@@ -270,7 +270,9 @@
                 "title": "Create a new template"
             },
             "viewDetailsTemplate": {
-                "title": "{ template } - Details"
+                "title": "{ template } - Details",
+                "crdDefinition": "CRD definition",
+                "deployedApps": "Deployed applications"
             }
         },
         "formfields": {
@@ -283,6 +285,43 @@
         },
         "buttons": {
             "createNewTemplate": "Create new template"
+        }
+    },
+    "deployedApplications": {
+        "title": "Deployed applications",
+        "subheading": "Manage your deployed applications",
+        "table": {
+            "title": "Deployed Applications",
+            "loadingText": "Loading deployed applications...",
+            "noDataText": "No deployed applications found.",
+            "itemsPerPageText": "Applications per page :",
+            "headers": {
+                "instanceName": "Instance Name",
+                "namespace": "Namespace",
+                "health": "Health",
+                "actions": "Actions"
+            },
+            "footerMessage": "{src} deployed to the cluster are shown."
+        },
+        "dialogs": {
+            "createDeployedApp":  {
+                "title": "Deploy a new application"
+            },
+            "viewDetailsDeployedApp": {
+                "title": "{ appName } - Details"
+            }
+        },
+        "formfields": {
+            "template": "Template",
+            "instanceName": "Instance name",
+            "namespace": "Namespace"
+        },
+        "notifications": {
+            "deploySuccess": "Your application was deployed successfully!",
+            "deployError": "Failed to deploy application"
+        },
+        "buttons": {
+            "deployNewApp": "Deploy new application"
         }
     },
     "secretsSecurity": {

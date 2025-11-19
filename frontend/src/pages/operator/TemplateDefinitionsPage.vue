@@ -11,14 +11,14 @@
             @click:row="(event, item) => showViewDetailsTemplateDialog(item.item)">
         </BaseDataTable>
         <CreateTemplateDialog v-model="dialogCreateTemplate" @templateCreated="fetchTemplates" />
-        <ViewDetailsTemplateDialog v-model="dialogViewDetailsTemplate" :team="selectedTemplate" />
+        <ViewDetailsTemplateDialog v-model="dialogViewDetailsTemplate" :template="selectedTemplate" />
     </PortalLayout>
 </template>
 
 <script setup>
 import { ref, onMounted, computed } from "vue";
 import { useI18n } from "vue-i18n";
-import { getTeams } from '@/services/teams.service';
+import { getTemplates } from "@/services/templates.service";
 import CreateTemplateDialog from "./dialogs/templates/CreateTemplateDialog.vue";
 import ViewDetailsTemplateDialog from "./dialogs/templates/ViewDetailsTemplateDialog.vue";
 
@@ -64,22 +64,16 @@ function showCreateTemplateDialog() {
     dialogCreateTemplate.value = true;
 }
 function showViewDetailsTemplateDialog(template) {
+    console.log(template);
+    
     selectedTemplate.value = template;
     dialogViewDetailsTemplate.value = true;
 }
 function fetchTemplates() {
-    templates.value = [{
-        name: "name1",
-        version: "1.0",
-        metadata: "",
-        deployedApps: "3"
-    },
-    {
-        name: "name2",
-        version: "1.0",
-        metadata: "",
-        deployedApps: "2"
-    }];
-
+    getTemplates().then((response) => {        
+        templates.value = response;
+    }).catch(error => {
+        console.error("Error fetching templates:", error);
+    });
 }
 </script>

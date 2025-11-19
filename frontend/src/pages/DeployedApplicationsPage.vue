@@ -1,129 +1,78 @@
 <template>
     <PortalLayout>
-        <BaseLabelBar :title="$t('administration.teams.title')" :subheading="$t('administration.teams.subheading')" />
-        <BaseDataTable
-            v-model="search"
-            :headers="teamHeaders"
-            :items="teams"
-            :loading="loading"
-            :loadingText="$t('administration.teams.table.loadingText')"
-            :noDataText="$t('administration.teams.table.noDataText')"
-            :itemsPerPageText="$t('administration.teams.table.itemsPerPageText')"
-            :titleToolbar="$t('administration.teams.table.title')"
-            :actionsButtonForTable="actionsButtonForTable"
-            rowClickable
-            @click:row="(event, item) => showViewDetailsDialog(item.item)"
-        >
-            <template #[`item.actions`]="{ item }">
-                <v-btn v-tooltip="{ text: $t('administration.teams.buttons.addUserToTeam') }" icon="mdi-account-plus" size="small" variant="text" @click="showAddUserToTeamDialog(item)" />
-                <v-btn v-tooltip="{ text: $t('administration.teams.buttons.deleteTeam') }" icon="mdi-delete" size="small" variant="text" @click="deleteTeam(item)" />
-            </template>
+        <BaseLabelBar :title="$t('deployedApplications.title')" :subheading="$t('deployedApplications.subheading')" />
+        <BaseDataTable v-model="search" :headers="deployedApplicationsHeaders" :items="deployedApplications" :loading="loading"
+            :loadingText="$t('deployedApplications.table.loadingText')"
+            :noDataText="$t('deployedApplications.table.noDataText')"
+            :itemsPerPageText="$t('deployedApplications.table.itemsPerPageText')"
+            :titleToolbar="$t('deployedApplications.table.title')"
+            :footerMessage="$t('deployedApplications.table.footerMessage', { src: 'Stolos Custom Resources' })"
+            :actionsButtonForTable="actionsButtonForTable" rowClickable
+            @click:row="(event, item) => showViewDetailsDeployedAppDialog(item.item)">
         </BaseDataTable>
-        <CreateTeamDialog v-model="dialogCreateTeam" @teamCreated="fetchTeams" />
-        <AddUserToTeamDialog v-model="dialogAddUserToTeam" :team="selectedTeam" @userAdded="fetchTeams" />
-        <ViewDetailsTeamDialog  v-model="dialogViewDetailsTeam" :team="selectedTeam" @userDeletedFromTeam="fetchTeams" />
-        <BaseConfirmDialog ref="confirmDialog" />
+        <CreateDeployedAppDialog v-model="dialogDeployNewApp" @deployedAppCreated="fetchDeployedApps" />
+        <ViewDetailsDeployedAppDialog v-model="dialogViewDetailsDeployedApp" :deployedApp="selectedDeployedApp" />
     </PortalLayout>
 </template>
 
 <script setup>
 import { ref, onMounted, computed } from "vue";
 import { useI18n } from "vue-i18n";
-import { getTeams, deleteTeamById } from '@/services/teams.service';
-import { GlobalNotificationHandler } from "@/composables/GlobalNotificationHandler";
-import { GlobalOverlayHandler } from "@/composables/GlobalOverlayHandler";
-import CreateTeamDialog from "./operator/dialogs/administration/CreateTeamDialog.vue";
-import AddUserToTeamDialog from "./operator/dialogs/administration/AddUserToTeamDialog.vue";
-import ViewDetailsTeamDialog from "./operator/dialogs/administration/ViewDetailsTeamDialog.vue";
+import { getTemplates } from "@/services/templates.service";
+import CreateDeployedAppDialog from "./dialogs/CreateDeployedAppDialog.vue";
+import ViewDetailsDeployedAppDialog from "./dialogs/ViewDetailsDeployedAppDialog.vue";
 
 const { t } = useI18n();
-const { showNotification } = GlobalNotificationHandler();
-const { showOverlay, hideOverlay } = GlobalOverlayHandler();
 
 // State
-const dialogCreateTeam = ref(false);
-const dialogAddUserToTeam = ref(false);
-const dialogViewDetailsTeam = ref(false);
 const loading = ref(false);
-const teams = ref([]);
 const search = ref('');
-const confirmDialog = ref(null);
-const selectedTeam = ref(null);
+const dialogDeployNewApp = ref(false);
+const dialogViewDetailsDeployedApp = ref(false);
+const deployedApplications = ref([]);
+const selectedDeployedApp = ref(null);
 
 // Computed
-const teamHeaders = computed(() => [
-    { title: t('administration.teams.table.headers.teams'), value: 'name', sortable: true },
-    { title: t('administration.teams.table.headers.numberOfMembers'), value: 'numberOfUsers', align: 'center', sortable: true },
-    { title: t('administration.teams.table.headers.actions'), value: 'actions', sortable: false, align: 'center' }
+const deployedApplicationsHeaders = computed(() => [
+    { title: t('deployedApplications.table.headers.instanceName'), value: 'instanceName' },
+    { title: t('deployedApplications.table.headers.namespace'), value: 'namespace', sortable: false, align: 'center' },
+    { title: t('deployedApplications.table.headers.health'), value: 'health', sortable: false, align: 'center' },
+    { title: t('deployedApplications.table.headers.actions'), value: 'actions', sortable: false, align: 'center' }, //TODO : A voir ici si cest les bons noms de propriétés
 ]);
 const actionsButtonForTable = computed(() => [
     {
-        icon: "mdi-refresh",
-        tooltip: t('actionButtons.refresh'),
-        text: t('actionButtons.refresh'),
-        click: fetchTeams
+        icon: "mdi-text-box",
+        tooltip: t('actionButtons.viewDocs'),
+        text: t('actionButtons.viewDocs'),
+        click: () => console.log('Docs button clicked')
     },
     {
         icon: "mdi-plus",
-        tooltip: t('administration.teams.buttons.createNewTeam'),
-        text: t('administration.teams.buttons.createNewTeam'),
-        click: showCreateTeamDialog
+        tooltip: t('deployedApplications.buttons.deployNewApp'),
+        text: t('deployedApplications.buttons.deployNewApp'),
+        click: showDeployNewAppDialog
     }
 ]);
 
 //Mounted
 onMounted(() => {
-    fetchTeams();
+    fetchDeployedApps();
 });
 
 // Methods
-function showCreateTeamDialog() {
-    dialogCreateTeam.value = true;
+function showDeployNewAppDialog() {
+    dialogDeployNewApp.value = true;
 }
-function showAddUserToTeamDialog(item) {
-    selectedTeam.value = item;
-    dialogAddUserToTeam.value = true;
+function showViewDetailsDeployedAppDialog(deployedApp) {
+    selectedDeployedApp.value = deployedApp;
+    dialogViewDetailsDeployedApp.value = true;
 }
-function showViewDetailsDialog(item) {
-    selectedTeam.value = item;
-    dialogViewDetailsTeam.value = true;
-}
-function fetchTeams() {
-    getTeams().then(response => {
-        teams.value = response.teams
-            .filter(team => team.name !== "administrators")
-            .map(team => ({
-                ...team,
-                numberOfUsers: team.users?.length || 0
-            }));
-    }).catch(error => {
-        console.error("Error fetching teams:", error);
-    });
-}
-function deleteTeam(team) {
-    confirmDialog.value.open({
-        title: t('administration.teams.dialogs.deleteTeam.title'),
-        message: t('administration.teams.dialogs.deleteTeam.confirmationText', { teamName: team.name }),
-        confirmText: t('actionButtons.confirm'),
-        onConfirm: () => {
-            deleteTeamConfirmed(team);
-        }
-    })
-}
-function deleteTeamConfirmed(team) {
-    showOverlay();
-
-    deleteTeamById(team.id)
-    .then(() => {
-        showNotification(t('administration.teams.notifications.deleteTeamSuccess'), 'success');
-        fetchTeams();
-    })
-    .catch((error) => {
-        console.error("Error deleting team:", error);
-        showNotification(t('administration.teams.notifications.deleteTeamError'), 'error');
-    })
-    .finally(() => {
-        hideOverlay();
-    });
+function fetchDeployedApps() {
+    getTemplates()
+        .then((response) => {        
+            deployedApplications.value = response;
+        }).catch(error => {
+            console.error("Error fetching templates:", error);
+        });
 }
 </script>

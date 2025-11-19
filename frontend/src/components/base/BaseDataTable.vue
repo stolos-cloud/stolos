@@ -5,7 +5,7 @@
                 :headers="headers" 
                 :items="items" 
                 :items-length="items.length" 
-                :loading=loading
+                :loading="loading"
                 :search="internalSearch" 
                 :loading-text="loadingText"
                 :no-data-text="noDataText" 

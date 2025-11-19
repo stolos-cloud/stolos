@@ -127,10 +127,10 @@ const routes = [
         meta: { title: 'templateDefinitions.title', requiresAuth: true, roles: ['admin'] },
     },
     {
-        path: '/deployed-apps',
-        name: 'deployed-apps',
+        path: '/deployed-applications',
+        name: 'deployed-applications',
         component: DeployedApplicationsPage,
-        meta: { title: 'templateDefinitions.title', requiresAuth: true, roles: ['admin'] },
+        meta: { title: 'deployedApplications.title', requiresAuth: true, roles: ['admin', 'developer'] },
     },
     {
         path: '/secrets-security',

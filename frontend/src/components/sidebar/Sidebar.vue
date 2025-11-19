@@ -92,7 +92,7 @@ const operatorMenu = [
   },
   { title: 'cloudProvider.title', icon: 'mdi-cloud', route: '/cloud-provider' },
   { title: 'templateDefinitions.title', icon: 'mdi-layers-triple', route: '/templates' },
-  { title: 'deployedApps.title', icon: 'mdi-layers-triple', route: '/deployed-apps' },
+  { title: 'deployedApplications.title', icon: 'mdi-apps', route: '/deployed-applications' },
   { title: 'secretsSecurity.title',  icon: 'mdi-shield', route: '/secrets-security' },
   { title: 'administration.title', icon: 'mdi-account-supervisor-circle', children: [
       { title: 'administration.users.title', route: '/administration/users' },
