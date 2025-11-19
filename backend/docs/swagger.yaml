@@ -1527,6 +1527,29 @@ paths:
       summary: Returns talosconfig File in TALOS_FOLDER
       tags:
       - nodes
+  /scaffolds:
+    get:
+      description: returns a list of available template scaffolds in the GitOps repository
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: string
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get template scaffolds list
+      tags:
+      - scaffolds
   /templates:
     get:
       description: returns a list of available templates on the cluster
@@ -1662,6 +1685,38 @@ paths:
       security:
       - BearerAuth: []
       summary: Validate a template deployment
+      tags:
+      - templates
+  /templates/create:
+    post:
+      description: Creates a new template directory by copying files from the chosen
+        scaffold directory.
+      parameters:
+      - description: name of the scaffold directory. see scaffolds API to list available
+          options.
+        in: query
+        name: scaffoldName
+        required: true
+        type: string
+      - description: name of the template directory to create.
+        in: query
+        name: templateName
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: done
+          schema:
+            type: string
+        "500":
+          description: error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Create a template directory based on pre-existing scaffold directory
       tags:
       - templates
   /users:

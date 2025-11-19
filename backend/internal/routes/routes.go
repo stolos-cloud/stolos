@@ -34,6 +34,7 @@ func SetupRoutes(r *gin.Engine, h *handlers.Handlers) {
 			setupUserRoutes(protected, h)
 			setupEventRoutes(protected, h)
 			setupTemplateRoutes(protected, h)
+			setupScaffoldRoutes(protected, h)
 		}
 	}
 }
@@ -156,5 +157,13 @@ func setupTemplateRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
 		templateRoutes.GET("/:name", h.TemplatesHandlers().GetTemplate)
 		templateRoutes.POST("/:id/validate/:instance_name", h.TemplatesHandlers().ValidateTemplate)
 		templateRoutes.POST("/:id/apply/:instance_name", h.TemplatesHandlers().ApplyTemplate)
+		templateRoutes.POST("/create", h.TemplatesHandlers().CreateTemplateFromScaffold)
+	}
+}
+
+func setupScaffoldRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
+	scaffoldRoutes := api.Group("/scaffolds")
+	{
+		scaffoldRoutes.GET("/", h.ScaffoldsHandlers().GetScaffoldsList)
 	}
 }

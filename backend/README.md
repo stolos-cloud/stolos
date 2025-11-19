@@ -61,6 +61,7 @@ Swagger UI available at: <http://localhost:8080/swagger/index.html>
 To regenerate the Swagger docs after making changes to API annotations:
 
 ```bash
+go install github.com/swaggo/swag/cmd/swag@latest
 swag init -g cmd/server/main.go -o docs
 ```
 
