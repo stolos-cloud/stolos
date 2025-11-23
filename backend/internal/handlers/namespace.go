@@ -20,12 +20,14 @@ import (
 type NamespaceHandlers struct {
 	db            *gorm.DB
 	gitopsService *gitopsservices.GitOpsService
+	k8sClient     *k8s.K8sClient
 }
 
-func NewNamespaceHandlers(db *gorm.DB, gitopsService *gitopsservices.GitOpsService) *NamespaceHandlers {
+func NewNamespaceHandlers(db *gorm.DB, gitopsService *gitopsservices.GitOpsService, k8sClient *k8s.K8sClient) *NamespaceHandlers {
 	return &NamespaceHandlers{
 		db:            db,
 		gitopsService: gitopsService,
+		k8sClient:     k8sClient,
 	}
 }
 
@@ -92,9 +94,13 @@ func (h *NamespaceHandlers) CreateNamespace(c *gin.Context) {
 		return
 	}
 
+	// Create the actual Kubernetes namespace
+	if err := h.k8sClient.CreateNamespace(context.Background(), req.Name); err != nil {
+		fmt.Printf("Warning: Failed to create Kubernetes namespace %s: %v\n", req.Name, err)
+	}
+
 	// Create GitOps manifests for the namespace
 	if err := h.gitopsService.CreateNamespaceDirectory(context.Background(), req.Name); err != nil {
-		// wnamespace is already created in DB
 		fmt.Printf("Warning: Failed to create GitOps manifests for namespace %s: %v\n", req.Name, err)
 	}
 
@@ -448,9 +454,13 @@ func (h *NamespaceHandlers) DeleteNamespace(c *gin.Context) {
 		return
 	}
 
+	// Delete the actual Kubernetes namespace
+	if err := h.k8sClient.DeleteNamespace(context.Background(), namespace.Name); err != nil {
+		fmt.Printf("Warning: Failed to delete Kubernetes namespace %s: %v\n", namespace.Name, err)
+	}
+
 	// Delete GitOps manifests for the namespace
 	if err := h.gitopsService.DeleteNamespaceManifests(context.Background(), namespace.Name); err != nil {
-		// Log error but don't fail the request - namespace is already deleted from DB
 		fmt.Printf("Warning: Failed to delete GitOps manifests for namespace %s: %v\n", namespace.Name, err)
 	}
 

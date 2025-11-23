@@ -20,8 +20,8 @@ func RegisterHandlers() []any {
 		gontainer.NewFactory(func(db *gorm.DB, jwt *middleware.JWTService) *AuthHandlers {
 			return NewAuthHandlers(db, jwt)
 		}),
-		gontainer.NewFactory(func(db *gorm.DB, gitopsService *gitops.GitOpsService) *NamespaceHandlers {
-			return NewNamespaceHandlers(db, gitopsService)
+		gontainer.NewFactory(func(db *gorm.DB, gitopsService *gitops.GitOpsService, k8sClient *k8s.K8sClient) *NamespaceHandlers {
+			return NewNamespaceHandlers(db, gitopsService, k8sClient)
 		}),
 		gontainer.NewFactory(func(db *gorm.DB) *UserHandlers {
 			return NewUserHandlers(db)
