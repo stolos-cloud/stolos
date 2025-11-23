@@ -164,6 +164,6 @@ func setupTemplateRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
 func setupScaffoldRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
 	scaffoldRoutes := api.Group("/scaffolds")
 	{
-		scaffoldRoutes.GET("/", h.ScaffoldsHandlers().GetScaffoldsList)
+		scaffoldRoutes.GET("", h.ScaffoldsHandlers().GetScaffoldsList)
 	}
 }

@@ -1,36 +1,43 @@
 <template>
-    <v-sheet class="mt-4 border rounded">
-        <v-data-table 
-            :headers="headers" 
-            :items="items" 
-            :items-length="items.length" 
-            :loading=loading
-            :search="internalSearch" 
-            :loading-text="loadingText"
-            :no-data-text="noDataText" 
-            :items-per-page="10"
-            :items-per-page-options="[10]"
-            :items-per-page-text="itemsPerPageText" 
-            :hide-default-footer="items.length < 10"
-            mobile-breakpoint="md"
-            v-on="rowClickable ? { 'click:row': handleClickRow } : {}"
-            :class="{ 'clickable-rows': rowClickable}"
-        >
-            <template v-slot:top>
-                <BaseToolbarTable 
-                    v-model="internalSearch" 
-                    :title="titleToolbar" 
-                    :buttons="actionsButtonForTable" 
-                />
-            </template>
-            <template 
-                v-for="name in Object.keys($slots)"
-                v-slot:[name]="slotProps"
+    <div>
+        <v-sheet class="mt-4 border rounded">
+            <v-data-table 
+                :headers="headers" 
+                :items="items" 
+                :items-length="items.length" 
+                :loading="loading"
+                :search="internalSearch" 
+                :loading-text="loadingText"
+                :no-data-text="noDataText" 
+                :items-per-page="10"
+                :items-per-page-options="[10]"
+                :items-per-page-text="itemsPerPageText" 
+                :hide-default-footer="items.length < 10"
+                mobile-breakpoint="md"
+                v-on="rowClickable ? { 'click:row': handleClickRow } : {}"
+                :class="{ 'clickable-rows': rowClickable}"
             >
-                <slot :name="name" v-bind="slotProps"></slot>
-            </template>
-        </v-data-table>
-    </v-sheet>
+                <template v-slot:top>
+                    <BaseToolbarTable 
+                        v-model="internalSearch" 
+                        :title="titleToolbar" 
+                        :buttons="actionsButtonForTable" 
+                    />
+                </template>
+                <template 
+                    v-for="name in Object.keys($slots)"
+                    v-slot:[name]="slotProps"
+                >
+                    <slot :name="name" v-bind="slotProps"></slot>
+                </template>
+            </v-data-table>
+        </v-sheet>
+        <div 
+            v-if="footerMessage"
+            class="text-right py-1 text-caption text-grey">
+            {{ footerMessage }}
+        </div>
+    </div>
 </template>
 
 <script setup>
@@ -76,6 +83,10 @@ const props = defineProps({
     rowClickable: {
         type: Boolean,
         default: false
+    },
+    footerMessage: {
+        type: String,
+        default: ''
     }
 });
 

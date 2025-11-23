@@ -5,7 +5,8 @@ import PremisesProvisioningPage from '@/pages/operator/PremisesProvisioningPage.
 import CloudProvisioningPage from '@/pages/operator/CloudProvisioningPage.vue';
 import CloudProviderPage from '@/pages/operator/CloudProviderPage.vue';
 import SecretsSecurityPage from '@/pages/operator/SecretsSecurityPage.vue';
-import TemplatesPage from '@/pages/operator/TemplatesPage.vue';
+import TemplateDefinitionsPage from '@/pages/operator/TemplateDefinitionsPage.vue';
+import DeployedApplicationsPage from '@/pages/DeployedApplicationsPage.vue';
 import UsersManagementPage from '@/pages/operator/UsersManagementPage.vue';
 import NamespacesManagementPage from '@/pages/operator/NamespacesManagementPage.vue';
 import UIButtonsPage from '@/pages/ui/UIButtonsPage.vue';
@@ -122,8 +123,14 @@ const routes = [
     {
         path: '/templates',
         name: 'templates',
-        component: TemplatesPage,
-        meta: { title: 'templates.title', requiresAuth: true, roles: ['admin'] },
+        component: TemplateDefinitionsPage,
+        meta: { title: 'templateDefinitions.title', requiresAuth: true, roles: ['admin'] },
+    },
+    {
+        path: '/deployed-applications',
+        name: 'deployed-applications',
+        component: DeployedApplicationsPage,
+        meta: { title: 'deployedApplications.title', requiresAuth: true, roles: ['admin', 'developer'] },
     },
     {
         path: '/secrets-security',

@@ -29,7 +29,7 @@ import (
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/platform"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/platform_talos"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/talos"
-	"github.com/stolos-cloud/stolos/stolos-yoke/flight/pkg/types"
+	"github.com/stolos-cloud/stolos/stolos-yoke/pkg/types"
 	"github.com/yokecd/yoke/pkg/yoke"
 	"golang.org/x/oauth2"
 	corev1 "k8s.io/api/core/v1"
@@ -70,13 +70,12 @@ func main() {
 
 	if !(errors.Is(err, os.ErrNotExist)) {
 		saveState, err = marshal.UnmarshalFromFile[SaveState](_bootstrapStateFile)
-		var err2 error
-		ConfigBundle, err2 = marshal.ReadSplitConfigBundleFiles()
-		if err == nil && err2 == nil {
+		if err == nil {
 			bootstrapInfos = &saveState.BootstrapInfo
 			didReadBootstrapInfos = true
 			doRestoreProgress = true
 		}
+		ConfigBundle, _ = marshal.ReadSplitConfigBundleFiles()
 	}
 	if !didReadBootstrapInfos {
 		saveState = SaveState{
@@ -628,11 +627,19 @@ func RunGitHubAuthStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 func RunWaitForServersStep(model *tui.Model, step *tui.Step) tea.Cmd {
 
 	if doRestoreProgress {
-		model.Logger.Info("State file found, skip looking for machines") // TODO ... FOR NOW!!
-		step.IsDone = true
-		step.AutoAdvance = true
-		step.OnExit = nil
-		return nil
+		// Only skip if machines have already been configured
+		if len(saveState.MachinesCache.ControlPlanes) > 0 || len(saveState.MachinesCache.Workers) > 0 {
+			model.Logger.Info("Machines already configured, skipping server wait")
+			step.IsDone = true
+			step.AutoAdvance = true
+			step.OnExit = nil
+			return nil
+		}
+
+		model.Logger.Info("Machines not yet configured, restoring discovered machines")
+		for ip := range saveState.MachinesDisks {
+			step.Body = step.Body + fmt.Sprintf("\nNode: %s", ip)
+		}
 	}
 
 	model.Logger.Infof("Cluster: %s", bootstrapInfos.TalosInfo.ClusterName)
@@ -684,6 +691,10 @@ func RunWaitForServersStep(model *tui.Model, step *tui.Step) tea.Cmd {
 }
 
 func ExitWaitForServersStep(model *tui.Model, step *tui.Step) {
+	// Once we're configuring machines, we're no longer in restore mode
+	doRestoreProgress = false
+	ConfigBundle = nil
+
 	i := 0
 	for k := range saveState.MachinesDisks {
 		var disks []*storage.Disk
@@ -762,10 +773,8 @@ func ExitConfigureServer(serverIp string, disks *[]*storage.Disk) func(model *tu
 		switch config.Role {
 		case 1:
 			saveState.MachinesCache.ControlPlanes[serverIp] = make([]byte, 0)
-			break
 		case 2:
 			saveState.MachinesCache.Workers[serverIp] = make([]byte, 0)
-			break
 		default:
 			model.Logger.Errorf("Invalid role: %d", config.Role)
 		}
@@ -779,8 +788,10 @@ func ExitConfigureServer(serverIp string, disks *[]*storage.Disk) func(model *tu
 }
 
 func RunTalosISOStep(m *tui.Model, s *tui.Step) tea.Cmd {
-	if doRestoreProgress {
-		m.Logger.Info("State file found, skipping ISO download")
+	// Check if we can skip - machines already configured
+	if doRestoreProgress &&
+		(len(saveState.MachinesCache.ControlPlanes) > 0 || len(saveState.MachinesCache.Workers) > 0) {
+		m.Logger.Info("Machines already configured, skipping ISO download")
 		s.IsDone = true
 		return nil
 	}
@@ -816,6 +827,21 @@ func RunTalosISOStep(m *tui.Model, s *tui.Step) tea.Cmd {
 		}
 
 		talosImagePath := fmt.Sprintf("metal-%s.%s", bootstrapInfos.TalosInfo.TalosArchitecture, talosImageFormat)
+		isoExists := false
+		if _, err := os.Stat(talosImagePath); err == nil {
+			isoExists = true
+		}
+
+		if isoExists {
+			m.Logger.Infof("Deleting existing ISO: %s", talosImagePath)
+			err := os.Remove(talosImagePath)
+			if err != nil {
+				m.Logger.Errorf("Failed to delete old ISO: %s", err)
+			}
+		} else if !isoExists {
+			m.Logger.Infof("ISO does not exist, will download: %s", talosImagePath)
+		}
+
 		talosImageUrl := fmt.Sprintf("https://factory.talos.dev/image/%s/%s/%s", schematicId, bootstrapInfos.TalosInfo.TalosVersion, talosImagePath)
 		//m.Logger.Infof("%s", talosImageUrl)
 
@@ -827,12 +853,24 @@ func RunTalosISOStep(m *tui.Model, s *tui.Step) tea.Cmd {
 
 		m.Logger.Successf("Download saved to: %s", resp.Filename)
 
+		err = marshal.MarshalToFile(_bootstrapStateFile, saveState)
+		if err != nil {
+			m.Logger.Errorf("Failed to save schematic ID to state: %s", err)
+		}
+
 		s.IsDone = true
 	}()
 	return nil
 }
 
 func RunClusterBootstrapStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
+	// If restoring progress and ConfigBundle files exist, skip this step
+	if doRestoreProgress && ConfigBundle != nil {
+		m.Logger.Info("ConfigBundle already exists, skipping cluster bootstrap")
+		s.IsDone = true
+		return nil
+	}
+
 	go func() {
 		var err error
 		m.Logger.Debug("RunClusterBootstrapStepInBackground")
@@ -841,9 +879,14 @@ func RunClusterBootstrapStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 		ConfigBundle, err = talos.ApplyConfigsToNodes(&saveState.MachinesCache, saveState.MachinesDisks, &bootstrapInfos.TalosInfo, ConfigBundle)
 		if err != nil {
 			m.Logger.Errorf("Failed to apply configs: %s", err)
-		} else {
-			m.Logger.Debug("Configs applied")
+			return
 		}
+		if ConfigBundle == nil {
+			m.Logger.Errorf("ConfigBundle is nil after applying configs")
+			return
+		}
+		m.Logger.Debug("Configs applied")
+
 		err = marshal.SaveSplitConfigBundleFiles(ConfigBundle)
 		if err != nil {
 			m.Logger.Errorf("Failed to save split config bundle files: %s", err)
@@ -887,6 +930,16 @@ func RunClusterBootstrapStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 }
 
 func RunArgoStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
+	// If restoring progress and kubeconfig doesn't exist, skip
+	if doRestoreProgress && len(kubeconfig) == 0 {
+		_, err := os.Stat("kubeconfig")
+		if errors.Is(err, os.ErrNotExist) {
+			m.Logger.Info("Cluster not ready yet, skipping Argo deployment")
+			return nil
+		}
+		kubeconfig, _ = os.ReadFile("kubeconfig")
+	}
+
 	go func() {
 		m.Logger.Debug("RunArgoStepInBackground")
 		DeployArgoCD(m.Logger)
@@ -896,11 +949,25 @@ func RunArgoStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 }
 
 func RunPortalStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
+	// If restoring progress and kubeconfig doesn't exist, skip
+	if doRestoreProgress && len(kubeconfig) == 0 {
+		_, err := os.Stat("kubeconfig")
+		if errors.Is(err, os.ErrNotExist) {
+			m.Logger.Info("Cluster not ready yet, skipping Portal deployment")
+			return nil
+		}
+		kubeconfig, _ = os.ReadFile("kubeconfig")
+	}
+
 	go func() {
 		m.Logger.Debug("RunPortalStepInBackground")
 		CreateBackendSecrets(m.Logger)
 
 		k8sClient, err := k8s.NewClientFromKubeconfig(kubeconfig)
+		if err != nil {
+			m.Logger.Errorf("Failed to create k8s client: %v", err)
+			return
+		}
 		k8sClient.CoreV1().Namespaces().Create(context.Background(), &corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "atc",
@@ -914,11 +981,23 @@ func RunPortalStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 		if err != nil {
 			m.Logger.Errorf("Failed to load kubeconfig: %v", err)
 		}
+
+		// Create docker-registry secret for ATC to pull private flights from GHCR
+		// Using PAT from user input since GitHub App tokens don't work with GHCR
+		if err := k8s.CreateGHCRPullSecret(context.Background(), k8sClient, "atc", "ghcr-pull-secret", bootstrapInfos.GitHubInfo.PackagesPAT); err != nil {
+			m.Logger.Errorf("Failed to create GHCR pull secret: %v", err)
+		} else {
+			m.Logger.Success("Created GHCR pull secret for ATC")
+		}
+
 		err = cmdr.Takeoff(context.Background(), yoke.TakeoffParams{
 			Namespace: "atc",
 			Flight: yoke.FlightParams{
 				Path: "oci://ghcr.io/yokecd/atc-installer:0.15.0",
-				Args: []string{"--skip-version-check", "true"},
+				Args: []string{
+					"--skip-version-check", "true",
+					"--set", "dockerConfigSecretName=ghcr-pull-secret",
+				},
 			},
 			Release: "atc",
 		})
@@ -953,6 +1032,11 @@ func RunPortalStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 			Spec: types.StolosSpec{
 				ClusterName: bootstrapInfos.TalosInfo.ClusterName,
 				BaseDomain:  bootstrapInfos.GitHubInfo.BaseDomain,
+				LocalPathProvisioner: types.LocalPathProvisioner{
+					Deploy:    bootstrapInfos.TalosInfo.DeployLocalPathStorage == "true",
+					Namespace: "local-path-storage",
+					Version:   "v0.0.32",
+				},
 				MetalLB: types.MetalLB{
 					Deploy:       true,
 					Namespace:    "metallb-system",
@@ -1008,6 +1092,9 @@ func RunPortalStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 			},
 		}
 
+		mapStolosCR, err := runtime.DefaultUnstructuredConverter.ToUnstructured(&stolosCR)
+		unstructuredStolosCR := unstructured.Unstructured{Object: mapStolosCR}
+
 		githubClient, err := github.NewClientFromApp(
 			context.Background(),
 			gitHubAppManifest.ID,
@@ -1018,7 +1105,7 @@ func RunPortalStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 			m.Logger.Errorf("Failed to create GitHub client from app: %v", err)
 		}
 
-		err = githubClient.CreateInitialConfig(&stolosCR, &bootstrapInfos.GitHubInfo)
+		err = githubClient.CreateInitialConfig(&unstructuredStolosCR, &bootstrapInfos.GitHubInfo)
 		if err != nil {
 			m.Logger.Errorf("Failed to create stolos config on github: %v", err)
 		}
@@ -1027,9 +1114,6 @@ func RunPortalStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 		if err != nil {
 			m.Logger.Errorf("Failed to create Kubernetes client: %s", err)
 		}
-
-		mapStolosCR, err := runtime.DefaultUnstructuredConverter.ToUnstructured(&stolosCR)
-		unstructuredStolosCR := unstructured.Unstructured{Object: mapStolosCR}
 
 		_, err = k8sClientDyn.Resource(schema.GroupVersionResource{
 			Group:    "stolos.cloud",
@@ -1048,8 +1132,7 @@ func RunPortalStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 
 func DeployArgoCD(loggerRef *tui.UILogger) {
 	loggerRef.Info("Setting up helm...")
-	var logger logging.Logger
-	logger = loggerRef
+	logger := logging.Logger(loggerRef)
 	helmClient, err := helm.SetupHelmClient(&logger, kubeconfig)
 	if err != nil {
 		loggerRef.Errorf("Failed to setup helm client: %s", err)

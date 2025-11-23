@@ -1,7 +1,9 @@
 <template>
     <div>
-        <v-toolbar flat>
-            <v-toolbar-title>{{ title }}</v-toolbar-title>
+        <v-toolbar color="surface" flat>
+            <v-toolbar-title>            
+                <BaseTitle :level="6" :title="title" />
+            </v-toolbar-title>
             <template v-if="buttons.length > 0">
                 <BaseButton 
                     class="ml-2"
@@ -16,6 +18,7 @@
                 />
             </template>
         </v-toolbar>
+        <v-divider></v-divider>
         <v-text-field 
             v-if="modelValue !== undefined"
             v-model="localSearch" 

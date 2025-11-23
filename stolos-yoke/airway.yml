@@ -1,0 +1,213 @@
+kind: Airway
+apiVersion: yoke.cd/v1alpha1
+metadata:
+  name: stolosplatforms.stolos.cloud
+  annotations:
+    stolos.cloud/template-display-name: Stolos Platform
+spec:
+  wasmUrls:
+    flight: oci://ghcr.io/stolos-cloud/stolosplatform-yoke:5cd69713e289c87f7322eba16bd73d4ae1a3b33a
+  fixDriftInterval: 5m0s
+  clusterAccess: true
+  resourceAccessMatchers:
+    - '*'
+  mode: subscription
+  template:
+    group: stolos.cloud
+    names:
+      plural: stolosplatforms
+      singular: stolosplatform
+      kind: StolosPlatform
+    scope: Cluster
+    versions:
+      - name: v1alpha
+        served: true
+        storage: true
+        schema:
+          openAPIV3Schema:
+            type: object
+            required:
+              - spec
+            properties:
+              spec:
+                type: object
+                required:
+                  - clusterName
+                  - baseDomain
+                  - metallb
+                  - argocd
+                  - contour
+                  - certManager
+                  - cnpg
+                  - stolosPlatform
+                properties:
+                  argocd:
+                    type: object
+                    required:
+                      - deploy
+                      - namespace
+                      - version
+                      - subdomain
+                      - imageUpdaterVersion
+                      - repositoryOwner
+                      - repositoryName
+                      - repositoryRevision
+                    properties:
+                      deploy:
+                        type: boolean
+                        default: true
+                      imageUpdaterVersion:
+                        type: string
+                      namespace:
+                        type: string
+                        default: argocd
+                      repositoryName:
+                        type: string
+                      repositoryOwner:
+                        type: string
+                      repositoryRevision:
+                        type: string
+                        default: main
+                      subdomain:
+                        type: string
+                      version:
+                        type: string
+                  baseDomain:
+                    type: string
+                  certManager:
+                    type: object
+                    required:
+                      - deploy
+                      - version
+                      - namespace
+                      - clusterIssuerProd
+                      - clusterIssuerStaging
+                      - defaultClusterIssuer
+                      - selfSigned
+                      - email
+                    properties:
+                      clusterIssuerProd:
+                        type: string
+                        default: letsencrypt-prod
+                      clusterIssuerStaging:
+                        type: string
+                        default: letsencrypt-staging
+                      defaultClusterIssuer:
+                        type: string
+                        default: letsencrypt-prod
+                      deploy:
+                        type: boolean
+                        default: true
+                      email:
+                        type: string
+                      namespace:
+                        type: string
+                        default: cert-manager
+                      selfSigned:
+                        type: boolean
+                        default: false
+                      version:
+                        type: string
+                  clusterName:
+                    type: string
+                  cnpg:
+                    type: object
+                    required:
+                      - deploy
+                      - namespace
+                      - version
+                      - barmanVersion
+                    properties:
+                      barmanVersion:
+                        type: string
+                      deploy:
+                        type: boolean
+                        default: true
+                      namespace:
+                        type: string
+                        default: cnpg-system
+                      version:
+                        type: string
+                  contour:
+                    type: object
+                    required:
+                      - deploy
+                      - namespace
+                      - version
+                    properties:
+                      deploy:
+                        type: boolean
+                        default: true
+                      namespace:
+                        type: string
+                        default: projectcontour
+                      version:
+                        type: string
+                  metallb:
+                    type: object
+                    required:
+                      - deploy
+                      - configureArp
+                      - arpIp
+                      - namespace
+                      - version
+                    properties:
+                      arpIp:
+                        type: string
+                      configureArp:
+                        type: boolean
+                        default: true
+                      deploy:
+                        type: boolean
+                        default: true
+                      namespace:
+                        type: string
+                        default: metallb-system
+                      version:
+                        type: string
+                  stolosPlatform:
+                    type: object
+                    required:
+                      - deploy
+                      - namespace
+                      - backendSubdomain
+                      - frontendSubdomain
+                      - database
+                      - defaultAdminPassword
+                      - defaultAdminEmail
+                      - pathToYaml
+                    properties:
+                      backendSubdomain:
+                        type: string
+                      database:
+                        type: object
+                        required:
+                          - image
+                          - instanceCount
+                          - sizeInGigabytes
+                        properties:
+                          image:
+                            type: string
+                          instanceCount:
+                            type: integer
+                            default: 1
+                          sizeInGigabytes:
+                            type: integer
+                            default: 5
+                      defaultAdminEmail:
+                        type: string
+                      defaultAdminPassword:
+                        type: string
+                      deploy:
+                        type: boolean
+                        default: true
+                      frontendSubdomain:
+                        type: string
+                      namespace:
+                        type: string
+                        default: stolos-system
+                      pathToYaml:
+                        type: string
+  prune:
+    crds: true
+  timeout: 1m0s

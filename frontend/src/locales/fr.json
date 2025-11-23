@@ -250,8 +250,95 @@
             "cancel": "Annuler"
         }
     },
-    "templates": {
-        "title": "Modèles"
+    "templateDefinitions": {
+        "title": "Définitions de modèles",
+        "subheading": "Gérer vos définitions de modèles",
+        "table": {
+            "title": "Modèles d'application",
+            "loadingText": "Chargement des définitions de modèles...",
+            "noDataText": "Aucun modèle trouvé.",
+            "itemsPerPageText": "Modèles par page :",
+            "headers": {
+                "name": "Nom",
+                "version": "Version",
+                "metadata": "Métadonnées",
+                "deployedApps": "Applications déployées"
+            },
+            "footerMessage": "Tout CRD avec un groupe correspondant à {group} sera affiché."
+        },
+        "dialogs": {
+            "createTemplate":  {
+                "title": "Créer un nouveau modèle"
+            },
+            "viewDetailsTemplate": {
+                "title": "{ template } - Détails",
+                "crdDefinition": "Définition CRD",
+                "deployedApps": "Applications déployées"
+            }
+        },
+        "formfields": {
+            "templateName": "Nom du modèle",
+            "scaffold": "Scaffold"
+        },
+        "notifications": {
+            "createSuccess": "Votre modèle {templateName} a été créé avec succès !",
+            "createError": "Échec de la création du modèle"
+        },
+        "buttons": {
+            "createNewTemplate": "Créer un nouveau modèle"
+        }
+    },
+    "deployedApplications": {
+        "title": "Applications déployées",
+        "subheading": "Gérez vos applications déployées",
+        "table": {
+            "title": "Applications déployées",
+            "loadingText": "Chargement des applications déployées...",
+            "noDataText": "Aucune application déployée trouvée.",
+            "itemsPerPageText": "Applications par page :",
+            "headers": {
+                "instanceName": "Nom de l'instance",
+                "namespace": "Namespace",
+                "health": "Santé",
+                "actions": "Actions"
+            },
+            "footerMessage": "Les {src} déployées sur le cluster sont affichées."
+        },
+        "dialogs": {
+            "createDeployedApp":  {
+                "title": "Déployer une nouvelle application",
+                "crdConfiguration": "Configuration CRD"
+            },
+            "confirmDeploymentDialog": {
+                "title": "Modèle validé",
+                "notice": {
+                    "title": "Confirmer le déploiement",
+                    "text": "Veuillez confirmer que vous souhaitez déployer cette application avec la configuration fournie."
+                },
+                "deploymentDetails": {
+                    "title": "Détails du déploiement"
+                },
+                "buttons": {
+                    "confirmDeployment": "Confirmer le déploiement"
+                }
+            },
+            "viewDetailsDeployedApp": {
+                "title": "{ appName } - Détails"
+            }
+        },
+        "formfields": {
+            "instanceName": "Nom de l'instance",
+            "namespace": "Namespace",
+            "template": "Modèle"
+        },
+        "notifications": {
+            "validateError": "Échec de la validation de l'application",
+            "deploySuccess": "Votre application a été déployée avec succès !",
+            "deployError": "Échec du déploiement de l'application"
+        },
+        "buttons": {
+            "deployNewApp": "Déployer une nouvelle application"
+        }
     },
     "secretsSecurity": {
         "title": "Secrets & sécurité"
@@ -335,7 +422,7 @@
                     "confirmationText": "Êtes-vous sûr de vouloir supprimer le namespace {namespaceName} ? Cette action ne peut pas être annulée."
                 },
                 "viewDetailsNamespace": {
-                    "title": "Détails du namespace",
+                    "title": "{ namespaceName } - Détails",
                     "usersTitle": "Membres du namespace",
                     "totalMembersLabel": "Aucun membre | 1 membre au total | {count} membres au total",
                     "messages": {
@@ -354,6 +441,7 @@
             },
             "notifications": {
                 "createNamespaceSuccess": "Namespace créé avec succès",
+                "createNamespaceError": "Échec de la création du namespace",
                 "addUserSuccess": "Utilisateur ajouté au namespace avec succès",
                 "deleteUserSuccess": "Utilisateur supprimé du namespace avec succès",
                 "deleteNamespaceSuccess": "Namespace supprimé avec succès",
@@ -397,6 +485,7 @@
         "save": "Enregistrer",
         "cancel": "Annuler",
         "confirm": "Confirmer",
+        "validate": "Valider",
         "back": "Retour",
         "next": "Suivant",
         "finish": "Terminer",
@@ -411,7 +500,9 @@
         "viewRepo": "Voir le répertoire",
         "showCode": "Afficher le code",
         "hideCode": "Masquer le code",
-        "copyCode": "Copier le code"
+        "copyCode": "Copier le code",
+        "viewDocs": "Voir la documentation",
+        "return": "Retour"
     },
     "rules": {
         "validation": {
@@ -429,7 +520,10 @@
                 "mismatch": "Les mots de passe ne correspondent pas"
             },
             "textfield": {
-                "required": "Ce champ est requis"
+                "required": "Ce champ est requis",
+                "onlyLowercase": "Ce champ doit contenir des lettres minuscules",
+                "noNumbers": "Ce champ ne doit pas contenir de chiffres",
+                "noSpaces": "Ce champ ne doit pas contenir d'espaces. Utilisez des tirets (-) à la place"
             },
             "autoComplete": {
                 "required": "Ce champ est requis"

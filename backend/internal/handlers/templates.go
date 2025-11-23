@@ -175,7 +175,7 @@ func (h *TemplatesHandler) doApplyAction(c *gin.Context, onlyDryRun bool) {
 	if cr["metadata"] == nil {
 		cr["metadata"] = make(map[string]interface{})
 	}
-	cr["metadata"].(map[string]interface{})["name"] = c.Query("instance_name")
+	cr["metadata"].(map[string]interface{})["name"] = c.Param("instance_name")
 	cr["metadata"].(map[string]interface{})["namespace"] = k8s.K8sNamespacePrefix + userNamespace.Name
 
 	apiVersion := crdTemplate.GetCRD().Spec.Group + "/" + crdTemplate.GetCRD().Spec.Versions[0].Name
