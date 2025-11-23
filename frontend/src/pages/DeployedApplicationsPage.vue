@@ -1,8 +1,8 @@
 <template>
     <PortalLayout>
         <BaseLabelBar :title="$t('deployedApplications.title')" :subheading="$t('deployedApplications.subheading')" />
-        <BaseDataTable v-model="search" :headers="deployedApplicationsHeaders" :items="deployedApplications" :loading="loading"
-            :loadingText="$t('deployedApplications.table.loadingText')"
+        <BaseDataTable v-model="search" :headers="deployedApplicationsHeaders" :items="deployedApplications"
+            :loading="loading" :loadingText="$t('deployedApplications.table.loadingText')"
             :noDataText="$t('deployedApplications.table.noDataText')"
             :itemsPerPageText="$t('deployedApplications.table.itemsPerPageText')"
             :titleToolbar="$t('deployedApplications.table.title')"
@@ -34,7 +34,7 @@ const selectedDeployedApp = ref(null);
 
 // Computed
 const deployedApplicationsHeaders = computed(() => [
-    { title: t('deployedApplications.table.headers.instanceName'), value: 'instanceName', width: '25%'},
+    { title: t('deployedApplications.table.headers.instanceName'), value: 'instanceName', width: '25%' },
     { title: t('deployedApplications.table.headers.namespace'), value: 'namespace', align: 'center' },
     { title: t('deployedApplications.table.headers.health'), value: 'health', align: 'center' },
     { title: t('deployedApplications.table.headers.actions'), value: 'actions', align: 'center' }, //TODO : A voir ici si cest les bons noms de propriétés
@@ -44,7 +44,7 @@ const actionsButtonForTable = computed(() => [
         icon: "mdi-text-box",
         tooltip: t('actionButtons.viewDocs'),
         text: t('actionButtons.viewDocs'),
-        click: () => console.log('Docs button clicked')
+        click: redirectToWikiDocs
     },
     {
         icon: "mdi-plus",
@@ -70,12 +70,15 @@ function showViewDetailsDeployedAppDialog(deployedApp) {
 function fetchDeployedApps() {
     loading.value = true;
     getTemplates()
-        .then((response) => {        
+        .then((response) => {
             deployedApplications.value = response;
         }).catch(error => {
             console.error("Error fetching templates:", error);
         }).finally(() => {
             loading.value = false;
         });
+}
+function redirectToWikiDocs() {
+    window.open("https://github.com/stolos-cloud/stolos/wiki");
 }
 </script>

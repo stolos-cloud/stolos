@@ -4,14 +4,14 @@
             <BaseCard>
                 <template #title>
                     <BaseTitle :level="6" :title="$t('administration.namespaces.dialogs.viewDetailsNamespace.usersTitle')" />
-                    <v-chip size="small" label class="ml-2">
+                    <BaseChip class="ml-2">
                         {{ $t('administration.namespaces.dialogs.viewDetailsNamespace.totalMembersLabel', { count: usersNamespace.length }) }}
-                    </v-chip>
+                    </BaseChip>
                 </template>
                 <v-virtual-scroll :items="usersNamespace" max-height="200" v-if="usersNamespace.length > 0">
                     <template v-slot:default="{ item }">
                         <v-list lines="two" style="background-color: rgba(var(--v-theme-grey));">
-                            <v-list-item :key="item.id" :title="item.email" class="border rounded" style="background-color: rgba(var(--v-theme-surface));">
+                            <v-list-item :key="item.id" :title="item.email" class="border rounded" style="background-color: rgba(var(--v-theme-list-item));">
                                 <template #subtitle>
                                     <div class="d-flex align-center">
                                         <span class="text-caption text-medium-emphasis">{{ item.id }}</span>

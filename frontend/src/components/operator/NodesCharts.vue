@@ -1,7 +1,7 @@
 <template>
     <v-row class="mt-2">
         <v-col v-for="provider in providers" :key="provider.key" cols="12" md="6" sm="6">
-            <BaseCard class="pa-1" color="null">
+            <BaseCard class="pa-1">
                 <BaseTitle :level="6" :title="provider.title" />
                 <BaseRadialBarChart 
                         :key="`${provider.key}-${$i18n.locale}`"

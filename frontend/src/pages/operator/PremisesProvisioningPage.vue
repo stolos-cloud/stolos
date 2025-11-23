@@ -9,9 +9,12 @@
             :titleToolbar="$t('provisioning.onPremises.table.title')" :actionsButtonForTable="actionsButtonForTable">
             <!-- Slot for status -->
             <template #[`item.status`]="{ item }">
-                <v-chip :color="getStatusColor(item.status)" label size="small" prepend-icon="mdi-clock-outline">
+                <BaseChip :color="getStatusColor(item.status)">
+                    <template #prepend>
+                        <v-icon>mdi-clock-outline</v-icon>
+                    </template>
                     {{ item.status }}
-                </v-chip>
+                </BaseChip>
             </template>
 
             <template #[`item.installDisk`]="{ item }">
@@ -29,14 +32,13 @@
             <!-- Slot for labels -->
             <template #[`item.labels`]="{ item }">
                 <div class="d-flex flex-wrap align-center">
-                    <v-chip v-for="(label, index) in item.labels" :key="index" :color="getLabelColor(label)"
-                        class="ma-1" label closable @click:close="item.labels.splice(index, 1)" prepend-icon="mdi-">
+                    <BaseChip v-for="(label, index) in item.labels" :key="index" :color="getLabelColor(label)" closable @click:close="item.labels.splice(index, 1)">
                         {{ label }}
-                    </v-chip>
+                    </BaseChip>
                     <template v-if="!item.addingLabel">
-                        <v-chip class="ma-1" elevation="2" @click="item.addingLabel = true" label size="small">
+                        <BaseChip elevation="2" @click="item.addingLabel = true" :color="`grey`">
                             {{ $t('provisioning.onPremises.buttons.addLabel') }}
-                        </v-chip>
+                        </BaseChip>
                     </template>
                     <template v-else>
                         <v-text-field v-model="item.newLabel" density="compact" placeholder="New label" variant="solo"

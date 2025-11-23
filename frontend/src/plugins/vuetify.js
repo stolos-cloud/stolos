@@ -36,6 +36,7 @@ export default createVuetify({
                 colors: {
                     background: '#040609',//131212ff //040609
                     surface: '#0d0f15ff',
+                    'surface-variant': '#9c9a9aff',
                     primary: '#f97316',
                     'primary-darken-1': '#ff9248',
                     secondary: '#ffb38a',
@@ -47,13 +48,14 @@ export default createVuetify({
                     title: '#ffffff',
                     subtitlte: '#dddddd',
                     text: '#bbbbbb',
-                    dialog: '#13151cff',
+                    'list-item': '#1e1e1eff',
                 },
             },
             light: {
                 colors: {
                     background: '#ffffff',
                     surface: '#f5f5f5',
+                    'surface-variant': '#9a9898ff',
                     primary: '#ff7500',
                     'primary-darken-1': '#ff9248',
                     secondary: '#ffb38a',
@@ -65,7 +67,7 @@ export default createVuetify({
                     title: '#000000',
                     subtitle: '#222222',
                     text: '#444444',
-                    dialog: '#ebe9e9ff',
+                    'list-item': '#e0e0e0',
                 },
             },
         },
@@ -74,5 +76,5 @@ export default createVuetify({
         },
     },
     components,
-    directives,
+    directives
 });

@@ -1,11 +1,13 @@
 <template>
-    <v-dialog v-model="isOpen" :width="width" :persistent="persistent" content-class="elevation-8" style="backdrop-filter: blur(4px);" >
+    <v-dialog v-model="isOpen" :width="width" :persistent="persistent" content-class="elevation-8"
+        style="backdrop-filter: blur(4px);">
         <v-card>
             <template v-slot:title>
                 <div class="d-flex align-center my-2">
                     <BaseTitle :level="5" :title="title" />
                     <v-spacer></v-spacer>
-                    <v-btn v-if="closable" variant="text" icon="mdi-close" size="small" @click="closeDialog" />
+                    <v-btn v-if="closable" variant="text" icon="mdi-close" size="small" @click="closeDialog" rounded
+                        class="close-btn" />
                 </div>
             </template>
             <v-divider></v-divider>
@@ -76,3 +78,11 @@ function closeDialog() {
     emit('close');
 }
 </script>
+
+<style scoped>
+.close-btn:hover,
+.close-btn:active {
+    background-color: rgba(var(--v-theme-primary));
+    color: white;
+}
+</style>

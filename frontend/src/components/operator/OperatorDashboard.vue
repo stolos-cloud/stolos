@@ -8,19 +8,19 @@
             :titleToolbar="$t('dashboard.provision.table.title')" :actionsButtonForTable="actionsButtonForTable"
             rowClickable @click:row="(event, item) => showDetailsNodeDialog(item.item)">
             <template #[`item.status`]="{ item }">
-                <v-chip :color="getStatusColor(item.status)" label size="small">
+                <BaseChip :color="getStatusColor(item.status)">
                     <template #prepend>
                         <v-progress-circular v-if="normalizeStatus(item.status) === 'provisioning'" indeterminate size="14" width="2"/>
                         <v-icon v-else-if="normalizeStatus(item.status) === 'active'" size="14">mdi-check-circle-outline</v-icon>
                         <v-icon v-else-if="normalizeStatus(item.status) === 'failed'" size="14">mdi-close-circle-outline</v-icon>
                     </template>
-                    <span class="ml-1">{{ item.status }}</span>
-                </v-chip>
+                    <span>{{ item.status }}</span>
+                </BaseChip>
             </template>
             <template #[`item.labels`]="{ item }">
-                <v-chip v-for="(label, index) in item.labels" :key="index" :color="getLabelColor(label)" class="ma-1" label size="small">
+                <BaseChip v-for="(label, index) in item.labels" :key="index" :color="getLabelColor(label)">
                     {{ label }}
-                </v-chip>
+                </BaseChip>
             </template>
         </BaseDataTable>
         <ViewDetailsNodeDialog v-model="dialogViewDetailsNode" :node="selectedNode" />
@@ -54,7 +54,7 @@ const nodeHeaders = computed(() => [
     { title: t('dashboard.provision.table.headers.role'), value: 'role', align: "center" },
     { title: t('dashboard.provision.table.headers.provider'), value: 'provider', align: "center" },
     { title: t('dashboard.provision.table.headers.status'), value: 'status', align: "center" },
-    { title: t('dashboard.provision.table.headers.labels'), value: 'labels', align: "center" },
+    { title: t('dashboard.provision.table.headers.labels'), value: 'labels', width: "25%" },
 ]);
 const actionsButtonForTable = computed(() => [
     {

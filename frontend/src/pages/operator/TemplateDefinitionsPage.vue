@@ -44,7 +44,7 @@ const actionsButtonForTable = computed(() => [
         icon: "mdi-text-box",
         tooltip: t('actionButtons.viewDocs'),
         text: t('actionButtons.viewDocs'),
-        click: () => console.log('Docs button clicked')
+        click: redirectToWikiDocs
     },
     {
         icon: "mdi-plus",
@@ -76,5 +76,8 @@ function fetchTemplates() {
     }).finally(() => {
         loading.value = false;
     });
+}
+function redirectToWikiDocs() {
+    window.open("https://github.com/stolos-cloud/stolos/wiki");
 }
 </script>

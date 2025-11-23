@@ -4,12 +4,13 @@
             :title="$t('templateDefinitions.dialogs.viewDetailsTemplate.title', { template: template?.name })" closable>
             <BaseExpansion :title="$t('templateDefinitions.dialogs.viewDetailsTemplate.crdDefinition')">
                 <template #actions>
-                    <v-chip color="primary" size="small" label class="ml-2">
+                    <BaseChip class="ml-2">
                         v{{ template?.version || '1.0' }}
-                    </v-chip>
+                    </BaseChip>
                 </template>
                 <v-sheet color="grey-darken-4" rounded style="position: relative;">
                     <v-btn
+                        v-if="templateDetails?.jsonSchema"
                         :icon="copiedItem === templateDetails?.jsonSchema ? 'mdi-check' : 'mdi-content-copy'"
                         size="x-small"
                         variant="text"
@@ -22,9 +23,9 @@
             <BaseCard>
                 <template #title>
                     <BaseTitle :level="6" :title="$t('templateDefinitions.dialogs.viewDetailsTemplate.deployedApps')" />
-                    <v-chip size="small" label class="ml-2">
+                    <BaseChip class="ml-2">
                         2 total
-                    </v-chip>
+                    </BaseChip>
                     <v-spacer />
                     <v-btn variant="text" icon="mdi-open-in-new" color="primary" size="small"
                         @click="redirectToDeployedApplications">
@@ -34,16 +35,16 @@
                     <template v-slot:default="{ item }">
                         <v-list lines="two">
                             <v-list-item :key="item.id" :title="item.email" class="border rounded"
-                                style="background-color: rgba(33, 33, 33);">
+                                style="background-color: rgba(var(--v-theme-list-item));">
                                 <template #subtitle>
                                     <div class="d-flex align-center">
                                         Extra deployed info
                                     </div>
                                 </template>
                                 <template v-slot:append>
-                                    <v-chip size="small" color="success" label>
+                                    <BaseChip :color="'success'">
                                         running
-                                    </v-chip>
+                                    </BaseChip>
                                 </template>
                             </v-list-item>
                         </v-list>

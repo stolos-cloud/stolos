@@ -1,45 +1,30 @@
 <template>
     <div class="view-details-node-dialog">
         <BaseDialog v-model="isOpen" :title="$t('dashboard.provision.dialogs.viewDetailsNode.title')" closable>
-            <BaseTitle :level="3" :title="$t('dashboard.provision.dialogs.viewDetailsNode.subheading')" />
-            <v-row class="mt-4">
-                <v-col
-                    v-for="field in nodeFields"
-                    :key="field.key"
-                    cols="12"
-                    sm="6"
-                    md="4"
-                >
-                    <div class="d-flex flex-column">
-                        <strong class="mb-1">{{ $t(field.label) }}:</strong>
-                        <span
-                            :class="field.key === 'id' ? 'text-mono' : ''"
-                            :style="field.key === 'id' ? 'word-break: break-all; user-select: all;' : ''"
-                        >
-                            {{ formatFieldValue(field.key) }}
-                        </span>
-                    </div>
-                </v-col>
-            </v-row>
-
-            <!-- Labels section - full width at bottom -->
+            <BaseCard>
+                <p><b>{{ $t('dashboard.provision.dialogs.viewDetailsNode.subheading') }}</b></p>
+                <v-row class="my-2">
+                    <v-col v-for="field in nodeFields" :key="field.key" cols="12" md="12"
+                        class="d-flex flex-column flex-sm-row justify-space-between py-1">
+                        <span class="text-grey">{{ $t(field.label) }} :</span>
+                        <span class="text-truncate">{{ formatFieldValue(field.key) }}</span>
+                    </v-col>
+                </v-row>
+            </BaseCard>
             <v-divider class="my-4"></v-divider>
-            <div class="mt-4">
-                <strong class="mb-2 d-block">{{ $t('dashboard.provision.dialogs.viewDetailsNode.nodeInfo.labels') }}:</strong>
-                <div class="d-flex flex-wrap align-center">
-                    <v-chip
-                        v-for="(label, idx) in (node?.labels || [])"
-                        :key="idx"
+            <BaseCard>
+                <p><b>{{ $t('dashboard.provision.dialogs.viewDetailsNode.nodeInfo.labels') }}</b></p>
+                <div class="d-flex flex-wrap align-center my-2">
+                    <BaseChip
+                        v-for="(label, index) in (node?.labels || [])"
+                        :key="index"
                         :color="getLabelColor(label)"
-                        class="ma-1"
-                        label
                     >
                         {{ label }}
-                    </v-chip>
+                    </BaseChip>
                     <span v-if="!node?.labels?.length" class="text-grey">{{ $t('dashboard.provision.dialogs.viewDetailsNode.nodeInfo.noLabels') }}</span>
                 </div>
-            </div>
-
+            </BaseCard>
             <template #actions>
                 <BaseButton variant="outlined" :text="$t('actionButtons.close')" @click="closeDialog" />
             </template>
