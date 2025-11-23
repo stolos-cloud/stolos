@@ -1,6 +1,7 @@
 package github
 
 import (
+	"bytes"
 	"context"
 	"crypto/x509"
 	"encoding/pem"
@@ -16,13 +17,13 @@ import (
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/logger"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/oauth"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/oauth/providers"
-	"github.com/stolos-cloud/stolos/stolos-yoke/flight/pkg/types"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
-	"github.com/goccy/go-yaml"
 	"github.com/google/go-github/v74/github"
 	"golang.org/x/oauth2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8s_json "k8s.io/apimachinery/pkg/runtime/serializer/json"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -181,9 +182,21 @@ func (client *OauthClient) InitRepo(info *GitHubInfo, isPrivate bool) (*github.R
 }
 
 // createInitialConfig creates the initial common.yml configuration file
-func (c *OauthClient) CreateInitialConfig(config *types.Stolos, info *GitHubInfo) error {
+func (c *OauthClient) CreateInitialConfig(config *unstructured.Unstructured, info *GitHubInfo) error {
 
-	yamlConfig, err := yaml.Marshal(config)
+	s := k8s_json.NewSerializerWithOptions(
+		k8s_json.DefaultMetaFactory,
+		nil, // scheme — nil works for unstructured
+		nil,
+		k8s_json.SerializerOptions{
+			Yaml:   true,
+			Pretty: true,
+			Strict: false,
+		},
+	)
+
+	var out bytes.Buffer
+	err := s.Encode(config, &out)
 	if err != nil {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
@@ -200,10 +213,10 @@ func (c *OauthClient) CreateInitialConfig(config *types.Stolos, info *GitHubInfo
 		context.Background(),
 		info.RepoOwner,
 		info.RepoName,
-		"stolos/stolos-platform.yaml",
+		"system/stolos-system.yaml",
 		&github.RepositoryContentFileOptions{
 			Message:   github.Ptr("Initial config file"),
-			Content:   yamlConfig,
+			Content:   out.Bytes(),
 			Branch:    github.Ptr("main"),
 			Committer: &author,
 		},

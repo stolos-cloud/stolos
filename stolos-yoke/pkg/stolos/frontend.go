@@ -4,7 +4,7 @@ import (
 	certmanagerv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 	certmanagerv1meta "github.com/cert-manager/cert-manager/pkg/apis/meta/v1"
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
-	"github.com/stolos-cloud/stolos/stolos-yoke/flight/pkg/types"
+	"github.com/stolos-cloud/stolos/stolos-yoke/pkg/types"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -49,8 +49,8 @@ func CreateFrontendDeployment(input types.Stolos) *appsv1.Deployment {
 							},
 							Env: []corev1.EnvVar{
 								{
-									Name:  "API_URL",
-									Value: "http://stolos-backend:8080/api/v1",
+									Name:  "VITE_API_BASE_URL",
+									Value: "http://stolos-backend:8080",
 								},
 							},
 							Resources: corev1.ResourceRequirements{
