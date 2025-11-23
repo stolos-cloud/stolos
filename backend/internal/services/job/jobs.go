@@ -187,9 +187,14 @@ var NodeInfoReconciler = &StolosJob{
 		ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 		defer cancel()
 
-		seedCli, _, err := ts.GetReachableMachineryClient(ctx)
+		seedCli, seedNode, err := ts.GetReachableMachineryClient(ctx)
 		if err != nil {
 			log.Printf("NodeInfoReconciler: no reachable node found: %v", err)
+			return
+		}
+
+		if seedNode == nil || seedNode.Provider != "onprem" {
+			log.Printf("NodeInfoReconciler: no reachable onprem node available for seed selection")
 			return
 		}
 
