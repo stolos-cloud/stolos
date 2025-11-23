@@ -2,10 +2,13 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net"
+	"net/http"
 	"os"
 	"slices"
 	"strconv"
@@ -37,6 +40,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
 var bootstrapInfos = &BootstrapInfo{}
@@ -61,6 +65,8 @@ var gitHubAppManifest *github.AppManifest
 const _bootstrapStateFile = "bootstrap-state.json"
 const _bootstrapConfigFile = "bootstrap-config.json"
 const _gigabyte = 1073741824
+
+const stolosAirwayTag = "v0.2.0-alpha"
 
 func main() {
 
@@ -968,6 +974,12 @@ func RunPortalStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 			m.Logger.Errorf("Failed to create k8s client: %v", err)
 			return
 		}
+		k8sDynamicClient, err := k8s.NewDynamicClientFromKubeconfig(kubeconfig)
+		if err != nil {
+			m.Logger.Errorf("Failed to create k8s dynamic client: %v", err)
+			return
+		}
+
 		k8sClient.CoreV1().Namespaces().Create(context.Background(), &corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "atc",
@@ -1008,18 +1020,36 @@ func RunPortalStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 
 		time.Sleep(30 * time.Second)
 
-		err = cmdr.Takeoff(context.Background(), yoke.TakeoffParams{
-			Flight: yoke.FlightParams{
-				Path: "oci://ghcr.io/stolos-cloud/stolos/airway:v1-alpha.23",
-				Args: []string{"--skip-version-check", "true"},
-			},
-			Release: "stolos-airway",
-			Wait:    120 * time.Second,
-		})
-
+		stolosAirwayUrl := fmt.Sprintf("https://raw.githubusercontent.com/stolos-cloud/stolos/refs/tags/%s/stolos-yoke/airway.yml", stolosAirwayTag)
+		resp, err := http.Get(stolosAirwayUrl)
 		if err != nil {
-			m.Logger.Errorf("Failed to deploy airway: %v", err)
+			m.Logger.Errorf("Failed to download stolos airway url: %v", err)
+			return
 		}
+
+		stolosAirwayYaml, err := io.ReadAll(resp.Body)
+		if err != nil {
+			m.Logger.Errorf("Failed to get stolos airway from response: %v", err)
+			return
+		}
+
+		stolosAirwayUnstructured := &unstructured.Unstructured{}
+		dec := yaml.NewYAMLOrJSONDecoder(
+			bytes.NewReader(stolosAirwayYaml),
+			1024,
+		)
+		if err := dec.Decode(stolosAirwayUnstructured); err != nil {
+			m.Logger.Errorf("Failed to decode stolos airway yaml: %v", err)
+			return
+		}
+
+		_, err = k8sDynamicClient.Resource(schema.GroupVersionResource{
+			Group:    "yoke.cd",
+			Version:  "v1alpha1",
+			Resource: "Airway",
+		}).Namespace("atc").Apply(context.Background(), "stolosplatforms.stolos.cloud", stolosAirwayUnstructured, metav1.ApplyOptions{})
+
+		time.Sleep(10 * time.Second)
 
 		stolosCR := types.Stolos{
 			TypeMeta: metav1.TypeMeta{
