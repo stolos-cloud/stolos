@@ -93,7 +93,7 @@ func (h *NamespaceHandlers) CreateNamespace(c *gin.Context) {
 	}
 
 	// Create GitOps manifests for the namespace
-	if err := h.gitopsService.CreateNamespaceManifests(context.Background(), req.Name); err != nil {
+	if err := h.gitopsService.CreateNamespaceDirectory(context.Background(), req.Name); err != nil {
 		// wnamespace is already created in DB
 		fmt.Printf("Warning: Failed to create GitOps manifests for namespace %s: %v\n", req.Name, err)
 	}
