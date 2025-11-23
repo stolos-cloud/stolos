@@ -1,8 +1,8 @@
 package cnpg
 
 import (
-	"github.com/stolos-cloud/stolos/stolos-yoke/flight/pkg/argocd"
-	"github.com/stolos-cloud/stolos/stolos-yoke/flight/pkg/types"
+	"github.com/stolos-cloud/stolos/stolos-yoke/pkg/argocd"
+	"github.com/stolos-cloud/stolos/stolos-yoke/pkg/types"
 	"github.com/yokecd/yoke/pkg/flight"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

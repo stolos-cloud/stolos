@@ -1,8 +1,8 @@
 package metallb
 
 import (
-	"github.com/stolos-cloud/stolos/stolos-yoke/flight/pkg/argocd"
-	"github.com/stolos-cloud/stolos/stolos-yoke/flight/pkg/types"
+	"github.com/stolos-cloud/stolos/stolos-yoke/pkg/argocd"
+	"github.com/stolos-cloud/stolos/stolos-yoke/pkg/types"
 	"github.com/yokecd/yoke/pkg/flight"
 	metallb "go.universe.tf/metallb/api/v1beta1"
 	v1 "k8s.io/api/core/v1"
