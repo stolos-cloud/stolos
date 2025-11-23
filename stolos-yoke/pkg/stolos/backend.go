@@ -12,6 +12,7 @@ import (
 	"github.com/stolos-cloud/stolos/stolos-yoke/pkg/utils"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -41,6 +42,7 @@ func CreateDeployment(input types.Stolos) *appsv1.Deployment {
 					},
 				},
 				Spec: corev1.PodSpec{
+					ServiceAccountName: "stolos-backend-sa",
 					Containers: []corev1.Container{
 						{
 							Name:  "backend",
@@ -343,4 +345,76 @@ func CreateBackendSecrets(input types.Stolos) *corev1.Secret {
 	secret.SetGroupVersionKind(gvks[0])
 
 	return &secret
+}
+
+func CreateBackendServiceAccount(input types.Stolos) *corev1.ServiceAccount {
+	sa := corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "stolos-backend-sa",
+			Namespace: input.Spec.StolosPlatform.Namespace,
+			Labels: map[string]string{
+				"app": "stolos-backend",
+			},
+		},
+	}
+
+	gvks, _, _ := scheme.Scheme.ObjectKinds(&sa)
+	sa.SetGroupVersionKind(gvks[0])
+
+	return &sa
+}
+
+func CreateBackendClusterRole(input types.Stolos) *rbacv1.ClusterRole {
+	cr := rbacv1.ClusterRole{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "stolos-backend-role",
+			Labels: map[string]string{
+				"app": "stolos-backend",
+			},
+		},
+		Rules: []rbacv1.PolicyRule{
+			// TODO: This grants broad permissions cluster-wide. Future improvement:
+			// - Restrict to only 'app-*' namespaces ?
+			// - Use dynamic RoleBindings ?
+			// For now using wildcard permissions
+			{
+				APIGroups: []string{"*"},
+				Resources: []string{"*"},
+				Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
+			},
+		},
+	}
+
+	gvks, _, _ := scheme.Scheme.ObjectKinds(&cr)
+	cr.SetGroupVersionKind(gvks[0])
+
+	return &cr
+}
+
+func CreateBackendClusterRoleBinding(input types.Stolos) *rbacv1.ClusterRoleBinding {
+	crb := rbacv1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "stolos-backend-rolebinding",
+			Labels: map[string]string{
+				"app": "stolos-backend",
+			},
+		},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: "rbac.authorization.k8s.io",
+			Kind:     "ClusterRole",
+			Name:     "stolos-backend-role",
+		},
+		Subjects: []rbacv1.Subject{
+			{
+				Kind:      "ServiceAccount",
+				Name:      "stolos-backend-sa",
+				Namespace: input.Spec.StolosPlatform.Namespace,
+			},
+		},
+	}
+
+	gvks, _, _ := scheme.Scheme.ObjectKinds(&crb)
+	crb.SetGroupVersionKind(gvks[0])
+
+	return &crb
 }

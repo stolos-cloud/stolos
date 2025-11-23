@@ -9,14 +9,21 @@ type Stolos struct {
 }
 
 type StolosSpec struct {
-	ClusterName    string         `json:"clusterName"`
-	BaseDomain     string         `json:"baseDomain"`
-	MetalLB        MetalLB        `json:"metallb"`
-	ArgoCD         ArgoCD         `json:"argocd"`
-	Contour        Contour        `json:"contour"`
-	CertManager    CertManager    `json:"certManager"`
-	CNPG           CNPG           `json:"cnpg"`
-	StolosPlatform StolosPlatform `json:"stolosPlatform"`
+	ClusterName          string               `json:"clusterName"`
+	BaseDomain           string               `json:"baseDomain"`
+	LocalPathProvisioner LocalPathProvisioner `json:"localPathProvisioner"`
+	MetalLB              MetalLB              `json:"metallb"`
+	ArgoCD               ArgoCD               `json:"argocd"`
+	Contour              Contour              `json:"contour"`
+	CertManager          CertManager          `json:"certManager"`
+	CNPG                 CNPG                 `json:"cnpg"`
+	StolosPlatform       StolosPlatform       `json:"stolosPlatform"`
+}
+
+type LocalPathProvisioner struct {
+	Deploy    bool   `json:"deploy" Default:"false"`
+	Namespace string `json:"namespace" Default:"\"local-path-storage\""`
+	Version   string `json:"version" Default:"\"v0.0.32\""`
 }
 
 type MetalLB struct {

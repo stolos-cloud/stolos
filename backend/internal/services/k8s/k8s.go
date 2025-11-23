@@ -27,14 +27,17 @@ func NewK8sClient() (*K8sClient, error) {
 	var err error
 	k8sClient := K8sClient{}
 
-	if os.Getenv("KUBECONFIG") != "" {
-		filePath := os.Getenv("KUBECONFIG")
-		k8sClient.Config, err = clientcmd.BuildConfigFromFlags("", filePath)
-	} else if os.Getenv("KUBECONFIG_CONTENT") != "" {
-		fileContent := os.Getenv("KUBECONFIG_CONTENT")
-		k8sClient.Config, err = clientcmd.RESTConfigFromKubeConfig([]byte(fileContent))
-	} else {
-		k8sClient.Config, err = rest.InClusterConfig()
+	// Try in-cluster config first
+	k8sClient.Config, err = rest.InClusterConfig()
+	if err != nil {
+		// Fall back to kubeconfig for development
+		if os.Getenv("KUBECONFIG") != "" {
+			filePath := os.Getenv("KUBECONFIG")
+			k8sClient.Config, err = clientcmd.BuildConfigFromFlags("", filePath)
+		} else if os.Getenv("KUBECONFIG_CONTENT") != "" {
+			fileContent := os.Getenv("KUBECONFIG_CONTENT")
+			k8sClient.Config, err = clientcmd.RESTConfigFromKubeConfig([]byte(fileContent))
+		}
 	}
 
 	if err == nil {
