@@ -2040,6 +2040,43 @@
                 }
             }
         },
+        "/scaffolds": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "returns a list of available template scaffolds in the GitOps repository",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "scaffolds"
+                ],
+                "summary": "Get template scaffolds list",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/templates": {
             "get": {
                 "security": [
@@ -2063,6 +2100,53 @@
                             "items": {
                                 "$ref": "#/definitions/templates.Template"
                             }
+                        }
+                    },
+                    "500": {
+                        "description": "error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/templates/create": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Creates a new template directory by copying files from the chosen scaffold directory.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "templates"
+                ],
+                "summary": "Create a template directory based on pre-existing scaffold directory",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "name of the scaffold directory. see scaffolds API to list available options.",
+                        "name": "scaffoldName",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "name of the template directory to create.",
+                        "name": "templateName",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "done",
+                        "schema": {
+                            "type": "string"
                         }
                     },
                     "500": {

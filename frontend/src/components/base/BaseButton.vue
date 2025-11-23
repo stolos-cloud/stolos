@@ -5,7 +5,7 @@
         :size="size"
         :disabled="props.disabled"
         :elevation="elevation"
-        class="d-flex align-center text-none"
+        class="d-flex align-center justify-center text-none"
     >
         <v-tooltip v-if="showTooltip" activator="parent">{{ props.tooltip }}</v-tooltip>
         <v-icon v-if="props.icon" :start="showText">{{ props.icon }}</v-icon>

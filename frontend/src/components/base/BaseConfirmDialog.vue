@@ -1,5 +1,5 @@
 <template>
-    <BaseDialog v-model="isOpen" :title="title" width="600" closable>
+    <BaseDialog v-model="isOpen" :title="title" closable>
         <template #default>
             <p>{{ message }}</p>
         </template>

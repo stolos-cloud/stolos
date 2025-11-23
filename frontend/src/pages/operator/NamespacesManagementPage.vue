@@ -15,8 +15,8 @@
             @click:row="(event, item) => showViewDetailsDialog(item.item)"
         >
             <template #[`item.actions`]="{ item }">
-                <v-btn v-tooltip="{ text: $t('administration.namespaces.buttons.addUserToNamespace') }" icon="mdi-account-plus" size="small" variant="text" @click="showAddUserToNamespaceDialog(item)" />
-                <v-btn v-tooltip="{ text: $t('administration.namespaces.buttons.deleteNamespace') }" icon="mdi-delete" size="small" variant="text" @click="deleteNamespace(item)" />
+                <v-btn v-tooltip="{ text: $t('administration.namespaces.buttons.addUserToNamespace') }" icon="mdi-account-plus" size="small" variant="plain" @click="showAddUserToNamespaceDialog(item)" />
+                <v-btn v-tooltip="{ text: $t('administration.namespaces.buttons.deleteNamespace') }" icon="mdi-delete" size="small" variant="plain" @click="deleteNamespace(item)" />
             </template>
         </BaseDataTable>
         <CreateNamespaceDialog v-model="dialogCreateNamespace" @namespaceCreated="fetchNamespaces" />
@@ -32,9 +32,9 @@ import { useI18n } from "vue-i18n";
 import { getNamespaces, deleteNamespaceById } from '@/services/namespaces.service';
 import { GlobalNotificationHandler } from "@/composables/GlobalNotificationHandler";
 import { GlobalOverlayHandler } from "@/composables/GlobalOverlayHandler";
-import CreateNamespaceDialog from "./dialogs/administration/CreateNamespaceDialog.vue";
-import AddUserToNamespaceDialog from "./dialogs/administration/AddUserToNamespaceDialog.vue";
-import ViewDetailsNamespaceDialog from "./dialogs/administration/ViewDetailsNamespaceDialog.vue";
+import CreateNamespaceDialog from "@/pages/dialogs/administration/CreateNamespaceDialog.vue";
+import AddUserToNamespaceDialog from "@/pages/dialogs/administration/AddUserToNamespaceDialog.vue";
+import ViewDetailsNamespaceDialog from "@/pages/dialogs/administration/ViewDetailsNamespaceDialog.vue";
 
 const { t } = useI18n();
 const { showNotification } = GlobalNotificationHandler();

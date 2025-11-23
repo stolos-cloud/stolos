@@ -20,8 +20,8 @@ func RegisterHandlers() []any {
 		gontainer.NewFactory(func(db *gorm.DB, jwt *middleware.JWTService) *AuthHandlers {
 			return NewAuthHandlers(db, jwt)
 		}),
-		gontainer.NewFactory(func(db *gorm.DB, gitopsService *gitops.GitOpsService) *NamespaceHandlers {
-			return NewNamespaceHandlers(db, gitopsService)
+		gontainer.NewFactory(func(db *gorm.DB, gitopsService *gitops.GitOpsService, k8sClient *k8s.K8sClient) *NamespaceHandlers {
+			return NewNamespaceHandlers(db, gitopsService, k8sClient)
 		}),
 		gontainer.NewFactory(func(db *gorm.DB) *UserHandlers {
 			return NewUserHandlers(db)
@@ -32,8 +32,11 @@ func RegisterHandlers() []any {
 		gontainer.NewFactory(func(db *gorm.DB, ns *node.NodeService, ts *talosservice.TalosService, wsManager *wsservices.Manager) *NodeHandlers {
 			return NewNodeHandlers(db, ns, ts, wsManager)
 		}),
-		gontainer.NewFactory(func(db *gorm.DB, k8s *k8s.K8sClient) *TemplatesHandler {
-			return NewTemplatesHandler(k8s, db)
+		gontainer.NewFactory(func(db *gorm.DB, gitopsService *gitops.GitOpsService, k8s *k8s.K8sClient) *TemplatesHandler {
+			return NewTemplatesHandler(k8s, gitopsService, db)
+		}),
+		gontainer.NewFactory(func(db *gorm.DB, gitops *gitops.GitOpsService, k8s *k8s.K8sClient) *ScaffoldsHandler {
+			return NewScaffoldsHandler(k8s, gitops, db)
 		}),
 		gontainer.NewFactory(func(wsManager *wsservices.Manager) *EventHandlers {
 			return NewEventHandlers(wsManager)
@@ -71,6 +74,7 @@ func RegisterHandlers() []any {
 			eventHandlers *EventHandlers,
 			jwtService *middleware.JWTService,
 			templatesHandler *TemplatesHandler,
+			scaffoldsHandler *ScaffoldsHandler,
 			db *gorm.DB,
 			wsManager *wsservices.Manager,
 		) *Handlers {
@@ -83,6 +87,7 @@ func RegisterHandlers() []any {
 				gcpHandlers,
 				eventHandlers,
 				templatesHandler,
+				scaffoldsHandler,
 				jwtService,
 				db,
 				wsManager,

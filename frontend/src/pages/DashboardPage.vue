@@ -11,7 +11,7 @@
 </template>
 
 <script setup>
-import DownloadISOOnPremDialog from '@/pages/operator/dialogs/download/DownloadISOOnPremDialog.vue';
+import DownloadISOOnPremDialog from '@/pages/dialogs/download/DownloadISOOnPremDialog.vue';
 import OperatorDashboard from '@/components/operator/OperatorDashboard.vue';
 import DeveloperDashboard from '@/pages/developer/DeveloperDashboard.vue';
 import { computed, ref, onMounted } from 'vue';

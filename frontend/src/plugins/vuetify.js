@@ -3,12 +3,26 @@ import 'vuetify/styles';
 import { createVuetify } from 'vuetify';
 import * as components from 'vuetify/components';
 import * as directives from 'vuetify/directives';
+import { aliases, mdi } from 'vuetify/iconsets/mdi';
 
 export default createVuetify({
     defaults: {
         global: {
             density: 'comfortable'
         }
+    },
+    icons: {
+        defaultSet: 'mdi',
+        aliases: {
+            ...aliases,
+            success: 'mdi-check-circle-outline',
+            info: 'mdi-information-outline',
+            warning: 'mdi-alert-outline',
+            error: 'mdi-close-circle-outline',
+        },
+        sets: {
+            mdi,
+        },
     },
     theme: {
         // #ffffff
@@ -20,8 +34,8 @@ export default createVuetify({
         themes: {
             dark: {
                 colors: {
-                    background: '#262525ff',
-                    surface: '#363535ff',
+                    background: '#040609',//131212ff //040609
+                    surface: '#0d0f15ff',
                     primary: '#f97316',
                     'primary-darken-1': '#ff9248',
                     secondary: '#ffb38a',
@@ -30,6 +44,10 @@ export default createVuetify({
                     info: '#2196f3',
                     success: '#4caf50',
                     warning: '#fbe600ff',
+                    title: '#ffffff',
+                    subtitlte: '#dddddd',
+                    text: '#bbbbbb',
+                    dialog: '#13151cff',
                 },
             },
             light: {
@@ -44,6 +62,10 @@ export default createVuetify({
                     info: '#2196f3',
                     success: '#4caf50',
                     warning: '#fbe600ff',
+                    title: '#000000',
+                    subtitle: '#222222',
+                    text: '#444444',
+                    dialog: '#ebe9e9ff',
                 },
             },
         },
