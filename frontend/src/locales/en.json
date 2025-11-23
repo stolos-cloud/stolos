@@ -280,7 +280,7 @@
             "scaffold": "Scaffold"
         },
         "notifications": {
-            "createSuccess": "Your template was scaffolded successfully! The generated code is available at : <a href='{repoLink}' target='_blank'>{repoLink}</a>",
+            "createSuccess": "Your template {templateName} was scaffolded successfully!",
             "createError": "Failed to create template"
         },
         "buttons": {
@@ -305,18 +305,33 @@
         },
         "dialogs": {
             "createDeployedApp":  {
-                "title": "Deploy a new application"
+                "title": "Deploy a new application",
+                "crdConfiguration": "CRD configuration"
+            },
+            "confirmDeploymentDialog": {
+                "title": "Template validated",
+                "notice": {
+                    "title": "Confirm deployment",
+                    "text": "Please confirm that you want to deploy this application with the provided configuration."
+                },
+                "deploymentDetails": {
+                    "title": "Deployment details"
+                },
+                "buttons": {
+                    "confirmDeployment": "Confirm deployment"
+                }
             },
             "viewDetailsDeployedApp": {
                 "title": "{ appName } - Details"
             }
         },
         "formfields": {
-            "template": "Template",
             "instanceName": "Instance name",
-            "namespace": "Namespace"
+            "namespace": "Namespace",
+            "template": "Template"
         },
         "notifications": {
+            "validateError": "Failed to validate application",
             "deploySuccess": "Your application was deployed successfully!",
             "deployError": "Failed to deploy application"
         },
@@ -406,7 +421,7 @@
                     "confirmationText": "Are you sure you want to delete the namespace {namespaceName} ? This action cannot be undone."
                 },
                 "viewDetailsNamespace": {
-                    "title": "Namespace details",
+                    "title": "{namespaceName} - Details",
                     "usersTitle": "Namespace members",
                     "totalMembersLabel": "No members | 1 total member | {count} total members",
                     "messages": {
@@ -425,6 +440,7 @@
             },
             "notifications": {
                 "createNamespaceSuccess": "Namespace created successfully",
+                "createNamespaceError": "Failed to create namespace",
                 "addUserSuccess": "User added to namespace successfully",
                 "deleteUserSuccess": "User deleted from namespace successfully",
                 "deleteNamespaceSuccess": "Namespace deleted successfully",
@@ -468,6 +484,7 @@
         "save": "Save",
         "cancel": "Cancel",
         "confirm": "Confirm",
+        "validate": "Validate",
         "back": "Back",
         "next": "Next",
         "finish": "Finish",
@@ -483,7 +500,8 @@
         "showCode": "Show code",
         "hideCode": "Hide code",
         "copyCode": "Copy code",
-        "viewDocs": "View documentation"
+        "viewDocs": "View documentation",
+        "return": "Return"
     },
     "rules": {
         "validation": {
@@ -501,7 +519,10 @@
                 "mismatch": "Passwords do not match"
             },
             "textfield": {
-                "required": "This field is required"
+                "required": "This field is required",
+                "onlyLowercase": "This field must contain lowercase letters",
+                "noNumbers": "This field must not contain numbers",
+                "noSpaces": "This field must not contain spaces. Use hyphens (-) instead"
             },
             "autoComplete": {
                 "required": "This field is required"

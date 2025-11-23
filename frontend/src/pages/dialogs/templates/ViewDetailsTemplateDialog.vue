@@ -1,0 +1,123 @@
+<template>
+    <div class="view-details-template-dialog">
+        <BaseDialog v-model="isOpen"
+            :title="$t('templateDefinitions.dialogs.viewDetailsTemplate.title', { template: template?.name })" closable>
+            <BaseExpansion :title="$t('templateDefinitions.dialogs.viewDetailsTemplate.crdDefinition')">
+                <template #actions>
+                    <v-chip color="primary" size="small" label class="ml-2">
+                        v{{ template?.version || '1.0' }}
+                    </v-chip>
+                </template>
+                <v-sheet color="grey-darken-4" rounded style="position: relative;">
+                    <v-btn
+                        :icon="copiedItem === templateDetails?.jsonSchema ? 'mdi-check' : 'mdi-content-copy'"
+                        size="x-small"
+                        variant="text"
+                        style="position: absolute; top: 6px; right: 6px;"
+                        @click="copyToClipboard(templateDetails?.jsonSchema)"
+                    />
+                    <pre style="white-space: pre-wrap;">{{ templateDetails?.jsonSchema }}</pre>
+                </v-sheet>
+            </BaseExpansion>
+            <BaseCard>
+                <template #title>
+                    <BaseTitle :level="6" :title="$t('templateDefinitions.dialogs.viewDetailsTemplate.deployedApps')" />
+                    <v-chip size="small" label class="ml-2">
+                        2 total
+                    </v-chip>
+                    <v-spacer />
+                    <v-btn variant="text" icon="mdi-open-in-new" color="primary" size="small"
+                        @click="redirectToDeployedApplications">
+                    </v-btn>
+                </template>
+                <v-virtual-scroll :items="templateDetails" max-height="150" v-if="templateDetails.length > 0">
+                    <template v-slot:default="{ item }">
+                        <v-list lines="two">
+                            <v-list-item :key="item.id" :title="item.email" class="border rounded"
+                                style="background-color: rgba(33, 33, 33);">
+                                <template #subtitle>
+                                    <div class="d-flex align-center">
+                                        Extra deployed info
+                                    </div>
+                                </template>
+                                <template v-slot:append>
+                                    <v-chip size="small" color="success" label>
+                                        running
+                                    </v-chip>
+                                </template>
+                            </v-list-item>
+                        </v-list>
+                    </template>
+                </v-virtual-scroll>
+            </BaseCard>
+        </BaseDialog>
+    </div>
+</template>
+
+<script setup>
+import { getTemplate } from "@/services/templates.service";
+import { ref, watch } from "vue";
+import { useRouter } from "vue-router";
+
+const router = useRouter();
+
+const props = defineProps({
+    modelValue: {
+        type: Boolean,
+        required: true
+    },
+    template: {
+        type: Object
+    }
+});
+
+// State
+const isOpen = ref(props.modelValue);
+const templateDetails = ref([]);
+const copiedItem = ref(null);
+
+// Emits
+const emit = defineEmits(['update:modelValue']);
+
+// Watchers
+watch(() => props.modelValue, val => isOpen.value = val);
+watch(isOpen, val => {
+    emit('update:modelValue', val);
+    if (val && props.template) {
+        getTemplateDetailsFromName(props.template.name);
+    }
+});
+
+// Methods
+function getTemplateDetailsFromName(name) {
+    getTemplate(name)
+        .then((response) => {
+            templateDetails.value = response;
+        })
+        .catch((error) => {
+            console.error("Error fetching template details:", error);
+        });
+}
+function redirectToDeployedApplications() {
+    router.push('/deployed-applications');
+}
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text)
+        .then(() => {
+            copiedItem.value = text;
+            setTimeout(() => {
+                copiedItem.value = null;
+            }, 2000);
+        })
+}
+</script>
+
+<style>
+.v-expansion-panel--active>.v-expansion-panel-title:not(.v-expansion-panel-title--static) {
+    border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.1) !important;
+}
+
+.v-expansion-panel-text__wrapper {
+    padding: 10px 12px 10px !important;
+}
+</style>

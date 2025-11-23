@@ -48,19 +48,19 @@ const userRoles = computed(() => store.getters['referenceLists/getUserRoles']);
 // Form state
 const formFields = reactive({
     email: new TextField({
-        label: t('administration.users.formfields.email'),
+        label: computed(() => t('administration.users.formfields.email')),
         type: "email",
         required: true,
         rules: emailRules
     }),
     password: new TextField({
-        label: t('administration.users.formfields.password'),
+        label: computed(() => t('administration.users.formfields.password')),
         type: "password",
         required: true,
         rules: passwordRules
     }),
     role: new Select({
-        label: t('administration.users.formfields.role'),
+        label: computed(() => t('administration.users.formfields.role')),
         options: userRoles.value,
         required: true,
         rules: textfieldRules

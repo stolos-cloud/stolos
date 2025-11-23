@@ -13,7 +13,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch } from "vue";
+import { ref, reactive, watch, computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { FormValidationRules } from "@/composables/FormValidationRules.js";
 import { TextField } from "@/models/TextField.js";
@@ -22,7 +22,7 @@ import { GlobalNotificationHandler } from "@/composables/GlobalNotificationHandl
 import { GlobalOverlayHandler } from "@/composables/GlobalOverlayHandler";
 
 const { t } = useI18n();
-const { textfieldRules } = FormValidationRules();
+const { textfieldSlugRules } = FormValidationRules();
 const { showNotification } = GlobalNotificationHandler();
 const { showOverlay, hideOverlay } = GlobalOverlayHandler();
 
@@ -40,10 +40,10 @@ const isOpen = ref(props.modelValue);
 // Form state
 const formFields = reactive({
     namespaceName: new TextField({
-        label: t('administration.namespaces.formfields.namespaceName'),
+        label: computed(() => t('administration.namespaces.formfields.namespaceName')),
         type: "text",
         required: true,
-        rules: textfieldRules
+        rules: textfieldSlugRules
     })
 });
 
@@ -71,6 +71,7 @@ function createNamespace() {
         })
         .catch((error) => {
             console.error("Error creating namespace:", error);
+            showNotification(t('administration.namespaces.notifications.createNamespaceError'), 'error');
         })
         .finally(() => {
             closeDialog();

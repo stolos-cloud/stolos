@@ -43,8 +43,8 @@
 import { ref, onMounted, computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { getGCPStatus } from '@/services/provisioning.service';
-import ConfigurateCloudDialog from "./dialogs/cloud/ConfigurateCloudDialog.vue";
-import UpdateCloudDialog from "./dialogs/cloud/UpdateCloudDialog.vue";
+import ConfigurateCloudDialog from "@/pages/dialogs/cloud/ConfigurateCloudDialog.vue";
+import UpdateCloudDialog from "@/pages/dialogs/cloud/UpdateCloudDialog.vue";
 
 const { t } = useI18n();
 

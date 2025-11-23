@@ -19,8 +19,8 @@
 import { ref, onMounted, computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { getTemplates } from "@/services/templates.service";
-import CreateTemplateDialog from "./dialogs/templates/CreateTemplateDialog.vue";
-import ViewDetailsTemplateDialog from "./dialogs/templates/ViewDetailsTemplateDialog.vue";
+import CreateTemplateDialog from "@/pages/dialogs/templates/CreateTemplateDialog.vue";
+import ViewDetailsTemplateDialog from "@/pages/dialogs/templates/ViewDetailsTemplateDialog.vue";
 
 const { t } = useI18n();
 
@@ -64,16 +64,17 @@ function showCreateTemplateDialog() {
     dialogCreateTemplate.value = true;
 }
 function showViewDetailsTemplateDialog(template) {
-    console.log(template);
-    
     selectedTemplate.value = template;
     dialogViewDetailsTemplate.value = true;
 }
 function fetchTemplates() {
+    loading.value = true;
     getTemplates().then((response) => {        
         templates.value = response;
     }).catch(error => {
         console.error("Error fetching templates:", error);
+    }).finally(() => {
+        loading.value = false;
     });
 }
 </script>

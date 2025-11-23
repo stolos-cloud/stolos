@@ -1,6 +1,6 @@
 <template>
     <div>
-        <v-toolbar flat>
+        <v-toolbar color="surface" flat>
             <v-toolbar-title>            
                 <BaseTitle :level="6" :title="title" />
             </v-toolbar-title>
@@ -18,6 +18,7 @@
                 />
             </template>
         </v-toolbar>
+        <v-divider></v-divider>
         <v-text-field 
             v-if="modelValue !== undefined"
             v-model="localSearch" 

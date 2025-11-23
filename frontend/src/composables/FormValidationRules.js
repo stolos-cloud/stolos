@@ -16,11 +16,21 @@ export function FormValidationRules() {
         v => /[!@#$%^&*(),.?":{}|<>-]/.test(v) || t('rules.validation.password.special'),
     ];
     const textfieldRules = [v => !!v || t('rules.validation.textfield.required')];
-    const autoCompleteRules = [v => !!v && v.length > 0 || t('rules.validation.autoComplete.required')];
+    const textfieldSlugRules = [
+        v => !!v || t('rules.validation.textfield.required'),
+        v => /^[^A-Z]*$/.test(v) || t('rules.validation.textfield.onlyLowercase'),
+        v => !/[0-9]/.test(v) || t('rules.validation.textfield.noNumbers'),
+        v => !/\s/.test(v) || t('rules.validation.textfield.noSpaces'),
+    ];
+    const autoCompleteRules = [
+        v => (!!v && v.length > 0) || t('rules.validation.autoComplete.required'),
+    ];
+
     return {
         emailRules,
         passwordRules,
         textfieldRules,
-        autoCompleteRules
+        textfieldSlugRules,
+        autoCompleteRules,
     };
 }

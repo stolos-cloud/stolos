@@ -19,8 +19,8 @@
 import { ref, onMounted, computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { getTemplates } from "@/services/templates.service";
-import CreateDeployedAppDialog from "./dialogs/CreateDeployedAppDialog.vue";
-import ViewDetailsDeployedAppDialog from "./dialogs/ViewDetailsDeployedAppDialog.vue";
+import CreateDeployedAppDialog from "@/pages/dialogs/CreateDeployedAppDialog.vue";
+import ViewDetailsDeployedAppDialog from "@/pages/dialogs/ViewDetailsDeployedAppDialog.vue";
 
 const { t } = useI18n();
 
@@ -34,10 +34,10 @@ const selectedDeployedApp = ref(null);
 
 // Computed
 const deployedApplicationsHeaders = computed(() => [
-    { title: t('deployedApplications.table.headers.instanceName'), value: 'instanceName' },
-    { title: t('deployedApplications.table.headers.namespace'), value: 'namespace', sortable: false, align: 'center' },
-    { title: t('deployedApplications.table.headers.health'), value: 'health', sortable: false, align: 'center' },
-    { title: t('deployedApplications.table.headers.actions'), value: 'actions', sortable: false, align: 'center' }, //TODO : A voir ici si cest les bons noms de propriétés
+    { title: t('deployedApplications.table.headers.instanceName'), value: 'instanceName', width: '25%'},
+    { title: t('deployedApplications.table.headers.namespace'), value: 'namespace', align: 'center' },
+    { title: t('deployedApplications.table.headers.health'), value: 'health', align: 'center' },
+    { title: t('deployedApplications.table.headers.actions'), value: 'actions', align: 'center' }, //TODO : A voir ici si cest les bons noms de propriétés
 ]);
 const actionsButtonForTable = computed(() => [
     {
@@ -68,11 +68,14 @@ function showViewDetailsDeployedAppDialog(deployedApp) {
     dialogViewDetailsDeployedApp.value = true;
 }
 function fetchDeployedApps() {
+    loading.value = true;
     getTemplates()
         .then((response) => {        
             deployedApplications.value = response;
         }).catch(error => {
             console.error("Error fetching templates:", error);
+        }).finally(() => {
+            loading.value = false;
         });
 }
 </script>

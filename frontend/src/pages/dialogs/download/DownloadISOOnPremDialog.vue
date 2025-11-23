@@ -40,8 +40,8 @@ const listISOTypes = computed(() => store.getters['referenceLists/getIsoTypes'])
 
 // Reactives
 const isoRadioButtons = reactive(new RadioGroup({
-    label: t('dialogs.downloadISOOnPremise.label'),
-    precision: t('dialogs.downloadISOOnPremise.precision'),
+    label: computed(() => t('dialogs.downloadISOOnPremise.label')),
+    precision: computed(() => t('dialogs.downloadISOOnPremise.precision')),
     options: listISOTypes.value,
     required: true,
     rules: [(v) => !!v || t('rules.validation.radioGroup.required')]
@@ -69,7 +69,6 @@ function confirmDownloadISO() {
             const link = document.createElement('a');
             link.href = download_url;
             link.download = filename;
-            link.target = '_blank';
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);

@@ -12,6 +12,7 @@ import { useTheme } from 'vuetify';
 import { useI18n } from 'vue-i18n';
 import { onMounted, onBeforeUnmount } from 'vue';
 import { getAvailableGCPResources } from '@/services/provisioning.service';
+import { getScaffolds } from './services/scaffolds.service';
 import { GlobalNotificationHandler } from '@/composables/GlobalNotificationHandler';
 import { GlobalOverlayHandler } from '@/composables/GlobalOverlayHandler';
 import wsEventService from '@/services/wsEvent.service';
@@ -24,6 +25,7 @@ const { overlay } = GlobalOverlayHandler();
 
 const savedTheme = store.getters['user/getTheme']
 const savedLanguage = store.getters['user/getLanguage']
+const isUserAuthenticated = store.getters['user/isAuthenticated']
 
 theme.change(savedTheme);
 i18n.locale.value = savedLanguage;
@@ -33,6 +35,11 @@ onMounted(async () => {
     await getAvailableGCPResources().then(gcpResources => {
         store.dispatch('referenceLists/setCloudResources', gcpResources);
     });
+    if(isUserAuthenticated) {
+        await getScaffolds().then(scaffolds => {
+            store.dispatch('referenceLists/setScaffolds', scaffolds);
+        });
+    }
 });
 
 onBeforeUnmount(() => {

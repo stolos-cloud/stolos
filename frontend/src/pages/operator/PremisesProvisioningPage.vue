@@ -9,7 +9,7 @@
             :titleToolbar="$t('provisioning.onPremises.table.title')" :actionsButtonForTable="actionsButtonForTable">
             <!-- Slot for status -->
             <template #[`item.status`]="{ item }">
-                <v-chip :color="getStatusColor(item.status)" label size="small">
+                <v-chip :color="getStatusColor(item.status)" label size="small" prepend-icon="mdi-clock-outline">
                     {{ item.status }}
                 </v-chip>
             </template>
@@ -29,8 +29,8 @@
             <!-- Slot for labels -->
             <template #[`item.labels`]="{ item }">
                 <div class="d-flex flex-wrap align-center">
-                    <v-chip v-for="(label, index) in item.labels" :key="index" :color="getLabelColor(label)" class="ma-1" label closable
-                        @click:close="item.labels.splice(index, 1)">
+                    <v-chip v-for="(label, index) in item.labels" :key="index" :color="getLabelColor(label)"
+                        class="ma-1" label closable @click:close="item.labels.splice(index, 1)" prepend-icon="mdi-">
                         {{ label }}
                     </v-chip>
                     <template v-if="!item.addingLabel">
@@ -40,7 +40,7 @@
                     </template>
                     <template v-else>
                         <v-text-field v-model="item.newLabel" density="compact" placeholder="New label" variant="solo"
-                             hide-details max-width="120" autofocus @keyup.enter="addLabel(item)"
+                            hide-details max-width="120" autofocus @keyup.enter="addLabel(item)"
                             @blur="addLabel(item); item.addingLabel = false" />
                     </template>
                 </div>
@@ -59,7 +59,7 @@ import { GlobalNotificationHandler } from "@/composables/GlobalNotificationHandl
 import { GlobalOverlayHandler } from "@/composables/GlobalOverlayHandler";
 import { StatusColorHandler } from '@/composables/StatusColorHandler';
 import { LabelColorHandler } from '@/composables/LabelColorHandler';
-import DownloadISOOnPremDialog from '@/pages/operator/dialogs/download/DownloadISOOnPremDialog.vue';
+import DownloadISOOnPremDialog from '@/pages/dialogs/download/DownloadISOOnPremDialog.vue';
 
 const { t } = useI18n();
 const store = useStore();
