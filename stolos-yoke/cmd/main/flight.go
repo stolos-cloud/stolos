@@ -27,8 +27,6 @@ import (
 	"k8s.io/utils/ptr"
 )
 
-// test3
-
 func main() {
 
 	airway := stolos_yoke.AirwayInputs{
