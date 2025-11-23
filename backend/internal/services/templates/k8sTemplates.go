@@ -15,10 +15,20 @@ import (
 
 type JsonSchema = map[string]interface{}
 
+type Deployment struct {
+	Name      string
+	Namespace string
+	Template  string
+	Healthy   bool
+	Message   string
+}
+
 type Template struct {
 	crd         *apiextensionsv1.CustomResourceDefinition
-	Name        string `json:"name"`
-	Description string `json:"description"`
+	Name        string            `json:"name"`
+	Description string            `json:"description"`
+	Labels      map[string]string `json:"labels"`
+	Version     string            `json:"version"`
 }
 
 func (t Template) GetCRD() *apiextensionsv1.CustomResourceDefinition {
@@ -48,14 +58,35 @@ func ListTemplates(client *k8s.K8sClient, groupFilter string) ([]Template, error
 
 func GetTemplate(client *k8s.K8sClient, name string) (Template, error) {
 
-	crd, err := client.ApiExtensionClient.ApiextensionsV1().CustomResourceDefinitions().Get(context.Background(), name, metav1.GetOptions{})
+	crds, err := client.ApiExtensionClient.ApiextensionsV1().CustomResourceDefinitions().List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		return Template{}, err
 	}
-	return crdToTemplate(crd), nil
+	for _, crd := range crds.Items {
+		if strings.EqualFold(crd.Spec.Names.Kind, name) {
+			return crdToTemplate(&crd), nil
+		}
+	}
+	return Template{}, fmt.Errorf("template %s not found", name)
 }
 
-//func DeployTemplate()
+func ListDeploymentsForFilter(client *k8s.K8sClient, filter k8s.K8sResourceFilter) ([]Deployment, error) {
+	allCRs, err := client.GetAllResourcesWithFilter(filter)
+	if err != nil {
+		return nil, err
+	}
+	result := []Deployment{}
+	for _, cr := range allCRs {
+		result = append(result, Deployment{
+			Name:      cr.GetName(),
+			Namespace: cr.GetNamespace(),
+			Template:  strings.ToLower(cr.GroupVersionKind().GroupKind().String()),
+			Healthy:   cr.UnstructuredContent()["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["status"] == "True",
+			Message:   cr.UnstructuredContent()["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["message"].(string),
+		})
+	}
+	return result, nil
+}
 
 func crdToTemplate(crd *apiextensionsv1.CustomResourceDefinition) Template {
 	newTemplate := Template{
@@ -66,13 +97,16 @@ func crdToTemplate(crd *apiextensionsv1.CustomResourceDefinition) Template {
 	if ok {
 		newTemplate.Name = name
 	} else {
-		newTemplate.Name = crd.Name
+		newTemplate.Name = crd.Spec.Names.Kind
 	}
 
 	description, ok := crd.Annotations["stolos.cloud/template-description"]
 	if ok {
 		newTemplate.Description = description
 	}
+
+	newTemplate.Labels = crd.Labels
+	newTemplate.Version = crd.APIVersion
 
 	return newTemplate
 }

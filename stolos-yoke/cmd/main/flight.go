@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
+	localpathprovisioner "github.com/stolos-cloud/stolos/stolos-yoke/flight/pkg/local-path-provisioner"
 	"github.com/stolos-cloud/stolos/stolos-yoke/pkg/argocd"
 	cert_manager "github.com/stolos-cloud/stolos/stolos-yoke/pkg/cert-manager"
 	"github.com/stolos-cloud/stolos/stolos-yoke/pkg/cnpg"
@@ -61,6 +62,10 @@ func run() ([]byte, error) {
 	resources := []flight.Resource{}
 	if input.Spec.ArgoCD.Deploy {
 		resources = append(resources, argocd.AllArgoCD(input)...)
+	}
+
+	if input.Spec.LocalPathProvisioner.Deploy {
+		resources = append(resources, localpathprovisioner.AllLocalPathProvisioner(input)...)
 	}
 
 	if input.Spec.MetalLB.Deploy {

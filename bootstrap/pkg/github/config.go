@@ -135,6 +135,7 @@ type GitHubInfo struct {
 	RepoName       string `json:"RepoName" field_label:"Github Repository Name" field_required:"true"`
 	BaseDomain     string `json:"BaseDomain" field_label:"Base Domain (DNS)" field_required:"true"`
 	LoadBalancerIP string `json:"LoadBalancerIP" field_label:"LoadBalancer IP" field_required:"true"`
+	PackagesPAT    string `json:"PackagesPAT" field_label:"GitHub PAT for Packages (read:packages)" field_required:"true"`
 }
 
 // Config contains GitHub credentials for backend usage

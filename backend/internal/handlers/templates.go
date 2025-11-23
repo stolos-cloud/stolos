@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"slices"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stolos-cloud/stolos/backend/internal/middleware"
@@ -13,6 +14,7 @@ import (
 	"github.com/stolos-cloud/stolos/backend/internal/services/k8s"
 	"github.com/stolos-cloud/stolos/backend/internal/services/templates"
 	"gorm.io/gorm"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
@@ -168,7 +170,7 @@ func (h *TemplatesHandler) doApplyAction(c *gin.Context, onlyDryRun bool) {
 		return
 	}
 
-	if !slices.Contains(claims.Namespaces, userNamespace.ID) {
+	if !slices.Contains(claims.Namespaces, userNamespace.ID) && claims.Role != models.RoleAdmin {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User cannot deploy to this namespace"})
 	}
 
@@ -194,6 +196,164 @@ func (h *TemplatesHandler) doApplyAction(c *gin.Context, onlyDryRun bool) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"status": "ok", "cr": cr})
+}
+
+// ListDeployments lists all deployments in Kubernetes using filters.
+//
+// @Summary      List deployments
+// @Description  Returns a list of deployments filtered by template, namespace, and API group.
+// @Tags         deployments
+// @Accept       json
+// @Produce      json
+// @Param        template    query  string  false   "Template name"
+// @Param        namespace   query  string  false  "Kubernetes namespace to filter on"
+// @param		 onlyMine    query  bool    false  "Only my templates"
+// @Success      200         {array}  interface{}     "List of deployments"
+// @Failure      500         {object}  map[string]string "Internal server error"
+// @Router       /deployments/list [get]
+// @Security BearerAuth
+func (h *TemplatesHandler) ListDeployments(c *gin.Context) {
+	templateName := c.Query("template")
+	if strings.Contains(templateName, ".") {
+		templateName = strings.Split(templateName, ".")[0]
+	}
+	filter := k8s.K8sResourceFilter{
+		Namespace: c.Query("namespace"),
+		Kind:      templateName,
+		Group:     templateGroup,
+	}
+
+	deployments, err := templates.ListDeploymentsForFilter(h.k8sClient, filter)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if c.Query("onlyMine") == "true" {
+		claims, err := middleware.GetClaimsFromContext(c)
+
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			return
+		}
+
+		var myNamespaces []string
+		if err := h.db.
+			Table("user_namespaces").
+			Joins("JOIN namespaces ON namespaces.id = user_namespaces.namespace_id").
+			Where("user_namespaces.user_id = ?", claims.UserID).
+			Pluck("CONCAT('app-', namespaces.name)", &myNamespaces).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
+
+		fmt.Printf("myNamespaces: %+v\n", myNamespaces)
+
+		allDeployments := deployments
+		deployments = []templates.Deployment{}
+
+		for _, deployment := range allDeployments {
+			if slices.Contains(myNamespaces, deployment.Namespace) {
+				deployments = append(deployments, deployment)
+			}
+		}
+	}
+
+	c.JSON(http.StatusOK, deployments)
+}
+
+// GetDeployment retrieves a specific deployment from Kubernetes.
+//
+// @Summary      Get deployment
+// @Description  Returns a single deployment by template, deployment name, and namespace.
+// @Tags         deployments
+// @Accept       json
+// @Produce      json
+// @Param        template     query  string  true   "Template name (CRD resource)"
+// @Param        deployment   query  string  true   "Deployment name"
+// @Param        namespace    query  string  true   "Kubernetes namespace"
+// @Success      200          {object} interface{} "Deployment object"
+// @Failure      400          {object} map[string]string "Missing parameters"
+// @Failure      500          {object} map[string]string "Internal server error"
+// @Router       /deployments/get [get]
+// @Security BearerAuth
+func (h *TemplatesHandler) GetDeployment(c *gin.Context) {
+	templateName := c.Query("template")
+	if strings.Contains(templateName, ".") {
+		templateName = strings.Split(templateName, ".")[0]
+	}
+	deploymentName := c.Query("deployment")
+	namespace := c.Param("namespace")
+
+	if templateName == "" || deploymentName == "" || namespace == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing parameters"})
+	}
+
+	deployment, err := h.k8sClient.DynamicClient.Resource(schema.GroupVersionResource{
+		Group:    templateGroup,
+		Resource: templateName,
+	}).Namespace(namespace).Get(context.TODO(), deploymentName, metav1.GetOptions{})
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	}
+
+	c.JSON(http.StatusOK, deployment)
+}
+
+// DeleteDeployment deletes a specific deployment from Kubernetes.
+//
+// @Summary      Delete deployment
+// @Description  Deletes a deployment identified by template, deployment name, and namespace.
+// @Tags         deployments
+// @Accept       json
+// @Produce      json
+// @Param        template     query  string  true   "Template name (CRD resource)"
+// @Param        deployment   query  string  true   "Deployment name"
+// @Param        namespace    query  string  true   "Kubernetes namespace"
+// @Success      200          {object} map[string]string "Deletion confirmation"
+// @Failure      400          {object} map[string]string "Missing parameters"
+// @Failure      500          {object} map[string]string "Internal server error"
+// @Router       /deployment/delete [post]
+// @Security BearerAuth
+func (h *TemplatesHandler) DeleteDeployment(c *gin.Context) {
+	templateName := c.Query("template")
+	if strings.Contains(templateName, ".") {
+		templateName = strings.Split(templateName, ".")[0]
+	}
+	deploymentName := c.Query("deployment")
+	namespace := c.Query("namespace")
+
+	if templateName == "" || deploymentName == "" || namespace == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing parameters"})
+	}
+
+	userNamespace, err := gorm.G[models.Namespace](h.db).Where("name = ?", namespace).First(context.Background())
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "failed to find namespace"})
+		return
+	}
+
+	claims, err := middleware.GetClaimsFromContext(c)
+
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	if !slices.Contains(claims.Namespaces, userNamespace.ID) && claims.Role != models.RoleAdmin {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User cannot deploy to this namespace"})
+	}
+
+	err = h.k8sClient.DynamicClient.Resource(schema.GroupVersionResource{
+		Group:    templateGroup,
+		Resource: templateName,
+	}).Namespace(namespace).Delete(context.TODO(), deploymentName, metav1.DeleteOptions{})
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
 
 // CreateTemplateFromScaffold godoc

@@ -166,4 +166,11 @@ func setupScaffoldRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
 	{
 		scaffoldRoutes.GET("", h.ScaffoldsHandlers().GetScaffoldsList)
 	}
+
+	deploymentRoutes := api.Group("/deployments")
+	{
+		deploymentRoutes.GET("/list", h.TemplatesHandlers().ListDeployments)
+		deploymentRoutes.GET("/get", h.TemplatesHandlers().GetDeployment)
+		deploymentRoutes.POST("/delete", h.TemplatesHandlers().DeleteDeployment)
+	}
 }

@@ -6,7 +6,7 @@ metadata:
     stolos.cloud/template-display-name: Stolos Platform
 spec:
   wasmUrls:
-    flight: oci://ghcr.io/stolos-cloud/stolosplatform-yoke:5cd69713e289c87f7322eba16bd73d4ae1a3b33a
+    flight: oci://ghcr.io/stolos-cloud/stolosplatform-yoke:47299fa1db62eb3210748da3e2ce4ba92eb25211
   fixDriftInterval: 5m0s
   clusterAccess: true
   resourceAccessMatchers:
@@ -34,6 +34,7 @@ spec:
                 required:
                   - clusterName
                   - baseDomain
+                  - localPathProvisioner
                   - metallb
                   - argocd
                   - contour
@@ -143,6 +144,22 @@ spec:
                         default: projectcontour
                       version:
                         type: string
+                  localPathProvisioner:
+                    type: object
+                    required:
+                      - deploy
+                      - namespace
+                      - version
+                    properties:
+                      deploy:
+                        type: boolean
+                        default: false
+                      namespace:
+                        type: string
+                        default: local-path-storage
+                      version:
+                        type: string
+                        default: v0.0.32
                   metallb:
                     type: object
                     required:

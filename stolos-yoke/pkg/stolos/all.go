@@ -12,6 +12,9 @@ func AllStolos(input types.Stolos) []flight.Resource {
 	return []flight.Resource{
 		CreateStolosNamespace(input),
 		CreateDatabase(input),
+		CreateBackendServiceAccount(input),
+		CreateBackendClusterRole(input),
+		CreateBackendClusterRoleBinding(input),
 		CreateBackendSecrets(input),
 		CreateDeployment(input),
 		CreateBackendService(input),
