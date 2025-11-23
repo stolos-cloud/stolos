@@ -9,7 +9,7 @@
             :titleToolbar="$t('provisioning.onPremises.table.title')" :actionsButtonForTable="actionsButtonForTable">
             <!-- Slot for status -->
             <template #[`item.status`]="{ item }">
-                <v-chip :color="getStatusColor(item.status)">
+                <v-chip :color="getStatusColor(item.status)" label size="small" prepend-icon="mdi-clock-outline">
                     {{ item.status }}
                 </v-chip>
             </template>
@@ -29,27 +29,20 @@
             <!-- Slot for labels -->
             <template #[`item.labels`]="{ item }">
                 <div class="d-flex flex-wrap align-center">
-                    <v-chip v-for="(label, index) in item.labels" :key="index" :color="getLabelColor(label)" class="ma-1" label closable
-                        @click:close="item.labels.splice(index, 1)">
+                    <v-chip v-for="(label, index) in item.labels" :key="index" :color="getLabelColor(label)"
+                        class="ma-1" label closable @click:close="item.labels.splice(index, 1)" prepend-icon="mdi-">
                         {{ label }}
                     </v-chip>
                     <template v-if="!item.addingLabel">
-                        <v-chip class="ma-1" elevation="2" @click="item.addingLabel = true">
+                        <v-chip class="ma-1" elevation="2" @click="item.addingLabel = true" label size="small">
                             {{ $t('provisioning.onPremises.buttons.addLabel') }}
                         </v-chip>
                     </template>
                     <template v-else>
                         <v-text-field v-model="item.newLabel" density="compact" placeholder="New label" variant="solo"
-                            rounded hide-details max-width="120" autofocus @keyup.enter="addLabel(item)"
+                            hide-details max-width="120" autofocus @keyup.enter="addLabel(item)"
                             @blur="addLabel(item); item.addingLabel = false" />
                     </template>
-                </div>
-            </template>
-            <template #bottom>
-                <v-divider class="mb-4"></v-divider>
-                <div style="padding-bottom: 10px;" class="d-flex justify-center align-center text-center">
-                    <v-progress-circular indeterminate class="mr-2" size="20"></v-progress-circular>
-                    <span class="text-body-2">{{ $t('provisioning.onPremises.table.footerSpinnerMsg') }}</span>
                 </div>
             </template>
         </BaseDataTable>
@@ -59,15 +52,14 @@
 
 <script setup>
 import { getConnectedNodes, getNodeDisks, provisionNodes } from '@/services/provisioning.service';
-import { onMounted, onBeforeUnmount, ref, computed } from 'vue';
+import { onMounted, ref, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useStore } from 'vuex';
 import { GlobalNotificationHandler } from "@/composables/GlobalNotificationHandler";
 import { GlobalOverlayHandler } from "@/composables/GlobalOverlayHandler";
 import { StatusColorHandler } from '@/composables/StatusColorHandler';
 import { LabelColorHandler } from '@/composables/LabelColorHandler';
-import DownloadISOOnPremDialog from '@/pages/operator/dialogs/download/DownloadISOOnPremDialog.vue';
-import wsEventService from '@/services/wsEvent.service';
+import DownloadISOOnPremDialog from '@/pages/dialogs/download/DownloadISOOnPremDialog.vue';
 
 const { t } = useI18n();
 const store = useStore();
@@ -81,27 +73,9 @@ const loading = ref(false);
 const nodes = ref([]);
 const dialogDownloadISOOnPremise = ref(false);
 
-let unsubscribeNodeStatusUpdated;
-let unsubscribeNewPendingNodeDetected;
-
 // Mounted
 onMounted(() => {
     fetchConnectedNodes();
-    unsubscribeNodeStatusUpdated = wsEventService.subscribe('NodeStatusUpdated', () => {
-        fetchConnectedNodes();
-    });
-    unsubscribeNewPendingNodeDetected = wsEventService.subscribe('NewPendingNodeDetected', () => {
-        fetchConnectedNodes();
-    });
-});
-
-onBeforeUnmount(() => {
-    if (typeof unsubscribeNodeStatusUpdated === 'function') {
-        unsubscribeNodeStatusUpdated();
-    }
-    if (typeof unsubscribeNewPendingNodeDetected === 'function') {
-        unsubscribeNewPendingNodeDetected();
-    }
 });
 
 // Computed
@@ -110,8 +84,8 @@ const actionsLabelBar = computed(() => [
 ]);
 const nodeHeaders = computed(() => [
     { title: t('provisioning.onPremises.table.headers.ip'), value: 'ip_address' },
-    { title: t('provisioning.onPremises.table.headers.mac'), value: 'mac_address', width: "20%" },
-    { title: t('provisioning.onPremises.table.headers.status'), value: 'status', width: "15%" },
+    { title: t('provisioning.onPremises.table.headers.mac'), value: 'mac_address' },
+    { title: t('provisioning.onPremises.table.headers.status'), value: 'status', align: 'center' },
     { title: t('provisioning.onPremises.table.headers.disk'), value: 'installDisk', width: "20%" },
     { title: t('provisioning.onPremises.table.headers.role'), value: 'role', width: "20%" },
     { title: t('provisioning.onPremises.table.headers.labels'), value: 'labels', width: "30%" },

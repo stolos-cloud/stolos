@@ -9,7 +9,7 @@
     <div class="flex flex-col">
         <div class="flex items-center ga-3">
           <span class="text-body-1">{{ RadioGroup.label }}</span>
-          <span v-if="RadioGroup.required" class="text-red">*</span>
+          <span v-if="RadioGroup.required" class="text-red ml-1">*</span>
         </div>
         <span class="text-caption text-grey">{{ RadioGroup.precision }}</span>
     </div>

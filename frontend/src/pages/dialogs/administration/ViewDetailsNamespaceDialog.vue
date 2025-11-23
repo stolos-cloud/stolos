@@ -1,53 +1,45 @@
 <template>
     <div class="view-details-namespace-dialog">
-        <BaseDialog v-model="isOpen" :title="$t('administration.namespaces.dialogs.viewDetailsNamespace.title')" closable>
-            <div class="d-flex align-center justify-center">
-                <BaseTitle :level="3" :title="$t('administration.namespaces.dialogs.viewDetailsNamespace.usersTitle')" />
-                <v-spacer></v-spacer>
-                <span>{{ $t('administration.namespaces.dialogs.viewDetailsNamespace.totalMembersLabel', { count: usersNamespace.length }) }}</span>
-            </div>
-            <v-virtual-scroll
-                :items="usersNamespace"
-                height="200"
-                v-if="usersNamespace.length > 0"
-            >
-                <template v-slot:default="{ item }">
-                    <v-list lines="two">
-                        <v-list-item
-                            :key="item.id"
-                            :title="item.email"
-                            class="border rounded"
-                        >
-                            <template #subtitle>
-                                <div class="d-flex align-center">
-                                    <span class="text-caption text-medium-emphasis">{{ item.id }}</span>
-                                    <v-btn
-                                        class="ml-1"
-                                        :icon="copiedItem === item.id ? 'mdi-check' : 'mdi-content-copy'"
-                                        size="x-small"
-                                        variant="text"
-                                        @click="copyToClipboard(item.id)"
-                                    />
-                                </div>
-                            </template>
-                            <template v-slot:append>
-                                <v-btn
-                                    v-tooltip="{ text: $t('administration.namespaces.buttons.deleteUserFromNamespace') }"
-                                    icon="mdi-delete"
-                                    size="small" variant="text"
-                                    @click="showConfirmDelete(item)"
-                                />
-                            </template>
-                        </v-list-item>
-                    </v-list>
+        <BaseDialog v-model="isOpen" :title="$t('administration.namespaces.dialogs.viewDetailsNamespace.title', { namespaceName: namespaceName })" closable>
+            <BaseCard>
+                <template #title>
+                    <BaseTitle :level="6" :title="$t('administration.namespaces.dialogs.viewDetailsNamespace.usersTitle')" />
+                    <v-chip size="small" label class="ml-2">
+                        {{ $t('administration.namespaces.dialogs.viewDetailsNamespace.totalMembersLabel', { count: usersNamespace.length }) }}
+                    </v-chip>
                 </template>
-            </v-virtual-scroll>
-            <div v-else class="no-members">
-                <p>{{ $t('administration.namespaces.dialogs.viewDetailsNamespace.messages.noMembers') }}</p>
-            </div>
-            <template #actions>
-                <BaseButton variant="outlined" :text="$t('actionButtons.cancel')" @click="closeDialog" />
-            </template>
+                <v-virtual-scroll :items="usersNamespace" max-height="200" v-if="usersNamespace.length > 0">
+                    <template v-slot:default="{ item }">
+                        <v-list lines="two" style="background-color: rgba(var(--v-theme-grey));">
+                            <v-list-item :key="item.id" :title="item.email" class="border rounded" style="background-color: rgba(var(--v-theme-surface));">
+                                <template #subtitle>
+                                    <div class="d-flex align-center">
+                                        <span class="text-caption text-medium-emphasis">{{ item.id }}</span>
+                                        <v-btn
+                                            class="ml-1"
+                                            :icon="copiedItem === item.id ? 'mdi-check' : 'mdi-content-copy'"
+                                            size="x-small"
+                                            variant="text"
+                                            @click="copyToClipboard(item.id)"
+                                        />
+                                    </div>
+                                </template>
+                                <template v-slot:append>
+                                    <v-btn
+                                        v-tooltip="{ text: $t('administration.namespaces.buttons.deleteUserFromNamespace') }"
+                                        icon="mdi-delete"
+                                        size="small" variant="plain" color="primary"
+                                        @click="showConfirmDelete(item)"
+                                    />
+                                </template>
+                            </v-list-item>
+                        </v-list>
+                    </template>
+                </v-virtual-scroll>
+                <div v-else class="no-members">
+                    <p>{{ $t('administration.namespaces.dialogs.viewDetailsNamespace.messages.noMembers') }}</p>
+                </div>
+            </BaseCard>
         </BaseDialog>
         <BaseConfirmDialog ref="confirmDialog" />
     </div>
@@ -79,6 +71,7 @@ const isOpen = ref(props.modelValue);
 const usersNamespace = ref([]);
 const confirmDialog = ref(null);
 const copiedItem = ref(null);
+const namespaceName = ref('');
 
 // Emits
 const emit = defineEmits(['update:modelValue', 'userDeletedFromNamespace']);
@@ -93,13 +86,10 @@ watch(isOpen, val => {
 });
 
 // Methods
-function closeDialog() {
-    emit('update:modelValue', false);
-}
 function getNamespaceDetailsFromNamespaceId(namespaceId) {
     getNamespaceDetails(namespaceId)
-        .then((namespaceDetails) => {
-            const response = namespaceDetails;
+        .then((response) => {
+            namespaceName.value = response.namespace?.name || '';
             usersNamespace.value = response.namespace?.users || [];
         })
         .catch((error) => {
@@ -128,7 +118,6 @@ function deleteUserFromNamespace(user) {
             console.error("Error deleting user from namespace:", error);
         })
         .finally(() => {
-            closeDialog();
             hideOverlay();
         });
 }

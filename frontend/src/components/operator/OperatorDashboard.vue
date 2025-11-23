@@ -1,53 +1,24 @@
 <template>
     <div>
         <NodesCharts :nodes="nodesChart"></NodesCharts>
-        <BaseDataTable
-            v-model="search"
-            :headers="nodeHeaders"
-            :items="nodes"
-            :loading="loading"
+        <BaseDataTable v-model="search" :headers="nodeHeaders" :items="nodes" :loading="loading"
             :loadingText="$t('dashboard.provision.table.loadingText')"
             :noDataText="$t('dashboard.provision.table.noDataText')"
             :itemsPerPageText="$t('dashboard.provision.table.itemsPerPageText')"
-            :titleToolbar="$t('dashboard.provision.table.title')"
-            :actionsButtonForTable="actionsButtonForTable"
-            rowClickable
-            @click:row="(event, item) => showDetailsNodeDialog(item.item)"
-        >
+            :titleToolbar="$t('dashboard.provision.table.title')" :actionsButtonForTable="actionsButtonForTable"
+            rowClickable @click:row="(event, item) => showDetailsNodeDialog(item.item)">
             <template #[`item.status`]="{ item }">
-                <v-chip :color="getStatusColor(item.status)">
+                <v-chip :color="getStatusColor(item.status)" label size="small">
                     <template #prepend>
-                        <v-progress-circular style="margin-right: 10px;"
-                            v-if="normalizeStatus(item.status) === 'provisioning'"
-                            indeterminate
-                            size="16"
-                            width="2"
-                            color="white"
-                        />
-                        <v-icon
-                            v-else-if="normalizeStatus(item.status) === 'pending'"
-                            size="100"
-                        >
-                            mdi-new-box
-                        </v-icon>
-                        <v-icon
-                            v-else-if="normalizeStatus(item.status) === 'failed'"
-                            size="18"
-                        >
-                            mdi-alert
-                        </v-icon>
+                        <v-progress-circular v-if="normalizeStatus(item.status) === 'provisioning'" indeterminate size="14" width="2"/>
+                        <v-icon v-else-if="normalizeStatus(item.status) === 'active'" size="14">mdi-check-circle-outline</v-icon>
+                        <v-icon v-else-if="normalizeStatus(item.status) === 'failed'" size="14">mdi-close-circle-outline</v-icon>
                     </template>
-                    {{ item.status }}
+                    <span class="ml-1">{{ item.status }}</span>
                 </v-chip>
-            </template>        
+            </template>
             <template #[`item.labels`]="{ item }">
-                <v-chip
-                    v-for="(label, index) in item.labels"
-                    :key="index"
-                    :color="getLabelColor(label)"
-                    class="ma-1"
-                    label
-                >
+                <v-chip v-for="(label, index) in item.labels" :key="index" :color="getLabelColor(label)" class="ma-1" label size="small">
                     {{ label }}
                 </v-chip>
             </template>
@@ -62,7 +33,7 @@ import { computed, ref, onMounted, onBeforeUnmount } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { StatusColorHandler } from '@/composables/StatusColorHandler';
 import { LabelColorHandler } from '@/composables/LabelColorHandler';
-import ViewDetailsNodeDialog from '../../pages/operator/dialogs/node/ViewDetailsNodeDialog.vue';
+import ViewDetailsNodeDialog from '@/pages/dialogs/node/ViewDetailsNodeDialog.vue';
 import wsEventService from '@/services/wsEvent.service';
 
 const { t } = useI18n();
@@ -80,8 +51,8 @@ const selectedNode = ref(null);
 // Computed
 const nodeHeaders = computed(() => [
     { title: t('dashboard.provision.table.headers.nodename'), value: 'name' },
-    { title: t('dashboard.provision.table.headers.role'), value: 'role', align : "center" },
-    { title: t('dashboard.provision.table.headers.provider'), value: 'provider', align : "center" },
+    { title: t('dashboard.provision.table.headers.role'), value: 'role', align: "center" },
+    { title: t('dashboard.provision.table.headers.provider'), value: 'provider', align: "center" },
     { title: t('dashboard.provision.table.headers.status'), value: 'status', align: "center" },
     { title: t('dashboard.provision.table.headers.labels'), value: 'labels', align: "center" },
 ]);
@@ -100,7 +71,6 @@ let unsubscribeNodeStatusUpdated;
 onMounted(() => {
     fetchConnectedNodes();
     unsubscribeNodeStatusUpdated = wsEventService.subscribe('NodeStatusUpdated', () => {
-        console.log("Updated node status.")
         fetchConnectedNodes();
     });
 });
@@ -129,7 +99,7 @@ function fetchConnectedNodes() {
                     provider: node.provider.charAt(0).toUpperCase() + node.provider.slice(1),
                     labels: JSON.parse(node.labels || '[]'),
                 }));
-            
+
             nodes.value = nodesChart.value.filter(node => node.status?.toLowerCase() !== "pending");
         })
         .catch(error => {

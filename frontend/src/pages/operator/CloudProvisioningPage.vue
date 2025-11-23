@@ -292,12 +292,7 @@ const availableMachineTypes = computed(() => {
         value: machine.name,
     }));
 });
-const diskTypes = computed(() => [
-    { label: 'Standard Persistent Disk (pd-standard)', value: 'pd-standard' },
-    { label: 'Balanced Persistent Disk (pd-balanced)', value: 'pd-balanced' },
-    { label: 'SSD Persistent Disk (pd-ssd)', value: 'pd-ssd' },
-    { label: 'Extreme Persistent Disk (pd-extreme)', value: 'pd-extreme' },
-]);
+const diskTypes = computed(() => store.getters['referenceLists/getDiskTypes']);
 
 // Fetch initial infrastructure status
 const fetchInfrastructureStatus = async () => {
@@ -377,13 +372,13 @@ onUnmounted(() => {
 // Form state
 const formFields = reactive({
     namePrefix: new TextField({
-        label: t('provisioning.cloud.nodeFormfields.namePrefix'),
+        label: computed(() => t('provisioning.cloud.nodeFormfields.namePrefix')),
         type: 'text',
         required: true,
         rules: textfieldRules,
     }),
     number: new TextField({
-        label: t('provisioning.cloud.nodeFormfields.numberOfNodes'),
+        label: computed(() => t('provisioning.cloud.nodeFormfields.numberOfNodes')),
         type: 'number',
         min: 1,
         max: 10,
@@ -391,26 +386,26 @@ const formFields = reactive({
         rules: textfieldRules,
     }),
     role: new Select({
-        label: t('provisioning.cloud.nodeFormfields.role'),
-        options: roleProvisioningTypes.value,
+        label: computed(() => t('provisioning.cloud.nodeFormfields.role')),
+        options: roleProvisioningTypes,
         required: true,
         rules: textfieldRules,
     }),
     zone: new AutoComplete({
-        label: t('provisioning.cloud.nodeFormfields.zone'),
+        label: computed(() => t('provisioning.cloud.nodeFormfields.zone')),
         items: cloudZones,
         required: true,
         rules: textfieldRules,
     }),
     machineType: new AutoComplete({
-        label: t('provisioning.cloud.nodeFormfields.machineType'),
+        label: computed(() => t('provisioning.cloud.nodeFormfields.machineType')),
         items: availableMachineTypes,
         required: true,
         disabled: computed(() => !formFields.zone.value),
         rules: textfieldRules,
     }),
     diskSizeGb: new TextField({
-        label: t('provisioning.cloud.nodeFormfields.diskSizeGb'),
+        label: computed(() => t('provisioning.cloud.nodeFormfields.diskSizeGb')),
         type: 'number',
         min: 10,
         max: 65536,
@@ -418,8 +413,8 @@ const formFields = reactive({
         rules: textfieldRules,
     }),
     diskType: new Select({
-        label: t('provisioning.cloud.nodeFormfields.diskType'),
-        options: diskTypes.value,
+        label: computed(() => t('provisioning.cloud.nodeFormfields.diskType')),
+        options: diskTypes,
         required: true,
         rules: textfieldRules,
     }),

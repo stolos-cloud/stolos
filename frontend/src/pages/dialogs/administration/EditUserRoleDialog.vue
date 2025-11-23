@@ -48,7 +48,7 @@ const userRoles = computed(() => store.getters['referenceLists/getUserRoles']);
 // Form state
 const formFields = reactive({
     role: new Select({
-        label: t('administration.users.formfields.role'),
+        label: computed(() => t('administration.users.formfields.role')),
         options: userRoles.value,
         required: true,
         rules: textfieldRules

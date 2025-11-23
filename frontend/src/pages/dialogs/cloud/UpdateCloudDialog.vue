@@ -6,7 +6,7 @@
         </v-form>
         <template #actions>
             <BaseButton variant="outlined" :text="$t('cloudProvider.buttons.cancel')" @click="closeDialog" />
-            <BaseButton :text="$t('cloudProvider.buttons.updateConfiguration')" :disabled="!isValidForm" @click="addCloudConfiguration" />
+            <BaseButton :text="$t('cloudProvider.buttons.updateConfiguration')" :disabled="!isValidForm" @click="updateCloudConfiguration" />
         </template>
     </BaseDialog>
 </template>
@@ -15,7 +15,7 @@
 import { FormValidationRules } from "@/composables/FormValidationRules.js";
 import { TextField } from "@/models/TextField.js";
 import { FileInput } from "@/models/FileInput.js";
-import { ref, reactive, watch } from "vue";
+import { ref, reactive, watch, computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { configureGCPServiceAccountUpload } from '@/services/provisioning.service';
 import { GlobalNotificationHandler } from "@/composables/GlobalNotificationHandler";
@@ -31,6 +31,10 @@ const props = defineProps({
     modelValue: {
         type: Boolean,
         required: true
+    },
+    region: {
+        type: String,
+        required: true
     }
 });
 
@@ -41,13 +45,13 @@ const isOpen = ref(props.modelValue);
 // Form state
 const formFields = reactive({
     region: new TextField({
-        label: t('cloudProvider.formfields.region'),
+        label: computed(() => t('cloudProvider.formfields.region')),
         type: "text",
         required: true,
         rules: textfieldRules
     }),
     serviceAccountFile: new FileInput({
-        label: t('cloudProvider.formfields.serviceAccountFile'),
+        label: computed(() => t('cloudProvider.formfields.serviceAccountFile')),
         required: true,
         accept: ".json, application/json",
         rules: textfieldRules
@@ -55,11 +59,14 @@ const formFields = reactive({
 });
 
 // Emits
-const emit = defineEmits(['update:modelValue', 'cloudConfigurationAdded']);
+const emit = defineEmits(['update:modelValue', 'cloudConfigurationUpdated']);
 
 // Watchers
 watch(() => props.modelValue, val => isOpen.value = val);
-watch(isOpen, val => emit('update:modelValue', val));
+watch(isOpen, val => {
+    emit('update:modelValue', val);
+    if(val) formFields.region.value = props.region;
+});
 
 // Methods
 function closeDialog() {
@@ -67,7 +74,7 @@ function closeDialog() {
     formFields.serviceAccountFile.value = undefined;
     isOpen.value = false;
 }
-function addCloudConfiguration() {
+function updateCloudConfiguration() {
     if (!isValidForm.value) return;
     showOverlay();
 
@@ -78,8 +85,8 @@ function addCloudConfiguration() {
     
     configureGCPServiceAccountUpload(payload)
         .then(() => {
-            showNotification(t('cloudProvider.notifications.addSuccess'), 'success')
-            emit('cloudConfigurationAdded');
+            showNotification(t('cloudProvider.notifications.updateSuccess'), 'success');
+            emit('cloudConfigurationUpdated');
         })
         .catch(error => {
             console.error("Error configuring GCP Service Account:", error);

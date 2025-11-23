@@ -1,7 +1,7 @@
 <template>
     <div class="baseLabelBar">
         <div class="d-flex align-center justify-space-between py-4">
-            <BaseTitle :level="2" :title="title" :subheading="subheading" />
+            <BaseTitle :level="4" :title="title" :subheading="subheading" />
             <div v-if="actions && actions.length" class="d-flex align-center">
                 <BaseButton v-for="(action, index) in actions" class="ml-2" :key="index" :text="action.text"
                     :tooltip="action.tooltip" :elevation="2" :color="action.color || 'primary'"

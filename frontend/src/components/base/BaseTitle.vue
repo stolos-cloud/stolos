@@ -1,15 +1,15 @@
 <template>
-    <div class="d-flex flex-column">
+    <div class="d-flex flex-column text-truncate">
         <component 
-            :is="`h${level}`"
-            :class="['font-weight-bold']"
+            :is="`span`"
+            :class="[`text-h${level}`, 'font-weight-regular', 'text-truncate']"
         >
             {{ title }}
         </component>
         <component 
             v-if="subheading"
             :is="`p`"
-            :class="[`text-${subheadingSize}`, `text-medium-emphasis`]"
+            :class="[`text-${subheadingSize}`, `text-medium-emphasis`, 'text-truncate']"
         >
             {{ subheading }}
         </component>
