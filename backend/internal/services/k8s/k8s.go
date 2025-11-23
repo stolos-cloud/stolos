@@ -79,8 +79,23 @@ func (k8sClient K8sClient) ApplyCR(crd map[string]interface{}, gvr schema.GroupV
 }
 
 func (K8sClient K8sClient) GetAllResourcesWithFilter(filter K8sResourceFilter) ([]unstructured.Unstructured, error) {
+	fmt.Printf("Getting all resources with filter %+v\n", filter)
 	disc, _ := discovery.NewDiscoveryClientForConfig(K8sClient.Config)
 	var resources []unstructured.Unstructured
+
+	if filter.Kind != "" {
+		if filter.Group == "" {
+			return nil, fmt.Errorf("Group is required when Kind is specified")
+		}
+
+		gvrs, err := findAllGroupVersions(disc, filter.Group, filter.Kind)
+		if err != nil {
+			return nil, err
+		}
+
+		return K8sClient.getAllFromGvrsList(gvrs, filter.Namespace)
+	}
+
 	if filter.Group != "" {
 		if filter.ApiVersion != "" {
 			resourcesGv, err := disc.ServerResourcesForGroupVersion(fmt.Sprintf("%s/%s", filter.Group, filter.ApiVersion))
@@ -93,24 +108,13 @@ func (K8sClient K8sClient) GetAllResourcesWithFilter(filter K8sResourceFilter) (
 			}
 			resources = append(resources, allResources...)
 		} else {
-			apiGroupList, _ := disc.ServerGroups()
 
-			for _, g := range apiGroupList.Groups {
-				if g.Name == filter.Group {
-					for _, v := range g.Versions {
-						gv := v.GroupVersion
-						resourcesGv, err := disc.ServerResourcesForGroupVersion(gv)
-						if err != nil {
-							return nil, err
-						}
-						loopResources, err := K8sClient.findFromResourcesGv(resourcesGv, filter.Namespace)
-						if err != nil {
-							return nil, err
-						}
-						resources = append(resources, loopResources...)
-					}
-				}
+			gvrs, err := findAllGroupVersions(disc, filter.Group, "")
+			if err != nil {
+				return nil, err
 			}
+
+			return K8sClient.getAllFromGvrsList(gvrs, filter.Namespace)
 		}
 	}
 
@@ -144,6 +148,66 @@ func (K8sClient K8sClient) findFromResourcesGv(resourcesGv *metav1.APIResourceLi
 		}
 
 		resources = append(resources, list.Items...)
+	}
+
+	return resources, nil
+}
+
+func findAllGroupVersions(dc discovery.DiscoveryInterface, group string, kind string) ([]schema.GroupVersionResource, error) {
+	groups, err := dc.ServerGroups()
+	if err != nil {
+		return nil, err
+	}
+
+	var gvrs []schema.GroupVersionResource
+
+	for _, g := range groups.Groups {
+		if g.Name != group {
+			continue
+		}
+
+		for _, v := range g.Versions {
+			gv := schema.GroupVersion{Group: g.Name, Version: v.Version}
+
+			// Now discover resources inside this group/version
+			rl, err := dc.ServerResourcesForGroupVersion(gv.String())
+			if err != nil {
+				continue
+			}
+
+			for _, res := range rl.APIResources {
+				if strings.Contains(res.Name, "/") || !res.Namespaced {
+					continue
+				}
+				if res.Kind == kind || kind == "" {
+					gvrs = append(gvrs, gv.WithResource(res.Name))
+				}
+			}
+		}
+	}
+
+	return gvrs, nil
+}
+
+func (K8sClient K8sClient) getAllFromGvrsList(gvrs []schema.GroupVersionResource, namespace string) ([]unstructured.Unstructured, error) {
+	resources := []unstructured.Unstructured{}
+	for _, gvr := range gvrs {
+		fmt.Printf("Getting resources %+v\n", gvr)
+		res := K8sClient.DynamicClient.Resource(gvr)
+
+		if namespace != "" {
+			result, err := res.Namespace(K8sNamespacePrefix+namespace).List(context.Background(), metav1.ListOptions{})
+			if err != nil {
+				return nil, err
+			}
+			resources = append(resources, result.Items...)
+		} else {
+			result, err := res.List(context.Background(), metav1.ListOptions{})
+			if err != nil {
+				return nil, err
+			}
+			resources = append(resources, result.Items...)
+		}
 	}
 
 	return resources, nil
