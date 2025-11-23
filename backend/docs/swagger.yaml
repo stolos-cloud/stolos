@@ -86,7 +86,13 @@ definitions:
         type: string
       jsonSchema:
         $ref: '#/definitions/templates.JsonSchema'
+      labels:
+        additionalProperties:
+          type: string
+        type: object
       name:
+        type: string
+      version:
         type: string
     type: object
   handlers.LoginRequest:
@@ -322,7 +328,13 @@ definitions:
     properties:
       description:
         type: string
+      labels:
+        additionalProperties:
+          type: string
+        type: object
       name:
+        type: string
+      version:
         type: string
     type: object
 info:
@@ -454,6 +466,136 @@ paths:
       summary: Get cluster info
       tags:
       - cluster
+  /deployment/delete:
+    post:
+      consumes:
+      - application/json
+      description: Deletes a deployment identified by template, deployment name, and
+        namespace.
+      parameters:
+      - description: Template name (CRD resource)
+        in: query
+        name: template
+        required: true
+        type: string
+      - description: Deployment name
+        in: query
+        name: deployment
+        required: true
+        type: string
+      - description: Kubernetes namespace
+        in: query
+        name: namespace
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Deletion confirmation
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Missing parameters
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete deployment
+      tags:
+      - deployments
+  /deployments/get:
+    get:
+      consumes:
+      - application/json
+      description: Returns a single deployment by template, deployment name, and namespace.
+      parameters:
+      - description: Template name (CRD resource)
+        in: query
+        name: template
+        required: true
+        type: string
+      - description: Deployment name
+        in: query
+        name: deployment
+        required: true
+        type: string
+      - description: Kubernetes namespace
+        in: query
+        name: namespace
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Deployment object
+          schema: {}
+        "400":
+          description: Missing parameters
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get deployment
+      tags:
+      - deployments
+  /deployments/list:
+    get:
+      consumes:
+      - application/json
+      description: Returns a list of deployments filtered by template, namespace,
+        and API group.
+      parameters:
+      - description: Template name
+        in: query
+        name: template
+        type: string
+      - description: Kubernetes namespace to filter on
+        in: query
+        name: namespace
+        type: string
+      - description: Only my templates
+        in: query
+        name: onlyMine
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of deployments
+          schema:
+            items: {}
+            type: array
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List deployments
+      tags:
+      - deployments
   /gcp/bucket:
     post:
       consumes:
