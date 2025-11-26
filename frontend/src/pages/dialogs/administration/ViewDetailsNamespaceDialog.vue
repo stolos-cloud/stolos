@@ -4,14 +4,14 @@
             <BaseCard>
                 <template #title>
                     <BaseTitle :level="6" :title="$t('administration.namespaces.dialogs.viewDetailsNamespace.usersTitle')" />
-                    <v-chip size="small" label class="ml-2">
+                    <BaseChip class="ml-2">
                         {{ $t('administration.namespaces.dialogs.viewDetailsNamespace.totalMembersLabel', { count: usersNamespace.length }) }}
-                    </v-chip>
+                    </BaseChip>
                 </template>
                 <v-virtual-scroll :items="usersNamespace" max-height="200" v-if="usersNamespace.length > 0">
                     <template v-slot:default="{ item }">
                         <v-list lines="two" style="background-color: rgba(var(--v-theme-grey));">
-                            <v-list-item :key="item.id" :title="item.email" class="border rounded" style="background-color: rgba(var(--v-theme-surface));">
+                            <v-list-item :key="item.id" :title="item.email" class="border rounded" style="background-color: rgba(var(--v-theme-list-item));">
                                 <template #subtitle>
                                     <div class="d-flex align-center">
                                         <span class="text-caption text-medium-emphasis">{{ item.id }}</span>
@@ -29,6 +29,7 @@
                                         v-tooltip="{ text: $t('administration.namespaces.buttons.deleteUserFromNamespace') }"
                                         icon="mdi-delete"
                                         size="small" variant="plain" color="primary"
+                                        :disabled="currentUserId === item.id"
                                         @click="showConfirmDelete(item)"
                                     />
                                 </template>
@@ -46,8 +47,9 @@
 </template>
 
 <script setup>
-import { ref, watch } from "vue";
+import { ref, watch, computed } from "vue";
 import { useI18n } from "vue-i18n";
+import { useStore } from "vuex";
 import { getNamespaceDetails, deleteUserFromNamespaceByUserId } from "@/services/namespaces.service";
 import { GlobalNotificationHandler } from "@/composables/GlobalNotificationHandler";
 import { GlobalOverlayHandler } from "@/composables/GlobalOverlayHandler";
@@ -55,6 +57,7 @@ import { GlobalOverlayHandler } from "@/composables/GlobalOverlayHandler";
 const { t } = useI18n();
 const { showNotification } = GlobalNotificationHandler();
 const { showOverlay, hideOverlay } = GlobalOverlayHandler();
+const store = useStore();
 
 const props = defineProps({
     modelValue: {
@@ -76,6 +79,9 @@ const namespaceName = ref('');
 // Emits
 const emit = defineEmits(['update:modelValue', 'userDeletedFromNamespace']);
 
+// Computed 
+const currentUserId = computed(() => store.getters['user/getId']);
+
 // Watchers
 watch(() => props.modelValue, val => isOpen.value = val);
 watch(isOpen, val => {
@@ -86,7 +92,7 @@ watch(isOpen, val => {
 });
 
 // Methods
-function getNamespaceDetailsFromNamespaceId(namespaceId) {
+function getNamespaceDetailsFromNamespaceId(namespaceId) {    
     getNamespaceDetails(namespaceId)
         .then((response) => {
             namespaceName.value = response.namespace?.name || '';

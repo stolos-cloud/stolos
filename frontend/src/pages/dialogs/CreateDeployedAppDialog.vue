@@ -32,7 +32,7 @@
                 <p><b>{{ $t('deployedApplications.dialogs.confirmDeploymentDialog.deploymentDetails.title') }}</b></p>
                 <v-row class="my-2">
                     <v-col v-for="(item, i) in deploymentDetails" :key="i" cols="12" md="12"
-                        class="d-flex justify-space-between py-1">
+                        class="d-flex flex-column flex-sm-row justify-space-between py-1">
                         <span class="text-grey">{{ item.label }} :</span>
                         <span class="text-truncate">{{ item.value }}</span>
                     </v-col>

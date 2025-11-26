@@ -260,8 +260,8 @@
             "headers": {
                 "name": "Name",
                 "version": "Version",
-                "metadata": "Metadata",
-                "deployedApps": "Deployed applications"
+                "deployedApps": "Deployed applications",
+                "labels": "Labels"
             },
             "footerMessage": "Any CRD with group matching {group} will be displayed."
         },
@@ -272,7 +272,11 @@
             "viewDetailsTemplate": {
                 "title": "{ template } - Details",
                 "crdDefinition": "CRD definition",
-                "deployedApps": "Deployed applications"
+                "deployedApps": "Deployed applications",
+                "totalDeployedApps": "{count} total",
+                "namespace": "Namespace",
+                "healthy": "Healthy",
+                "failed": "Failed"
             }
         },
         "formfields": {
@@ -297,10 +301,13 @@
             "itemsPerPageText": "Applications per page :",
             "headers": {
                 "instanceName": "Instance Name",
+                "template": "Template",
                 "namespace": "Namespace",
                 "health": "Health",
                 "actions": "Actions"
             },
+            "healthySuccess": "Healthy",
+            "healthyFailed": "Failed",
             "footerMessage": "{src} deployed to the cluster are shown."
         },
         "dialogs": {
@@ -323,6 +330,10 @@
             },
             "viewDetailsDeployedApp": {
                 "title": "{ appName } - Details"
+            },
+            "deleteDeployment": {
+                "title": "Delete deployed application",
+                "confirmationText": "Are you sure you want to delete the deployed application {appName} ? This action cannot be undone."
             }
         },
         "formfields": {
@@ -333,10 +344,13 @@
         "notifications": {
             "validateError": "Failed to validate application",
             "deploySuccess": "Your application was deployed successfully!",
-            "deployError": "Failed to deploy application"
+            "deployError": "Failed to deploy application",
+            "deleteSuccess": "Deployed application {appName} deleted successfully",
+            "deleteError": "Failed to delete deployed application"
         },
         "buttons": {
-            "deployNewApp": "Deploy new application"
+            "deployNewApp": "Deploy new application",
+            "deleteDeployment": "Delete deployed application"
         }
     },
     "secretsSecurity": {

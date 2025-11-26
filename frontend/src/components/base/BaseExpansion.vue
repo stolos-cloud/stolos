@@ -2,7 +2,7 @@
     <v-expansion-panels class="my-4" v-bind="panelProps">
         <v-expansion-panel :disabled="disabled" class="border">
             <v-expansion-panel-title class="px-4 py-2">
-                <BaseTitle level="6" :title="title" />
+                <BaseTitle :level="6" :title="title" />
                 <slot name="actions"></slot>
             </v-expansion-panel-title>
             <v-expansion-panel-text>

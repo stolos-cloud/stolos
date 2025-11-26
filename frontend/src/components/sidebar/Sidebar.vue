@@ -73,13 +73,7 @@ const props = defineProps({
 // Data
 const developerMenu = [
     { title: 'dashboard.title', icon: 'mdi-view-dashboard', route: '/dashboard' },
-    { title: 'applications.title', icon: 'mdi-apps', route: '/applications' },
-    { title: 'deployments.title', icon: 'mdi-rocket-launch', route: '/deployments' },
-    { title: 'observability.title',  icon: 'mdi-chart-line', route: '/observability' },
-    { title: 'scaling.title', icon: 'mdi-trending-up', route: '/scaling' },
-    { title: 'workflows.title', icon: 'mdi-file-tree', route: '/workflows' },
-    { title: 'functionsVms.title',  icon: 'mdi-desktop-classic', route: '/functions-vms' },
-    { title: 'secrets.title',  icon: 'mdi-key', route: '/secrets' },
+    { title: 'deployedApplications.title', icon: 'mdi-apps', route: '/deployed-applications' },
     { title: 'administration.namespaces.title', icon: 'mdi-folder-multiple', route: '/administration/namespaces' }
 ];
 
@@ -93,7 +87,6 @@ const operatorMenu = [
   { title: 'cloudProvider.title', icon: 'mdi-cloud', route: '/cloud-provider' },
   { title: 'templateDefinitions.title', icon: 'mdi-layers-triple', route: '/templates' },
   { title: 'deployedApplications.title', icon: 'mdi-apps', route: '/deployed-applications' },
-  { title: 'secretsSecurity.title',  icon: 'mdi-shield', route: '/secrets-security' },
   { title: 'administration.title', icon: 'mdi-account-supervisor-circle', children: [
       { title: 'administration.users.title', route: '/administration/users' },
       { title: 'administration.namespaces.title', route: '/administration/namespaces' }

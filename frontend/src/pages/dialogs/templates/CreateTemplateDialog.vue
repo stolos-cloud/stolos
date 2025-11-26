@@ -1,6 +1,6 @@
 <template>
     <div class="create-template-dialog">
-        <BaseDialog v-model="isOpen" :title="$t('templateDefinitions.dialogs.createTemplate.title')" closable>
+        <BaseDialog v-model="isOpen" :title="$t('templateDefinitions.dialogs.createTemplate.title')">
             <v-form v-model="isValidForm">
                 <BaseTextfield :Textfield="formFields.templateName" />
                 <BaseSelect v-model="formFields.scaffold.value" :Select="formFields.scaffold" />
@@ -91,7 +91,9 @@ function createTemplate() {
     
     const templateName = DOMPurify.sanitize(formFields.templateName.value);
     createNewTemplate({ templateName, scaffoldName: formFields.scaffold.value })
-        .then(() => {
+        .then((response) => {
+            console.log(response); // Ca retourne un done mais ca finit pas de creer le template ????
+            
             showNotification(t('templateDefinitions.notifications.createSuccess', { templateName }), 'success');
             emit('templateCreated');
         })

@@ -11,9 +11,9 @@
                         :titleToolbar="$t('ui.tables.dataTables.titleToolbar')"
                         :actionsButtonForTable="actionsButtonForTable" :rowClickable="fields.rowClickable.value">
                         <template #[`item.labels`]="{ item }">
-                            <v-chip v-for="(label, index) in item.labels" :key="index" class="ma-1">
+                            <BaseChip v-for="(label, index) in item.labels" :key="index">
                                 {{ label }}
-                            </v-chip>
+                            </BaseChip>
                         </template>
                     </BaseDataTable>
                     <template #controls>
@@ -78,9 +78,9 @@ const baseDataTableCode = computed(() =>
    ${fields.rowClickable.value ? 'rowClickable' : ''}
 >
     <template #[\`item.labels\`]="{ item }">
-        <v-chip v-for="(label, index) in item.labels" :key="index" class="ma-1">
+        <BaseChip v-for="(label, index) in item.labels" :key="index">
             {{ label }}
-        </v-chip>
+        </BaseChip>
     </template>
 </BaseDataTable>
     `
