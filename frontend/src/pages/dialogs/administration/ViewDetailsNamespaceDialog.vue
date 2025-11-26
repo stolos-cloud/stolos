@@ -92,9 +92,7 @@ watch(isOpen, val => {
 });
 
 // Methods
-function getNamespaceDetailsFromNamespaceId(namespaceId) {
-    console.log(namespaceId);
-    
+function getNamespaceDetailsFromNamespaceId(namespaceId) {    
     getNamespaceDetails(namespaceId)
         .then((response) => {
             namespaceName.value = response.namespace?.name || '';
