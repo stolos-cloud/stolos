@@ -29,6 +29,7 @@
                                         v-tooltip="{ text: $t('administration.namespaces.buttons.deleteUserFromNamespace') }"
                                         icon="mdi-delete"
                                         size="small" variant="plain" color="primary"
+                                        :disabled="currentUserId === item.id"
                                         @click="showConfirmDelete(item)"
                                     />
                                 </template>
@@ -46,8 +47,9 @@
 </template>
 
 <script setup>
-import { ref, watch } from "vue";
+import { ref, watch, computed } from "vue";
 import { useI18n } from "vue-i18n";
+import { useStore } from "vuex";
 import { getNamespaceDetails, deleteUserFromNamespaceByUserId } from "@/services/namespaces.service";
 import { GlobalNotificationHandler } from "@/composables/GlobalNotificationHandler";
 import { GlobalOverlayHandler } from "@/composables/GlobalOverlayHandler";
@@ -55,6 +57,7 @@ import { GlobalOverlayHandler } from "@/composables/GlobalOverlayHandler";
 const { t } = useI18n();
 const { showNotification } = GlobalNotificationHandler();
 const { showOverlay, hideOverlay } = GlobalOverlayHandler();
+const store = useStore();
 
 const props = defineProps({
     modelValue: {
@@ -76,6 +79,9 @@ const namespaceName = ref('');
 // Emits
 const emit = defineEmits(['update:modelValue', 'userDeletedFromNamespace']);
 
+// Computed 
+const currentUserId = computed(() => store.getters['user/getId']);
+
 // Watchers
 watch(() => props.modelValue, val => isOpen.value = val);
 watch(isOpen, val => {
@@ -87,6 +93,8 @@ watch(isOpen, val => {
 
 // Methods
 function getNamespaceDetailsFromNamespaceId(namespaceId) {
+    console.log(namespaceId);
+    
     getNamespaceDetails(namespaceId)
         .then((response) => {
             namespaceName.value = response.namespace?.name || '';

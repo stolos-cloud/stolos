@@ -91,7 +91,9 @@ function createTemplate() {
     
     const templateName = DOMPurify.sanitize(formFields.templateName.value);
     createNewTemplate({ templateName, scaffoldName: formFields.scaffold.value })
-        .then(() => {
+        .then((response) => {
+            console.log(response); // Ca retourne un done mais ca finit pas de creer le template ????
+            
             showNotification(t('templateDefinitions.notifications.createSuccess', { templateName }), 'success');
             emit('templateCreated');
         })

@@ -261,8 +261,8 @@
             "headers": {
                 "name": "Nom",
                 "version": "Version",
-                "metadata": "Métadonnées",
-                "deployedApps": "Applications déployées"
+                "deployedApps": "Applications déployées",
+                "labels": "Étiquettes"
             },
             "footerMessage": "Tout CRD avec un groupe correspondant à {group} sera affiché."
         },
@@ -273,7 +273,11 @@
             "viewDetailsTemplate": {
                 "title": "{ template } - Détails",
                 "crdDefinition": "Définition CRD",
-                "deployedApps": "Applications déployées"
+                "deployedApps": "Applications déployées",
+                "namespace": "Namespace",
+                "totalDeployedApps": "{count} total",
+                "healthy": "En santé",
+                "failed": "Échoué"
             }
         },
         "formfields": {
@@ -298,10 +302,13 @@
             "itemsPerPageText": "Applications par page :",
             "headers": {
                 "instanceName": "Nom de l'instance",
+                "template": "Modèle",
                 "namespace": "Namespace",
                 "health": "Santé",
                 "actions": "Actions"
             },
+            "healthySuccess": "En santé",
+            "healthyFailed": "Échoué",
             "footerMessage": "Les {src} déployées sur le cluster sont affichées."
         },
         "dialogs": {
@@ -324,6 +331,10 @@
             },
             "viewDetailsDeployedApp": {
                 "title": "{ appName } - Détails"
+            },
+            "deleteDeployment": {
+                "title": "Supprimer l'application déployée",
+                "confirmationText": "Êtes-vous sûr de vouloir supprimer l'application déployée {appName} ? Cette action ne peut pas être annulée."
             }
         },
         "formfields": {
@@ -334,10 +345,13 @@
         "notifications": {
             "validateError": "Échec de la validation de l'application",
             "deploySuccess": "Votre application a été déployée avec succès !",
-            "deployError": "Échec du déploiement de l'application"
+            "deployError": "Échec du déploiement de l'application",
+            "deleteSuccess": "L'application déployée {appName} a été supprimée avec succès",
+            "deleteError": "Échec de la suppression de l'application déployée"
         },
         "buttons": {
-            "deployNewApp": "Déployer une nouvelle application"
+            "deployNewApp": "Déployer une nouvelle application",
+            "deleteDeployment": "Supprimer l'application déployée"
         }
     },
     "secretsSecurity": {

@@ -89,7 +89,7 @@ function showViewDetailsDialog(item) {
     dialogViewDetailsNamespace.value = true;
 }
 function fetchNamespaces() {
-    getNamespaces().then(response => {
+    getNamespaces().then(response => {        
         namespaces.value = response.namespaces
             .filter(namespace => namespace.name !== "administrators")
             .map(namespace => ({

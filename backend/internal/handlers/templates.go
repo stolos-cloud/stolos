@@ -282,7 +282,7 @@ func (h *TemplatesHandler) GetDeployment(c *gin.Context) {
 		templateName = strings.Split(templateName, ".")[0]
 	}
 	deploymentName := c.Query("deployment")
-	namespace := c.Param("namespace")
+	namespace := c.Query("namespace")
 
 	if templateName == "" || deploymentName == "" || namespace == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "missing parameters"})

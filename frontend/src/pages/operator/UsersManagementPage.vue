@@ -33,7 +33,7 @@
             </template>
         </BaseDataTable>
         <EditUserRoleDialog v-model="dialogEditUserRole" :userSelected="userTemp" @userRoleUpdated="fetchUsers" @update:userSelected="userTemp = $event" />
-        <AddNewUserDialog v-model="dialogAddUser" @userAdded="fetchUsers" />
+        <AddNewUserDialog v-model="dialogAddUser" @newUserAdded="fetchUsers" />
         <BaseConfirmDialog ref="confirmDialog" />
     </PortalLayout>
 </template>

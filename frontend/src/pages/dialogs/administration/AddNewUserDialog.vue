@@ -92,9 +92,11 @@ function addUser() {
     };
 
     createNewUser(userData)
-        .then(() => {
-            showNotification(t('administration.users.notifications.addSuccess', { email: formFields.email.value }), 'success');
-            emit('newUserAdded');
+        .then((response) => {
+            if(response?.user){
+                showNotification(t('administration.users.notifications.addSuccess', { email: formFields.email.value }), 'success');
+                emit('newUserAdded');
+            }
         })
         .catch((error) => {
             console.error("Error adding user:", error);

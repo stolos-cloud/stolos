@@ -58,7 +58,7 @@ export async function createNewTemplate({ scaffoldName, templateName }) {
     }
 }
 
-export async function listDeployments(template, namespace) {
+export async function listDeployments({ template, namespace }) {
   try {
     const response = await api.get(`/deployments/list?namespace=${namespace}&template=${template}`);
     return response.data;
@@ -68,7 +68,7 @@ export async function listDeployments(template, namespace) {
   }
 }
 
-export async function listMyDeployments(template, namespace) {
+export async function listMyDeployments({ template, namespace }) {
   try {
     const response = await api.get(`/deployments/list?onlyMine=true&namespace=${namespace}&template=${template}`);
     return response.data;
@@ -89,7 +89,7 @@ export async function getDeployment(template, namespace, deployment) {
 }
 
 
-export async function deleteDeployment(template, namespace, deployment) {
+export async function deleteDeployment({ template, namespace, deployment }) {
   try {
     return await api.post(`/deployments/delete?namespace=${namespace}&template=${template}&deployment=${deployment}`);
   } catch (error) {

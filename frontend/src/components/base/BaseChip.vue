@@ -7,8 +7,8 @@
         size="small"
     >
         <template #prepend>
-            <span class="mr-1">
-                <slot name="prepend" class="mr-1"></slot>
+            <span :class="hasPrepend ? 'mr-1' : ''">
+                <slot name="prepend"></slot>
             </span>
         </template>
         <slot></slot>
@@ -16,6 +16,8 @@
 </template>
 
 <script setup>
+import { useSlots } from 'vue';
+
 defineProps({
     color: {
         type: String,
@@ -23,4 +25,6 @@ defineProps({
     }
 });
 
+const slots = useSlots();
+const hasPrepend = !!slots.prepend;
 </script>

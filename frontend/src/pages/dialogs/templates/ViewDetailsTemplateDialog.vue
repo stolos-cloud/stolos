@@ -24,26 +24,29 @@
                 <template #title>
                     <BaseTitle :level="6" :title="$t('templateDefinitions.dialogs.viewDetailsTemplate.deployedApps')" />
                     <BaseChip class="ml-2">
-                        2 total
+                        {{ $t('templateDefinitions.dialogs.viewDetailsTemplate.totalDeployedApps', { count: template?.deployedApps.length || 0 }) }}
                     </BaseChip>
                     <v-spacer />
                     <v-btn variant="text" icon="mdi-open-in-new" color="primary" size="small"
                         @click="redirectToDeployedApplications">
                     </v-btn>
                 </template>
-                <v-virtual-scroll :items="templateDetails" max-height="150" v-if="templateDetails.length > 0">
+                <v-virtual-scroll :items="template.deployedApps" max-height="150" v-if="template.deployedApps.length > 0">
                     <template v-slot:default="{ item }">
                         <v-list lines="two">
-                            <v-list-item :key="item.id" :title="item.email" class="border rounded"
+                            <v-list-item :key="item.Name" :title="item.Name" class="border rounded"
                                 style="background-color: rgba(var(--v-theme-list-item));">
                                 <template #subtitle>
                                     <div class="d-flex align-center">
-                                        Extra deployed info
+                                        {{ $t('templateDefinitions.dialogs.viewDetailsTemplate.namespace') }} : {{ item.Namespace }}
                                     </div>
                                 </template>
                                 <template v-slot:append>
-                                    <BaseChip :color="'success'">
-                                        running
+                                    <BaseChip :color="getStatusInfo(item.Healthy).color">
+                                        <template #prepend> 
+                                            <v-icon>{{ getStatusInfo(item.Healthy).icon }}</v-icon>
+                                        </template>
+                                        {{ getStatusInfo(item.Healthy).text }}
                                     </BaseChip>
                                 </template>
                             </v-list-item>
@@ -59,8 +62,10 @@
 import { getTemplate } from "@/services/templates.service";
 import { ref, watch } from "vue";
 import { useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
 
 const router = useRouter();
+const { t } = useI18n();
 
 const props = defineProps({
     modelValue: {
@@ -110,6 +115,13 @@ function copyToClipboard(text) {
                 copiedItem.value = null;
             }, 2000);
         })
+}
+function getStatusInfo(isHealthy) {
+    return {
+        text: isHealthy ? t('templateDefinitions.dialogs.viewDetailsTemplate.healthy') : t('templateDefinitions.dialogs.viewDetailsTemplate.failed'),
+        icon: isHealthy ? 'mdi-check-circle-outline' : 'mdi-close-circle-outline',
+        color: isHealthy ? 'success' : 'error'
+    };
 }
 </script>
 
