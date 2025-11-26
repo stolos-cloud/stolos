@@ -80,7 +80,7 @@ func ListDeploymentsForFilter(client *k8s.K8sClient, filter k8s.K8sResourceFilte
 		result = append(result, Deployment{
 			Name:      cr.GetName(),
 			Namespace: cr.GetNamespace(),
-			Template:  strings.ToLower(cr.GroupVersionKind().GroupKind().String()),
+			Template:  cr.GetKind(),
 			Healthy:   cr.UnstructuredContent()["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["status"] == "True",
 			Message:   cr.UnstructuredContent()["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["message"].(string),
 		})
