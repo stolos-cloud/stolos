@@ -107,13 +107,18 @@ func setupNamespaceRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
 func setupUserRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
 	users := api.Group("/users")
 	{
-		// Admin-only
-		users.Use(middleware.RequireRole(models.RoleAdmin))
+		users.Use(middleware.RequireRole(models.RoleDeveloper))
 		users.GET("", h.UserHandlers().ListUsers)
-		users.GET("/:id", h.UserHandlers().GetUser)
-		users.PUT("/:id/role", h.UserHandlers().UpdateUserRole)
-		users.DELETE("/:id", h.UserHandlers().DeleteUser)
-		users.POST("/create", h.UserHandlers().CreateUser)
+
+		// Admin-only endpoints
+		admin := users.Group("")
+		admin.Use(middleware.RequireRole(models.RoleAdmin))
+		{
+			admin.GET("/:id", h.UserHandlers().GetUser)
+			admin.PUT("/:id/role", h.UserHandlers().UpdateUserRole)
+			admin.DELETE("/:id", h.UserHandlers().DeleteUser)
+			admin.POST("/create", h.UserHandlers().CreateUser)
+		}
 	}
 }
 
