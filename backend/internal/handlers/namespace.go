@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
-	"slices"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -181,23 +180,29 @@ func (h *NamespaceHandlers) GetNamespace(c *gin.Context) {
 		return
 	}
 
-	// Check if user has access to this namespace
-	if claims.Role != models.RoleAdmin {
-		hasAccess := slices.Contains(claims.Namespaces, namespaceID)
-		if !hasAccess {
-			c.JSON(http.StatusForbidden, gin.H{"error": "Access denied to namespace"})
-			return
-		}
-	}
-
 	var namespace models.Namespace
-	if err := h.db.Preload("Users").First(&namespace, "id = ?", namespaceID).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Namespace not found"})
+
+	if claims.Role == models.RoleAdmin {
+		if err := h.db.Preload("Users").First(&namespace, "id = ?", namespaceID).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				c.JSON(http.StatusNotFound, gin.H{"error": "Namespace not found"})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
-		return
+	} else {
+		if err := h.db.Preload("Users").
+			Joins("JOIN user_namespaces ON user_namespaces.namespace_id = namespaces.id").
+			Where("namespaces.id = ? AND user_namespaces.user_id = ?", namespaceID, claims.UserID).
+			First(&namespace).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				c.JSON(http.StatusNotFound, gin.H{"error": "Namespace not found"})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
+			return
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"namespace": api.ToNamespaceResponse(&namespace, true)})
