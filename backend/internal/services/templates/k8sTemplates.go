@@ -106,7 +106,7 @@ func crdToTemplate(crd *apiextensionsv1.CustomResourceDefinition) Template {
 	}
 
 	newTemplate.Labels = crd.Labels
-	newTemplate.Version = crd.APIVersion
+	newTemplate.Version = crd.Spec.Versions[0].Name
 
 	return newTemplate
 }
