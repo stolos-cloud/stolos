@@ -67,7 +67,7 @@ func BuildAirwayFor[crdType any](inputs AirwayInputs, flightUrl string) ([]byte,
 			WasmURLs: airways.WasmURLs{
 				Flight: flightUrl,
 			},
-			CrossNamespace:         false,
+			CrossNamespace:         inputs.CrossNamespace,
 			FixDriftInterval:       metav1.Duration{Duration: *inputs.FixDriftInterval},
 			ClusterAccess:          inputs.ClusterAccess,
 			ResourceAccessMatchers: inputs.ResourceAccessMatchers,
