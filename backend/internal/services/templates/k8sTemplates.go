@@ -16,11 +16,12 @@ import (
 type JsonSchema = map[string]interface{}
 
 type Deployment struct {
-	Name      string
-	Namespace string
-	Template  string
-	Healthy   bool
-	Message   string
+	Name        string
+	Namespace   string
+	Template    string
+	Healthy     bool
+	Message     string
+	Terminating bool
 }
 
 type Template struct {
@@ -78,11 +79,12 @@ func ListDeploymentsForFilter(client *k8s.K8sClient, filter k8s.K8sResourceFilte
 	result := []Deployment{}
 	for _, cr := range allCRs {
 		result = append(result, Deployment{
-			Name:      cr.GetName(),
-			Namespace: cr.GetNamespace(),
-			Template:  cr.GetKind(),
-			Healthy:   cr.UnstructuredContent()["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["status"] == "True",
-			Message:   cr.UnstructuredContent()["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["message"].(string),
+			Name:        cr.GetName(),
+			Namespace:   cr.GetNamespace(),
+			Template:    cr.GetKind(),
+			Healthy:     cr.UnstructuredContent()["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["status"] == "True",
+			Terminating: cr.UnstructuredContent()["status"].(map[string]interface{})["phase"].(string) == "Terminating",
+			Message:     cr.UnstructuredContent()["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["message"].(string),
 		})
 	}
 	return result, nil

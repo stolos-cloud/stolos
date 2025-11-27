@@ -388,7 +388,9 @@ const docTemplate = `{
                         "description": "List of deployments",
                         "schema": {
                             "type": "array",
-                            "items": {}
+                            "items": {
+                                "$ref": "#/definitions/templates.Deployment"
+                            }
                         }
                     },
                     "500": {
@@ -3134,6 +3136,29 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "templates.Deployment": {
+            "type": "object",
+            "properties": {
+                "healthy": {
+                    "type": "boolean"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "namespace": {
+                    "type": "string"
+                },
+                "template": {
+                    "type": "string"
+                },
+                "terminating": {
+                    "type": "boolean"
                 }
             }
         },

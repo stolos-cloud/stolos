@@ -208,7 +208,7 @@ func (h *TemplatesHandler) doApplyAction(c *gin.Context, onlyDryRun bool) {
 // @Param        template    query  string  false   "Template name"
 // @Param        namespace   query  string  false  "Kubernetes namespace to filter on"
 // @param		 onlyMine    query  bool    false  "Only my templates"
-// @Success      200         {array}  interface{}     "List of deployments"
+// @Success      200         {array}  templates.Deployment{}     "List of deployments"
 // @Failure      500         {object}  map[string]string "Internal server error"
 // @Router       /deployments/list [get]
 // @Security BearerAuth
