@@ -21,6 +21,9 @@ func CreateContourNamespace(input types.Stolos) *v1.Namespace {
 	ns := v1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: input.Spec.Contour.Namespace,
+			Labels: map[string]string{
+				"pod-security.kubernetes.io/enforce": "privileged", // envoy uses hostPorts 80, 443
+			},
 		},
 	}
 
