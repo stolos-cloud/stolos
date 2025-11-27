@@ -83,7 +83,7 @@ func ListDeploymentsForFilter(client *k8s.K8sClient, filter k8s.K8sResourceFilte
 			Namespace:   cr.GetNamespace(),
 			Template:    cr.GetKind(),
 			Healthy:     cr.UnstructuredContent()["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["status"] == "True",
-			Terminating: cr.UnstructuredContent()["status"].(map[string]interface{})["phase"].(string) == "Terminating",
+			Terminating: cr.UnstructuredContent()["metadata"].(map[string]interface{})["deletionTimestamp"] != nil,
 			Message:     cr.UnstructuredContent()["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["message"].(string),
 		})
 	}
