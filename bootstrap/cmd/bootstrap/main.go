@@ -121,7 +121,7 @@ func main() {
 	// 	SetupGitHub()
 	// }
 
-	if os.Args[1] == "--web" {
+	if len(os.Args) > 1 && os.Args[1] == "--web" {
 		go func() {
 			web(model, p)
 		}()
