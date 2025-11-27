@@ -1046,7 +1046,7 @@ func RunPortalStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 		_, err = k8sDynamicClient.Resource(schema.GroupVersionResource{
 			Group:    "yoke.cd",
 			Version:  "v1alpha1",
-			Resource: "Airway",
+			Resource: "airways",
 		}).Namespace("atc").Apply(context.Background(), "stolosplatforms.stolos.cloud", stolosAirwayUnstructured, metav1.ApplyOptions{})
 
 		if err != nil {
@@ -1155,7 +1155,7 @@ func RunPortalStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 
 		_, err = k8sClientDyn.Resource(schema.GroupVersionResource{
 			Group:    "stolos.cloud",
-			Version:  "v1alpha1",
+			Version:  "v1alpha",
 			Resource: "stolosplatforms",
 		}).Create(context.Background(), &unstructuredStolosCR, metav1.CreateOptions{})
 
