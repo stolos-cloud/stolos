@@ -3,6 +3,7 @@ package contour
 import (
 	_ "embed"
 
+	"github.com/stolos-cloud/stolos/stolos-yoke/pkg/argocd"
 	"github.com/stolos-cloud/stolos/stolos-yoke/pkg/types"
 	"github.com/yokecd/yoke/pkg/flight"
 	v1 "k8s.io/api/core/v1"
@@ -56,17 +57,8 @@ func DeployContourYaml(input types.Stolos) *types.Application {
 				Server:    "https://kubernetes.default.svc",
 				Namespace: input.Spec.Contour.Namespace,
 			},
-			Project: "default",
-			SyncPolicy: &types.SyncPolicy{
-				Automated: &types.SyncPolicyAutomated{
-					Prune:    true,
-					SelfHeal: true,
-				},
-				SyncOptions: types.SyncOptions{
-					"ServerSideApply=true",
-					"Replace=true",
-				},
-			},
+			Project:    "default",
+			SyncPolicy: argocd.DefaultSyncPolicy,
 		},
 	}
 
