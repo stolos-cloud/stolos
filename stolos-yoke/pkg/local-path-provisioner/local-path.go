@@ -12,7 +12,7 @@ import (
 func AllLocalPathProvisioner(input types.Stolos) []flight.Resource {
 	return []flight.Resource{
 		CreateLocalPathProvisionerNamespace(input),
-		DeployLocalPathProvisionerHelm(input),
+		DeployLocalPathProvisioner(input),
 	}
 }
 
@@ -29,7 +29,7 @@ func CreateLocalPathProvisionerNamespace(input types.Stolos) *v1.Namespace {
 	return &ns
 }
 
-func DeployLocalPathProvisionerHelm(input types.Stolos) *types.Application {
+func DeployLocalPathProvisioner(input types.Stolos) *types.Application {
 	app := types.Application{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "local-path-provisioner",
@@ -37,9 +37,9 @@ func DeployLocalPathProvisionerHelm(input types.Stolos) *types.Application {
 		},
 		Spec: types.ApplicationSpec{
 			Source: &types.ApplicationSource{
-				RepoURL:        "https://charts.rancher.io",
+				RepoURL:        "https://github.com/rancher/local-path-provisioner",
 				TargetRevision: input.Spec.LocalPathProvisioner.Version,
-				Chart:          "local-path-provisioner",
+				Path:           "deploy/chart/local-path-provisioner",
 				Helm: &types.ApplicationSourceHelm{
 					Parameters: []types.HelmParameter{
 						{

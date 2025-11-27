@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
-	localpathprovisioner "github.com/stolos-cloud/stolos/stolos-yoke/flight/pkg/local-path-provisioner"
+	localpathprovisioner "github.com/stolos-cloud/stolos/stolos-yoke/pkg/local-path-provisioner"
 	"github.com/stolos-cloud/stolos/stolos-yoke/pkg/argocd"
 	cert_manager "github.com/stolos-cloud/stolos/stolos-yoke/pkg/cert-manager"
 	"github.com/stolos-cloud/stolos/stolos-yoke/pkg/cnpg"
