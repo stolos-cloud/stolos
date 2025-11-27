@@ -1,23 +1,21 @@
 <template>
-  <v-app>
-    <Toolbar 
-      v-if="!isDesktop"
-      :drawer="drawer" 
-      :toolbarHeight="toolbarHeight" 
-      @update:drawer="drawer = $event" 
-    ></Toolbar>
-    <Sidebar 
-      :drawer="drawer" 
-      :toolbarHeight="toolbarHeight" 
-      :temporary="!isDesktop" 
-      @update:drawer="drawer = $event"
-    />
     <v-main>
-      <v-container fluid>
-        <slot></slot>
-      </v-container>
+        <Toolbar 
+            v-if="!isDesktop"
+            :drawer="drawer" 
+            :toolbarHeight="toolbarHeight" 
+            @update:drawer="drawer = $event" 
+        ></Toolbar>
+        <Sidebar 
+            :drawer="drawer" 
+            :toolbarHeight="toolbarHeight" 
+            :temporary="!isDesktop" 
+            @update:drawer="drawer = $event"
+        />
+        <v-container fluid>
+            <slot></slot>
+        </v-container>
     </v-main>
-  </v-app>
 </template>
 
 <script setup>

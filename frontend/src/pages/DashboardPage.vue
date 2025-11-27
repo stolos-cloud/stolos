@@ -11,11 +11,11 @@
 </template>
 
 <script setup>
-import DownloadISOOnPremDialog from '@/pages/operator/dialogs/download/DownloadISOOnPremDialog.vue';
-import OperatorDashboard from '@/pages/operator/OperatorDashboard.vue';
+import DownloadISOOnPremDialog from '@/pages/dialogs/download/DownloadISOOnPremDialog.vue';
+import OperatorDashboard from '@/components/operator/OperatorDashboard.vue';
 import DeveloperDashboard from '@/pages/developer/DeveloperDashboard.vue';
 import { computed, ref, onMounted } from 'vue';
-//import { getClusterInfo } from '@/services/cluster.service';
+import { getClusterInfo } from '@/services/cluster.service';
 import { useI18n } from 'vue-i18n';
 import { useStore } from 'vuex';
 
@@ -45,13 +45,13 @@ const actions = computed(() => {
 // Mounted
 onMounted(() => {
     if(userRole.value === 'admin') {
-        // getClusterInfo().then((response) => {
-        //     if(response.gitops_configured) {
-        //         clusterInfo.value = response;
-        //     }
-        // }).catch(error => {
-        //     console.error('Failed to fetch cluster info:', error);
-        // });
+        getClusterInfo().then((response) => {
+            if(response.gitops_configured) {
+                clusterInfo.value = response;
+            }
+        }).catch(error => {
+            console.error('Failed to fetch cluster info:', error);
+        });
     }
 });
 

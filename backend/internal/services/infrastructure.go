@@ -5,10 +5,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
-	"strings"
 
 	"github.com/stolos-cloud/stolos/backend/internal/config"
+	"github.com/stolos-cloud/stolos/backend/internal/helpers"
 	"github.com/stolos-cloud/stolos/backend/internal/models"
 	gcpservices "github.com/stolos-cloud/stolos/backend/internal/services/gcp"
 	gitopsservices "github.com/stolos-cloud/stolos/backend/internal/services/gitops"
@@ -23,6 +22,7 @@ type InfrastructureService struct {
 	cfg             *config.Config
 	providerManager *ProviderManager
 	gitopsService   *gitopsservices.GitOpsService
+	talosService    *talosservices.TalosService
 }
 
 type NodeConfig struct {
@@ -32,37 +32,14 @@ type NodeConfig struct {
 	Architecture string
 }
 
-func NewInfrastructureService(db *gorm.DB, cfg *config.Config, providerManager *ProviderManager, gitopsService *gitopsservices.GitOpsService) *InfrastructureService {
+func NewInfrastructureService(db *gorm.DB, cfg *config.Config, providerManager *ProviderManager, gitopsService *gitopsservices.GitOpsService, talosService *talosservices.TalosService) *InfrastructureService {
 	return &InfrastructureService{
 		db:              db,
 		cfg:             cfg,
 		providerManager: providerManager,
 		gitopsService:   gitopsService,
+		talosService:    talosService,
 	}
-}
-
-// sanitizeGCPResourceName converts a cluster name to a valid GCP resource name
-// GCP requirements: lowercase, letters/numbers/hyphens only, start with letter, no trailing hyphen
-func sanitizeGCPResourceName(name string) string {
-	// Convert to lowercase
-	name = strings.ToLower(name)
-
-	// Replace invalid characters with hyphens
-	reg := regexp.MustCompile(`[^a-z0-9-]+`)
-	name = reg.ReplaceAllString(name, "-")
-
-	// Remove leading non-letter characters
-	name = regexp.MustCompile(`^[^a-z]+`).ReplaceAllString(name, "")
-
-	// Remove trailing hyphens
-	name = strings.TrimRight(name, "-")
-
-	// If empty after sanitization, use default
-	if name == "" {
-		name = "cluster"
-	}
-
-	return name
 }
 
 // sets up the base infrastructure (VPC, subnets, etc.) needed for VM provisioning
@@ -102,16 +79,10 @@ func (s *InfrastructureService) InitializeInfrastructure(ctx context.Context, pr
 		return fmt.Errorf("failed to get backend config: %w", err)
 	}
 
-	// Create orchestrator
-	envVars := map[string]string{
-		"GOOGLE_CREDENTIALS": gcpConfig.ServiceAccountKeyJSON,
-		"GOOGLE_PROJECT":     gcpConfig.ProjectID,
-	}
-
 	orchestrator, err := tfpkg.NewOrchestrator(tfpkg.OrchestratorConfig{
 		WorkDir:         workDir,
 		TemplateBaseDir: "terraform-templates",
-		EnvVars:         envVars,
+		EnvVars:         gcpConfig.TerraformEnvVars(),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create orchestrator: %w", err)
@@ -119,7 +90,7 @@ func (s *InfrastructureService) InitializeInfrastructure(ctx context.Context, pr
 
 	// Render infrastructure template
 	templateData := InfrastructureTemplateData{
-		ClusterName: sanitizeGCPResourceName(cluster.Name),
+		ClusterName: helpers.SanitizeResourceName(cluster.Name),
 		BucketName:  backendConfig["bucket"],
 		ProjectID:   gcpConfig.ProjectID,
 		Region:      gcpConfig.Region,
@@ -152,19 +123,12 @@ func (s *InfrastructureService) InitializeInfrastructure(ctx context.Context, pr
 			return fmt.Errorf("failed to get GitOps config: %w", err)
 		}
 
-		ghClient, err := githubpkg.NewClientFromConfig(
-			s.cfg.GitHub.AppID,
-			s.cfg.GitHub.InstallationID,
-			s.cfg.GitHub.PrivateKey,
-			gitopsConfig.RepoOwner,
-			gitopsConfig.RepoName,
-			gitopsConfig.Branch,
-		)
+		ghClient, err := s.gitopsService.GetGitHubClient()
 		if err != nil {
 			return fmt.Errorf("failed to create GitHub client: %w", err)
 		}
 
-		if err := orchestrator.CommitToGitOps(ctx, ghClient.Client, tfpkg.GitOpsConfig{
+		if _, err := orchestrator.CommitToGitOps(ctx, ghClient.Client, tfpkg.GitOpsConfig{
 			Owner:    gitopsConfig.RepoOwner,
 			Repo:     gitopsConfig.RepoName,
 			Branch:   gitopsConfig.Branch,
@@ -176,7 +140,7 @@ func (s *InfrastructureService) InitializeInfrastructure(ctx context.Context, pr
 		}
 
 		// Publish node module to gitops repo (only on first-time setup)
-		if err := s.PublishNodeModuleToRepo(providerName, ""); err != nil {
+		if err := s.PublishNodeModuleToRepo(ctx, providerName, "", ghClient, gitopsConfig); err != nil {
 			return fmt.Errorf("failed to publish node module: %w", err)
 		}
 	} else {
@@ -229,16 +193,10 @@ func (s *InfrastructureService) DestroyInfrastructure(ctx context.Context, provi
 		return fmt.Errorf("failed to get backend config: %w", err)
 	}
 
-	// Create orchestrator
-	envVars := map[string]string{
-		"GOOGLE_CREDENTIALS": gcpConfig.ServiceAccountKeyJSON,
-		"GOOGLE_PROJECT":     gcpConfig.ProjectID,
-	}
-
 	orchestrator, err := tfpkg.NewOrchestrator(tfpkg.OrchestratorConfig{
 		WorkDir:         workDir,
 		TemplateBaseDir: "terraform-templates",
-		EnvVars:         envVars,
+		EnvVars:         gcpConfig.TerraformEnvVars(),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create orchestrator: %w", err)
@@ -246,7 +204,7 @@ func (s *InfrastructureService) DestroyInfrastructure(ctx context.Context, provi
 
 	// Render infrastructure template
 	templateData := InfrastructureTemplateData{
-		ClusterName: sanitizeGCPResourceName(cluster.Name),
+		ClusterName: helpers.SanitizeResourceName(cluster.Name),
 		BucketName:  backendConfig["bucket"],
 		ProjectID:   gcpConfig.ProjectID,
 		Region:      gcpConfig.Region,
@@ -297,7 +255,7 @@ func (s *InfrastructureService) GetInfrastructureStatus(ctx context.Context, pro
 		}, nil
 	}
 
-	sanitizedName := sanitizeGCPResourceName(cluster.Name)
+	sanitizedName := helpers.SanitizeResourceName(cluster.Name)
 
 	return map[string]any{
 		"status": gcpConfig.InfrastructureStatus,
@@ -314,9 +272,7 @@ type NodeModuleTemplateData struct {
 }
 
 // PublishNodeModuleToRepo publishes the Terraform node module to the GitOps repository
-func (s *InfrastructureService) PublishNodeModuleToRepo(providerName, talosVersion string) error {
-	ctx := context.Background()
-
+func (s *InfrastructureService) PublishNodeModuleToRepo(ctx context.Context, providerName, talosVersion string, ghClient *githubpkg.Client, gitopsConfig *models.GitOpsConfig) error {
 	// Get cluster name from database
 	var cluster models.Cluster
 	if err := s.db.First(&cluster).Error; err != nil {
@@ -338,8 +294,7 @@ func (s *InfrastructureService) PublishNodeModuleToRepo(providerName, talosVersi
 	}
 
 	// default to AMD
-	talosService := talosservices.NewTalosService(s.db, s.cfg)
-	talosImageName, err := talosService.GetGCPImageName("amd64")
+	talosImageName, err := s.talosService.GetGCPImageName("amd64")
 	if err != nil {
 		return fmt.Errorf("failed to get Talos image name: %w", err)
 	}
@@ -351,7 +306,6 @@ func (s *InfrastructureService) PublishNodeModuleToRepo(providerName, talosVersi
 	}
 	defer os.RemoveAll(workDir)
 
-	// Create orchestrator (no env vars needed for template rendering only)
 	orchestrator, err := tfpkg.NewOrchestrator(tfpkg.OrchestratorConfig{
 		WorkDir:         workDir,
 		TemplateBaseDir: "terraform-templates",
@@ -363,7 +317,7 @@ func (s *InfrastructureService) PublishNodeModuleToRepo(providerName, talosVersi
 
 	// Template data for module templates
 	templateData := NodeModuleTemplateData{
-		ClusterName:       sanitizeGCPResourceName(cluster.Name),
+		ClusterName:       helpers.SanitizeResourceName(cluster.Name),
 		TalosImageProject: gcpConfig.ProjectID,
 		TalosImageName:    talosImageName,
 	}
@@ -384,40 +338,26 @@ func (s *InfrastructureService) PublishNodeModuleToRepo(providerName, talosVersi
 		}
 	}
 
-	// Get GitOps config
-	gitopsConfig, err := s.gitopsService.GetConfigOrDefault()
-	if err != nil {
-		return fmt.Errorf("failed to get GitOps config: %w", err)
-	}
-
-	// Initialize GitHub client
-	ghClient, err := githubpkg.NewClientFromConfig(
-		s.cfg.GitHub.AppID,
-		s.cfg.GitHub.InstallationID,
-		s.cfg.GitHub.PrivateKey,
-		gitopsConfig.RepoOwner,
-		gitopsConfig.RepoName,
-		gitopsConfig.Branch,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to create GitHub client: %w", err)
-	}
-
 	// Commit to GitOps repository
 	moduleBasePath := filepath.Join(gitopsConfig.WorkingDir, providerName, "modules", "node")
-	if err := orchestrator.CommitToGitOps(ctx, ghClient.Client, tfpkg.GitOpsConfig{
+	committed, err := orchestrator.CommitToGitOps(ctx, ghClient.Client, tfpkg.GitOpsConfig{
 		Owner:    gitopsConfig.RepoOwner,
 		Repo:     gitopsConfig.RepoName,
 		Branch:   gitopsConfig.Branch,
 		BasePath: moduleBasePath,
 		Username: gitopsConfig.Username,
 		Email:    gitopsConfig.Email,
-	}, fmt.Sprintf("Publish Terraform node module for %s", providerName)); err != nil {
+	}, fmt.Sprintf("Publish Terraform node module for %s", providerName))
+	if err != nil {
 		return fmt.Errorf("failed to commit to repository: %w", err)
 	}
 
-	fmt.Printf("Published node module to %s/%s (branch: %s)\n", gitopsConfig.RepoOwner, gitopsConfig.RepoName, gitopsConfig.Branch)
-	fmt.Printf("  Module directory: %s\n", moduleBasePath)
+	if committed {
+		fmt.Printf("Published node module to %s/%s (branch: %s)\n", gitopsConfig.RepoOwner, gitopsConfig.RepoName, gitopsConfig.Branch)
+		fmt.Printf("  Module directory: %s\n", moduleBasePath)
+	} else {
+		fmt.Printf("Node module already up-to-date in %s/%s (branch: %s)\n", gitopsConfig.RepoOwner, gitopsConfig.RepoName, gitopsConfig.Branch)
+	}
 
 	return nil
 }
@@ -459,16 +399,10 @@ func (s *InfrastructureService) ForceUnlockState(ctx context.Context, providerNa
 		return fmt.Errorf("failed to get backend config: %w", err)
 	}
 
-	// Create orchestrator
-	envVars := map[string]string{
-		"GOOGLE_CREDENTIALS": gcpConfig.ServiceAccountKeyJSON,
-		"GOOGLE_PROJECT":     gcpConfig.ProjectID,
-	}
-
 	orchestrator, err := tfpkg.NewOrchestrator(tfpkg.OrchestratorConfig{
 		WorkDir:         workDir,
 		TemplateBaseDir: "terraform-templates",
-		EnvVars:         envVars,
+		EnvVars:         gcpConfig.TerraformEnvVars(),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create orchestrator: %w", err)
@@ -476,7 +410,7 @@ func (s *InfrastructureService) ForceUnlockState(ctx context.Context, providerNa
 
 	// Render infrastructure template (needed to connect to backend)
 	templateData := InfrastructureTemplateData{
-		ClusterName: sanitizeGCPResourceName(cluster.Name),
+		ClusterName: helpers.SanitizeResourceName(cluster.Name),
 		BucketName:  backendConfig["bucket"],
 		ProjectID:   gcpConfig.ProjectID,
 		Region:      gcpConfig.Region,

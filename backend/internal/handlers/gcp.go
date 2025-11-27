@@ -7,18 +7,17 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"path/filepath"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
-	"github.com/stolos-cloud/stolos/backend/internal/config"
 	"github.com/stolos-cloud/stolos/backend/internal/models"
 	"github.com/stolos-cloud/stolos/backend/internal/services"
 	gcpservices "github.com/stolos-cloud/stolos/backend/internal/services/gcp"
 	gitopsservices "github.com/stolos-cloud/stolos/backend/internal/services/gitops"
 	"github.com/stolos-cloud/stolos/backend/internal/services/node"
-	talosservices "github.com/stolos-cloud/stolos/backend/internal/services/talos"
 	wsservices "github.com/stolos-cloud/stolos/backend/internal/services/websocket"
 	"gorm.io/gorm"
 )
@@ -42,20 +41,24 @@ type GCPHandlers struct {
 	wsManager             *wsservices.Manager
 }
 
-func NewGCPHandlers(db *gorm.DB, cfg *config.Config, providerManager *services.ProviderManager, wsManager *wsservices.Manager) *GCPHandlers {
-	gcpService := gcpservices.NewGCPService(db, cfg)
-	gitopsService := gitopsservices.NewGitOpsService(db, cfg)
-	infrastructureService := services.NewInfrastructureService(db, cfg, providerManager, gitopsService)
-	talosService := talosservices.NewTalosService(db, cfg)
-
+func NewGCPHandlers(
+	db *gorm.DB,
+	gcpService *gcpservices.GCPService,
+	gitopsService *gitopsservices.GitOpsService,
+	nodeService *node.NodeService,
+	infrastructureService *services.InfrastructureService,
+	gcpResourcesService *gcpservices.GCPResourcesService,
+	provisioningService *gcpservices.ProvisioningService,
+	wsManager *wsservices.Manager,
+) *GCPHandlers {
 	return &GCPHandlers{
 		db:                    db,
 		gcpService:            gcpService,
 		gitopsService:         gitopsService,
-		nodeService:           node.NewNodeService(db, cfg, providerManager, talosService),
+		nodeService:           nodeService,
 		infrastructureService: infrastructureService,
-		gcpResourcesService:   gcpservices.NewGCPResourcesService(db, gcpService),
-		provisioningService:   gcpservices.NewProvisioningService(db, cfg, talosService, gcpService),
+		gcpResourcesService:   gcpResourcesService,
+		provisioningService:   provisioningService,
 		wsManager:             wsManager,
 	}
 }
@@ -259,7 +262,14 @@ func (h *GCPHandlers) CreateTerraformBucket(c *gin.Context) {
 		return
 	}
 
-	bucketName, err := h.gcpService.CreateTerraformBucket(c.Request.Context(), req.ProjectID, req.Region)
+	// Get cluster name from database
+	var cluster models.Cluster
+	if err := h.db.First(&cluster).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get cluster info"})
+		return
+	}
+
+	bucketName, err := h.gcpService.CreateTerraformBucket(c.Request.Context(), req.ProjectID, req.Region, cluster.Name)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -462,9 +472,104 @@ func (h *GCPHandlers) ProvisionGCPNodes(c *gin.Context) {
 		"request_id": requestID.String(),
 		"message":    "Provision request created. Connect to WebSocket to monitor progress.",
 	})
+}
 
-	// TODO: Start provision process in background
-	// For now, just return the request_id
+// GetProvisionPlan godoc
+// @Summary Download terraform plan output
+// @Description Download the terraform plan output as a text file
+// @Tags gcp
+// @Param request_id path string true "Provision request ID"
+// @Produce text/plain
+// @Success 200 {file} string
+// @Failure 404 {object} map[string]string
+// @Router /gcp/nodes/provision/{request_id}/plan [get]
+// @Security BearerAuth
+func (h *GCPHandlers) GetProvisionPlan(c *gin.Context) {
+	requestID := c.Param("request_id")
+
+	// Validate request ID
+	parsedUUID, err := uuid.Parse(requestID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request_id"})
+		return
+	}
+	canonicalRequestID := parsedUUID.String()
+
+	// Check if provision request exists
+	var provisionRequest models.ProvisionRequest
+	if err := h.db.Where("id = ?", canonicalRequestID).First(&provisionRequest).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "provision request not found"})
+		return
+	}
+
+	// Serve the plan file
+	plansDir := "plans"
+	planFileName := fmt.Sprintf("plan-%s.txt", canonicalRequestID)
+	planFilePath := filepath.Join(plansDir, planFileName)
+
+	// Defensive: make sure the resolved path is within the plans directory
+	absPlansDir, err := filepath.Abs(plansDir)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return
+	}
+	absPlanFilePath, err := filepath.Abs(planFilePath)
+	if err != nil || len(absPlanFilePath) < len(absPlansDir) || absPlanFilePath[:len(absPlansDir)] != absPlansDir {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid file path"})
+		return
+	}
+
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", planFileName))
+	c.File(planFilePath)
+}
+
+// GetProvisionApply godoc
+// @Summary Download terraform apply logs
+// @Description Download the terraform apply JSON logs
+// @Tags gcp
+// @Param request_id path string true "Provision request ID"
+// @Produce application/json
+// @Success 200 {file} string
+// @Failure 404 {object} map[string]string
+// @Router /gcp/nodes/provision/{request_id}/apply [get]
+// @Security BearerAuth
+func (h *GCPHandlers) GetProvisionApply(c *gin.Context) {
+	requestID := c.Param("request_id")
+
+	// Validate request ID
+	parsedUUID, err := uuid.Parse(requestID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request_id"})
+		return
+	}
+	canonicalRequestID := parsedUUID.String()
+
+	// Check if provision request exists
+	var provisionRequest models.ProvisionRequest
+	if err := h.db.Where("id = ?", canonicalRequestID).First(&provisionRequest).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "provision request not found"})
+		return
+	}
+
+	// Serve the apply log file
+	appliesDir := "applies"
+	applyFileName := fmt.Sprintf("apply-%s.json", canonicalRequestID)
+	applyFilePath := filepath.Join(appliesDir, applyFileName)
+
+	// Defensive: make sure the resolved path is within the applies directory
+	absAppliesDir, err := filepath.Abs(appliesDir)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return
+	}
+	absApplyFilePath, err := filepath.Abs(applyFilePath)
+	if err != nil || len(absApplyFilePath) < len(absAppliesDir) || absApplyFilePath[:len(absAppliesDir)] != absAppliesDir {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid file path"})
+		return
+	}
+
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", applyFileName))
+	c.File(applyFilePath)
 }
 
 // ProvisionGCPNodesStream godoc
@@ -498,7 +603,13 @@ func (h *GCPHandlers) ProvisionGCPNodesStream(c *gin.Context) {
 	}
 
 	// Register WebSocket client
-	client := h.wsManager.RegisterClient(requestID, conn)
+	client := h.wsManager.RegisterClient(requestID, conn, nil)
+
+	// Create approval session for GCP provisioning workflow
+	session := wsservices.NewApprovalSession(requestID, client)
+
+	// Update client's session so it can route incoming messages
+	client.SetSession(session)
 
 	// Start provisioning in a goroutine
 	go func() {
@@ -508,8 +619,8 @@ func (h *GCPHandlers) ProvisionGCPNodesStream(c *gin.Context) {
 		// Parse the provision request
 		var req models.GCPNodeProvisionRequest
 		if err := json.Unmarshal(provisionRequest.Request, &req); err != nil {
-			client.SendError(fmt.Sprintf("Failed to parse provision request: %v", err))
-			client.SendStatus("failed")
+			session.SendErrorString(fmt.Sprintf("Failed to parse provision request: %v", err))
+			session.SendStatus("failed")
 			return
 		}
 
@@ -517,9 +628,9 @@ func (h *GCPHandlers) ProvisionGCPNodesStream(c *gin.Context) {
 		// We use context.Background() instead of c.Request.Context() because the HTTP context
 		// is canceled after the WebSocket upgrade completes
 		requestUUID, _ := uuid.Parse(requestID)
-		if err := h.provisioningService.ProvisionNodes(context.Background(), requestUUID, req, client); err != nil {
-			client.SendError(fmt.Sprintf("Provisioning failed: %v", err))
-			client.SendStatus("failed")
+		if err := h.provisioningService.ProvisionNodes(context.Background(), requestUUID, req, session); err != nil {
+			session.SendErrorString(fmt.Sprintf("Provisioning failed: %v", err))
+			session.SendStatus("failed")
 
 			// Update provision request status
 			h.db.Model(&models.ProvisionRequest{}).

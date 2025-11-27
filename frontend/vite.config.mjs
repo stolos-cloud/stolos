@@ -1,10 +1,10 @@
 import Components from 'unplugin-vue-components/vite'
 import Vue from '@vitejs/plugin-vue'
 import { transformAssetUrls } from 'vite-plugin-vuetify'
-import { defineConfig, loadEnv } from 'vite'
+import { defineConfig } from 'vite'
 import { fileURLToPath, URL } from 'node:url'
 
-const env = loadEnv(process.env.NODE_ENV, process.cwd(), '');
+//const env = loadEnv(process.env.NODE_ENV, process.cwd(), '');
 export default defineConfig({
   resolve: {
     alias: {
@@ -21,12 +21,16 @@ export default defineConfig({
   server: {
     port: 3000,
     proxy: {
-      '/api': {
-        target: env.VITE_API_BASE_URL,
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '/api/v1'),
-        ws: true,
-      }
+      // '/api': {
+      //   target: env.VITE_API_BASE_URL,
+      //   changeOrigin: true,
+      //   rewrite: (path) => {
+      //       const result = path.replace(/^\/api/, '/api/v1')
+      //       console.log(result)
+      //       return result
+      //   },
+      //   ws: true,
+      // }
     }
   },
 })

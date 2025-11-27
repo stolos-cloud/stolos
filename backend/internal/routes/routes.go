@@ -27,11 +27,22 @@ func SetupRoutes(r *gin.Engine, h *handlers.Handlers) {
 		protected := api.Group("")
 		protected.Use(middleware.JWTAuthMiddleware(h.JWTService(), h.DB()))
 		{
+			setupClusterRoutes(protected, h)
 			setupISORoutes(protected, h)
 			setupGCPRoutes(api, protected, h)
-			setupTeamRoutes(protected, h)
+			setupNamespaceRoutes(protected, h)
 			setupUserRoutes(protected, h)
+			setupEventRoutes(protected, h)
+			setupTemplateRoutes(protected, h)
+			setupScaffoldRoutes(protected, h)
 		}
+	}
+}
+
+func setupClusterRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
+	cluster := api.Group("/cluster")
+	{
+		cluster.GET("/info", h.GetClusterInfo)
 	}
 }
 
@@ -48,12 +59,21 @@ func setupNodeRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
 		nodes.GET("", h.NodeHandlers().ListNodes)
 		nodes.POST("", h.NodeHandlers().CreateNodes)
 		nodes.GET("/:id", h.NodeHandlers().GetNode)
+		nodes.DELETE("/:id", h.NodeHandlers().DeleteNode)
 		nodes.PUT("/:id/config", h.NodeHandlers().UpdateActiveNodeConfig)
 		nodes.PUT("/config", h.NodeHandlers().UpdateActiveNodesConfig)
 		nodes.POST("/provision", h.NodeHandlers().ProvisionNodes)
 		nodes.POST("/samples", h.NodeHandlers().CreateSampleNodes) // TODO: remove in production
-		//nodes.GET("/talosconfig", h.NodeHandlers().GetTalosconfig)
+		nodes.GET("/talosconfig", h.NodeHandlers().GetTalosconfig)
+		nodes.GET("/:id/disks", h.NodeHandlers().GetNodeDisks)
 		//nodes.GET("/kubeconfig", h.NodeHandlers().GetKubeconfig)
+	}
+}
+
+func setupEventRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
+	events := api.Group("/events")
+	{
+		events.GET("/stream", middleware.RequireRole(models.RoleAdmin), h.EventHandlers().StreamEvents)
 	}
 }
 
@@ -72,28 +92,33 @@ func setupAuthRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
 	}
 }
 
-func setupTeamRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
-	teams := api.Group("/teams")
+func setupNamespaceRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
+	namespaces := api.Group("/namespaces")
 	{
-		teams.GET("", h.TeamHandlers().GetTeams)
-		teams.POST("", middleware.RequireRole(models.RoleAdmin), h.TeamHandlers().CreateTeam)
-		teams.GET("/:id", h.TeamHandlers().GetTeam)
-		teams.POST("/:id/users", middleware.RequireRole(models.RoleAdmin), h.TeamHandlers().AddUserToTeam)
-		teams.DELETE("/:id/users/:user_id", middleware.RequireRole(models.RoleAdmin), h.TeamHandlers().RemoveUserFromTeam)
-		teams.DELETE("/:id", middleware.RequireRole(models.RoleAdmin), h.TeamHandlers().DeleteTeam)
+		namespaces.GET("", h.NamespaceHandlers().GetNamespaces)
+		namespaces.POST("", h.NamespaceHandlers().CreateNamespace) // Developers can create namespaces
+		namespaces.GET("/:id", h.NamespaceHandlers().GetNamespace)
+		namespaces.POST("/:id/users", h.NamespaceHandlers().AddUserToNamespace)                 // Namespace members can add users
+		namespaces.DELETE("/:id/users/:user_id", h.NamespaceHandlers().RemoveUserFromNamespace) // Namespace members can remove users
+		namespaces.DELETE("/:id", h.NamespaceHandlers().DeleteNamespace)                        // Developers can delete their own namespaces
 	}
 }
 
 func setupUserRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
 	users := api.Group("/users")
 	{
-		// Admin-only
-		users.Use(middleware.RequireRole(models.RoleAdmin))
+		users.Use(middleware.RequireRole(models.RoleDeveloper))
 		users.GET("", h.UserHandlers().ListUsers)
-		users.GET("/:id", h.UserHandlers().GetUser)
-		users.PUT("/:id/role", h.UserHandlers().UpdateUserRole)
-		users.DELETE("/:id", h.UserHandlers().DeleteUser)
-		users.POST("/create", h.UserHandlers().CreateUser)
+
+		// Admin-only endpoints
+		admin := users.Group("")
+		admin.Use(middleware.RequireRole(models.RoleAdmin))
+		{
+			admin.GET("/:id", h.UserHandlers().GetUser)
+			admin.PUT("/:id/role", h.UserHandlers().UpdateUserRole)
+			admin.DELETE("/:id", h.UserHandlers().DeleteUser)
+			admin.POST("/create", h.UserHandlers().CreateUser)
+		}
 	}
 }
 
@@ -101,8 +126,10 @@ func setupGCPRoutes(public *gin.RouterGroup, protected *gin.RouterGroup, h *hand
 
 	public.GET("/gcp/resources", h.GCPHandlers().GetGCPResources)
 
-	// WebSocket endpoint - public but validates token from query param
+	// Provisioning endpoints
 	public.GET("/gcp/nodes/provision/:request_id/stream", h.GCPHandlers().ProvisionGCPNodesStream)
+	protected.GET("/gcp/nodes/provision/:request_id/plan", h.GCPHandlers().GetProvisionPlan)
+	protected.GET("/gcp/nodes/provision/:request_id/apply", h.GCPHandlers().GetProvisionApply)
 
 	// Protected routes
 	gcp := protected.Group("/gcp")
@@ -125,5 +152,30 @@ func setupGCPRoutes(public *gin.RouterGroup, protected *gin.RouterGroup, h *hand
 		gcp.POST("/resources/refresh", h.GCPHandlers().RefreshGCPResources)
 
 		gcp.POST("/nodes/provision", h.GCPHandlers().ProvisionGCPNodes)
+	}
+}
+
+func setupTemplateRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
+	templateRoutes := api.Group("/templates")
+	{
+		templateRoutes.GET("", h.TemplatesHandlers().GetTemplatesList)
+		templateRoutes.GET("/:name", h.TemplatesHandlers().GetTemplate)
+		templateRoutes.POST("/:id/validate/:instance_name", h.TemplatesHandlers().ValidateTemplate)
+		templateRoutes.POST("/:id/apply/:instance_name", h.TemplatesHandlers().ApplyTemplate)
+		templateRoutes.POST("/create", h.TemplatesHandlers().CreateTemplateFromScaffold)
+	}
+}
+
+func setupScaffoldRoutes(api *gin.RouterGroup, h *handlers.Handlers) {
+	scaffoldRoutes := api.Group("/scaffolds")
+	{
+		scaffoldRoutes.GET("", h.ScaffoldsHandlers().GetScaffoldsList)
+	}
+
+	deploymentRoutes := api.Group("/deployments")
+	{
+		deploymentRoutes.GET("/list", h.TemplatesHandlers().ListDeployments)
+		deploymentRoutes.GET("/get", h.TemplatesHandlers().GetDeployment)
+		deploymentRoutes.POST("/delete", h.TemplatesHandlers().DeleteDeployment)
 	}
 }

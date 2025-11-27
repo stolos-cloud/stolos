@@ -10,25 +10,59 @@ import (
 	gcpservices "github.com/stolos-cloud/stolos/backend/internal/services/gcp"
 	gitopsservices "github.com/stolos-cloud/stolos/backend/internal/services/gitops"
 	talosservices "github.com/stolos-cloud/stolos/backend/internal/services/talos"
+	wsservices "github.com/stolos-cloud/stolos/backend/internal/services/websocket"
+	tfpkg "github.com/stolos-cloud/stolos/backend/pkg/terraform"
 	"gorm.io/gorm"
 )
 
 type ProviderManager struct {
-	db        *gorm.DB
-	cfg       *config.Config
-	providers map[string]Provider
+	db                    *gorm.DB
+	cfg                   *config.Config
+	providers             map[string]Provider
+	gcpService            *gcpservices.GCPService
+	gcpResourcesService   *gcpservices.GCPResourcesService
+	talosService          *talosservices.TalosService
+	gitopsService         *gitopsservices.GitOpsService
+	infrastructureService *InfrastructureService
+	wsManager             *wsservices.Manager
 }
 
-func NewProviderManager(db *gorm.DB, cfg *config.Config) *ProviderManager {
+func NewProviderManager(
+	db *gorm.DB,
+	cfg *config.Config,
+	gcpService *gcpservices.GCPService,
+	gcpResourcesService *gcpservices.GCPResourcesService,
+	talosService *talosservices.TalosService,
+	gitopsService *gitopsservices.GitOpsService,
+	wsManager *wsservices.Manager,
+) *ProviderManager {
 	return &ProviderManager{
-		db:        db,
-		cfg:       cfg,
-		providers: make(map[string]Provider),
+		db:                  db,
+		cfg:                 cfg,
+		providers:           make(map[string]Provider),
+		gcpService:          gcpService,
+		gcpResourcesService: gcpResourcesService,
+		talosService:        talosService,
+		gitopsService:       gitopsService,
+		wsManager:           wsManager,
 	}
+}
+
+func (pm *ProviderManager) SetInfrastructureService(infrastructureService *InfrastructureService) {
+	pm.infrastructureService = infrastructureService
 }
 
 // discovers and initializes all available cloud providers
 func (pm *ProviderManager) InitializeProviders(ctx context.Context) error {
+
+	if err := tfpkg.CheckTerraformInstalled(); err != nil {
+		log.Printf("Terraform not installed - cloud provider features will be unavailable: %v", err)
+
+		if err := pm.initializeGitOps(ctx); err != nil {
+			log.Printf("Warning: GitOps initialization failed: %v", err)
+		}
+		return nil
+	}
 
 	if err := pm.initializeGitOps(ctx); err != nil {
 		log.Printf("Warning: GitOps initialization failed: %v", err)
@@ -47,25 +81,27 @@ func (pm *ProviderManager) InitializeProviders(ctx context.Context) error {
 }
 
 func (pm *ProviderManager) initializeGCP(ctx context.Context) error {
-	gcpService := gcpservices.NewGCPService(pm.db, pm.cfg)
-
-	gcpConfig, err := gcpService.InitializeGCP(ctx)
+	gcpConfig, err := pm.gcpService.InitializeGCP(ctx)
 	if err != nil {
 		return err
 	}
 
 	if gcpConfig != nil {
 		log.Printf("GCP initialized successfully with project: %s", gcpConfig.ProjectID)
-		pm.providers["gcp"] = gcpService
+		pm.providers["gcp"] = pm.gcpService
 
 		// Load GCP resources into config (zones, machine types, etc)
-		gcpResourcesService := gcpservices.NewGCPResourcesService(pm.db, gcpService)
-		if err := gcpResourcesService.LoadIntoConfig(pm.cfg); err != nil {
+		if err := pm.gcpResourcesService.LoadIntoConfig(pm.cfg); err != nil {
 			log.Printf("Warning: Failed to load GCP resources: %v", err)
 		}
 
-		// Initialize infrastructure async (VPC, subnet, etc.)
-		go pm.initializeGCPInfrastructure(ctx, gcpConfig.ID)
+		// Only initialize infrastructure if not already ready
+		if gcpConfig.InfrastructureStatus != "ready" {
+			log.Printf("Infrastructure status: %s - starting initialization", gcpConfig.InfrastructureStatus)
+			go pm.initializeGCPInfrastructure(ctx, gcpConfig.ID)
+		} else {
+			log.Println("Infrastructure already ready - skipping initialization")
+		}
 	} else {
 		log.Println("GCP not configured. Skipping initialization")
 	}
@@ -80,6 +116,10 @@ func (pm *ProviderManager) initializeGCPInfrastructure(ctx context.Context, conf
 		Where("id = ?", configID).
 		Update("infrastructure_status", "initializing")
 
+	if pm.wsManager != nil {
+		pm.wsManager.BroadcastInfrastructureStatus("initializing", "gcp")
+	}
+
 	log.Println("Starting GCP infrastructure initialization...")
 
 	// Get GCP config with credentials
@@ -89,29 +129,34 @@ func (pm *ProviderManager) initializeGCPInfrastructure(ctx context.Context, conf
 		pm.db.Model(&models.GCPConfig{}).
 			Where("id = ?", configID).
 			Update("infrastructure_status", "failed")
+		if pm.wsManager != nil {
+			pm.wsManager.BroadcastInfrastructureStatus("failed", "gcp")
+		}
 		return
 	}
 
 	// Ensure Talos images are uploaded and registered
 	log.Println("Checking Talos GCP images...")
-	talosService := talosservices.NewTalosService(pm.db, pm.cfg)
-	if err := talosService.EnsureTalosGCPImages(ctx, &gcpConfig); err != nil {
+	if err := pm.talosService.EnsureTalosGCPImages(ctx, &gcpConfig); err != nil {
 		log.Printf("Failed to initialize Talos images: %v", err)
 		pm.db.Model(&models.GCPConfig{}).
 			Where("id = ?", configID).
 			Update("infrastructure_status", "failed")
+		if pm.wsManager != nil {
+			pm.wsManager.BroadcastInfrastructureStatus("failed", "gcp")
+		}
 		return
 	}
 
 	log.Println("Initializing GCP infrastructure (VPC, subnet)...")
-	gitopsService := gitopsservices.NewGitOpsService(pm.db, pm.cfg)
-	infrastructureService := NewInfrastructureService(pm.db, pm.cfg, pm, gitopsService)
-
-	if err := infrastructureService.InitializeInfrastructure(ctx, "gcp"); err != nil {
+	if err := pm.infrastructureService.InitializeInfrastructure(ctx, "gcp"); err != nil {
 		log.Printf("Failed to initialize GCP infrastructure: %v", err)
 		pm.db.Model(&models.GCPConfig{}).
 			Where("id = ?", configID).
 			Update("infrastructure_status", "failed")
+		if pm.wsManager != nil {
+			pm.wsManager.BroadcastInfrastructureStatus("failed", "gcp")
+		}
 		return
 	}
 
@@ -119,6 +164,10 @@ func (pm *ProviderManager) initializeGCPInfrastructure(ctx context.Context, conf
 	pm.db.Model(&models.GCPConfig{}).
 		Where("id = ?", configID).
 		Update("infrastructure_status", "ready")
+
+	if pm.wsManager != nil {
+		pm.wsManager.BroadcastInfrastructureStatus("ready", "gcp")
+	}
 
 	log.Println("GCP infrastructure initialized successfully")
 }
@@ -137,9 +186,7 @@ func (pm *ProviderManager) HasConfiguredProviders() bool {
 }
 
 func (pm *ProviderManager) initializeGitOps(ctx context.Context) error {
-	gitopsService := gitopsservices.NewGitOpsService(pm.db, pm.cfg)
-
-	gitopsConfig, err := gitopsService.InitializeGitOps(ctx)
+	gitopsConfig, err := pm.gitopsService.InitializeGitOps(ctx)
 	if err != nil {
 		return err
 	}

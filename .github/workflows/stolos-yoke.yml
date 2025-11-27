@@ -1,0 +1,74 @@
+name: stolos-yoke.yml
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - stolos-yoke/**
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      IMAGE: "ghcr.io/stolos-cloud/stolosplatform-yoke:${{ github.sha }}"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 2
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Setup yoke
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.repository_owner }}" --password-stdin
+          curl -L -o - 'https://github.com/yokecd/yoke/releases/download/latest/yoke_latest_linux_amd64.gz' | gunzip  > yoke && \
+          chmod +x yoke
+
+      - name: Build flight
+        run: |
+          # Build flight 
+          echo "Building flight "
+          cd stolos-yoke
+          go mod download
+          GOOS=wasip1 GOARCH=wasm go build -o flight.wasm ./cmd/main/
+          cd -
+
+      - name: Publish flight
+        run: |
+          # Push wasm to oci registry
+          echo "Pushing ${IMAGE} to GHCR..."
+          ./yoke stow stolos-yoke/flight.wasm "oci://${IMAGE}"
+
+      - name: Publish airway
+        run: |
+          # Generate airway.yml
+          echo "Generating airway.yml for ${IMAGE}..."
+          cd stolos-yoke
+          go run -tags airway ./cmd/main/ -flight-url "oci://$IMAGE" | yq -P > airway.yml
+          git add airway.yml || true
+          cd -
+        env:
+          CHANGED: ${{ steps.changes.outputs.changed }}
+
+      - name: Commit and push if any files staged
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "stolos+github-actions[bot]@users.noreply.github.com"
+
+          # Check if index has staged files
+          if ! git diff --cached --quiet; then
+            echo "Staged changes found, committing..."
+            git commit -m "Auto-generated airways [ci]"
+            git push origin HEAD:${GITHUB_REF_NAME}
+          else
+            echo "No staged changes found, skipping commit."
+          fi

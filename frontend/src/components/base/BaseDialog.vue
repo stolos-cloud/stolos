@@ -1,29 +1,32 @@
 <template>
-    <v-dialog v-model="isOpen" :width="width" :persistent="persistent" content-class="elevation-">
+    <v-dialog v-model="isOpen" :width="width" :persistent="persistent" content-class="elevation-8"
+        style="backdrop-filter: blur(4px);">
         <v-card>
-            <v-card-title class="d-flex align-center">
-                <span class="text-truncate text-h5">{{ title }}</span>
-                <v-spacer></v-spacer>
-                <v-btn 
-                    v-if="closable" 
-                    variant="text" 
-                    icon="mdi-close" 
-                    @click="closeDialog">
-                </v-btn>
-            </v-card-title>
-            <v-card-text>
+            <template v-slot:title>
+                <div class="d-flex align-center my-2">
+                    <BaseTitle :level="5" :title="title" />
+                    <v-spacer></v-spacer>
+                    <v-btn v-if="closable" variant="text" icon="mdi-close" size="small" @click="closeDialog" rounded
+                        class="close-btn" />
+                </div>
+            </template>
+            <v-divider></v-divider>
+            <v-card-text class="my-2">
                 <slot></slot>
             </v-card-text>
-            <v-card-actions>
-                <slot name="actions"></slot>
-            </v-card-actions>
-        </v-card>   
+            <template v-if="hasActions">
+                <v-card-actions class="mx-4">
+                    <slot name="actions"></slot>
+                </v-card-actions>
+            </template>
+        </v-card>
     </v-dialog>
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import { watch } from 'vue';
+import { ref, watch, computed, useSlots } from 'vue';
+
+const slots = useSlots();
 
 const props = defineProps({
     title: {
@@ -32,7 +35,7 @@ const props = defineProps({
     },
     width: {
         type: [String, Number],
-        default: 600
+        default: 700
     },
     persistent: {
         type: Boolean,
@@ -54,6 +57,9 @@ const isOpen = ref(props.modelValue);
 // Emits
 const emit = defineEmits(['update:modelValue', 'close']);
 
+// Computed
+const hasActions = computed(() => !!slots.actions);
+
 // Watchers
 watch(
     () => props.modelValue,
@@ -63,7 +69,7 @@ watch(
 watch(isOpen, (val) => {
     if (!val) {
         emit('update:modelValue', false);
-    }   
+    }
 });
 
 // Methods
@@ -72,3 +78,11 @@ function closeDialog() {
     emit('close');
 }
 </script>
+
+<style scoped>
+.close-btn:hover,
+.close-btn:active {
+    background-color: rgba(var(--v-theme-primary));
+    color: white;
+}
+</style>

@@ -1,23 +1,23 @@
 package websocket
 
 import (
-	"context"
-	"fmt"
 	"log"
 	"sync"
-	"time"
 
 	"github.com/gorilla/websocket"
 )
 
 // Message types sent over WebSocket
 const (
-	MessageTypeLog      = "log"
-	MessageTypeStatus   = "status"
-	MessageTypePlan     = "plan"
-	MessageTypeApproval = "approval_required"
-	MessageTypeComplete = "complete"
-	MessageTypeError    = "error"
+	MessageTypeLog                  = "log"
+	MessageTypeStatus               = "status"
+	MessageTypePlan                 = "plan"
+	MessageTypeApproval             = "approval_required"
+	MessageTypeComplete             = "complete"
+	MessageTypeError                = "error"
+	MessageTypeResource             = "resource_update"
+	MessageTypeWorkflow             = "workflow_update"
+	MessageTypeInfrastructureStatus = "infrastructure_status"
 )
 
 // WebSocket message structure
@@ -34,21 +34,21 @@ type ApprovalResponse struct {
 
 // Client represents a WebSocket connection for a specific provision request
 type Client struct {
-	ID       string
-	conn     *websocket.Conn
-	send     chan Message
-	approval chan ApprovalResponse // Channel for approval responses
-	manager  *Manager
-	mu       sync.Mutex
-	isClosed bool
+	ID          string
+	conn        *websocket.Conn
+	send        chan Message
+	session     Session
+	sessionType string
+	manager     *Manager
+	mu          sync.Mutex
+	isClosed    bool
 }
 
 // Manager manages all active WebSocket connections
 type Manager struct {
-	clients    map[string]*Client // requestID -> Client
+	clients    map[string]*Client
 	register   chan *Client
 	unregister chan *Client
-	broadcast  map[string]chan Message // requestID -> message channel
 	mu         sync.RWMutex
 }
 
@@ -58,7 +58,6 @@ func NewManager() *Manager {
 		clients:    make(map[string]*Client),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
-		broadcast:  make(map[string]chan Message),
 	}
 }
 
@@ -84,14 +83,17 @@ func (m *Manager) Run() {
 	}
 }
 
-// RegisterClient registers a new WebSocket client for a provision request
-func (m *Manager) RegisterClient(requestID string, conn *websocket.Conn) *Client {
+// RegisterClient registers a new WebSocket client with a session
+func (m *Manager) RegisterClient(requestID string, conn *websocket.Conn, session Session) *Client {
 	client := &Client{
-		ID:       requestID,
-		conn:     conn,
-		send:     make(chan Message, 256),
-		approval: make(chan ApprovalResponse, 1), // Buffered channel for approval
-		manager:  m,
+		ID:      requestID,
+		conn:    conn,
+		send:    make(chan Message, 256),
+		manager: m,
+	}
+
+	if session != nil {
+		client.attachSession(session)
 	}
 
 	m.register <- client
@@ -123,6 +125,22 @@ func (m *Manager) SendMessage(requestID string, message Message) error {
 	}
 }
 
+// BroadcastToSessionType sends a message to all clients with the provided session type.
+func (m *Manager) BroadcastToSessionType(sessionType string, message Message) {
+	m.mu.RLock()
+	targets := make([]*Client, 0, len(m.clients))
+	for _, client := range m.clients {
+		if client.SessionType() == sessionType {
+			targets = append(targets, client)
+		}
+	}
+	m.mu.RUnlock()
+
+	for _, client := range targets {
+		_ = m.SendMessage(client.ID, message)
+	}
+}
+
 // writePump writes messages from the send channel to the WebSocket
 func (c *Client) writePump() {
 	defer func() {
@@ -146,11 +164,14 @@ func (c *Client) writePump() {
 	}
 }
 
-// readPump reads messages from the WebSocket (for approval responses)
+// readPump reads messages from the WebSocket and routes to session
 func (c *Client) readPump() {
 	defer func() {
 		c.manager.unregister <- c
 		c.Close()
+		if c.session != nil {
+			c.session.Close()
+		}
 	}()
 
 	for {
@@ -163,36 +184,24 @@ func (c *Client) readPump() {
 			break
 		}
 
-		// Handle approval messages
-		if action, ok := msg["action"].(string); ok {
-			log.Printf("Received action from client %s: %s", c.ID, action)
-
-			var response ApprovalResponse
-			switch action {
-			case "approve":
-				response.Approved = true
-				response.Message = "Approved by user"
-			case "reject":
-				response.Approved = false
-				if reason, ok := msg["reason"].(string); ok {
-					response.Message = reason
-				} else {
-					response.Message = "Rejected by user"
-				}
-			default:
-				log.Printf("Unknown action: %s", action)
-				continue
+		// Route message to session
+		if c.session != nil {
+			msgType := ""
+			if t, ok := msg["type"].(string); ok {
+				msgType = t
 			}
-
-			// Send approval response (non-blocking)
-			select {
-			case c.approval <- response:
-				log.Printf("Approval response sent for %s: approved=%v", c.ID, response.Approved)
-			default:
-				log.Printf("Warning: approval channel full for %s", c.ID)
+			if err := c.session.HandleMessage(msgType, msg); err != nil {
+				log.Printf("Session %s message handling error: %v", c.ID, err)
 			}
 		}
 	}
+}
+
+// SetSession sets or updates the session for this client
+func (c *Client) SetSession(session Session) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.session = session
 }
 
 // Close closes the WebSocket connection
@@ -204,6 +213,24 @@ func (c *Client) Close() {
 		c.isClosed = true
 		c.conn.Close()
 	}
+}
+
+// SessionType returns the client's session type.
+func (c *Client) SessionType() string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.sessionType
+}
+
+func (c *Client) attachSession(session Session) {
+	c.mu.Lock()
+	c.session = session
+	if session != nil {
+		c.sessionType = session.GetType()
+	} else {
+		c.sessionType = ""
+	}
+	c.mu.Unlock()
 }
 
 // SendLog sends a log message to the client
@@ -254,26 +281,29 @@ func (c *Client) SendError(err string) error {
 	})
 }
 
-// WaitForApproval waits for user approval with timeout
-func (c *Client) WaitForApproval(timeout time.Duration) (bool, error) {
-	select {
-	case response := <-c.approval:
-		return response.Approved, nil
-	case <-time.After(timeout):
-		return false, fmt.Errorf("approval timeout after %v", timeout)
-	}
+// SendResourceUpdate sends a resource update message
+func (c *Client) SendResourceUpdate(resource any) error {
+	return c.manager.SendMessage(c.ID, Message{
+		Type:    MessageTypeResource,
+		Payload: resource,
+	})
 }
 
-func (c *Client) WaitForApprovalCtx(ctx context.Context, timeout time.Duration) (bool, error) {
-	timer := time.NewTimer(timeout)
-	defer timer.Stop()
+// SendWorkflowUpdate sends a workflow update message
+func (c *Client) SendWorkflowUpdate(workflow any) error {
+	return c.manager.SendMessage(c.ID, Message{
+		Type:    MessageTypeWorkflow,
+		Payload: workflow,
+	})
+}
 
-	select {
-	case response := <-c.approval:
-		return response.Approved, nil
-	case <-timer.C:
-		return false, fmt.Errorf("approval timeout after %v", timeout)
-	case <-ctx.Done():
-		return false, ctx.Err()
-	}
+// BroadcastInfrastructureStatus broadcasts infrastructure status to all event session clients
+func (m *Manager) BroadcastInfrastructureStatus(status string, provider string) {
+	m.BroadcastToSessionType(SessionTypeEvent, Message{
+		Type: MessageTypeInfrastructureStatus,
+		Payload: map[string]string{
+			"status":   status,
+			"provider": provider,
+		},
+	})
 }

@@ -2,11 +2,15 @@ package k8s
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
 	"maps"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -19,6 +23,21 @@ func NewClientFromKubeconfig(kubeconfig []byte) (kubernetes.Interface, error) {
 	}
 
 	client, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+
+	return client, nil
+}
+
+func NewDynamicClientFromKubeconfig(kubeconfig []byte) (dynamic.Interface, error) {
+
+	config, err := clientcmd.RESTConfigFromKubeConfig(kubeconfig)
+	if err != nil {
+		return nil, err
+	}
+
+	client, err := dynamic.NewForConfig(config)
 	if err != nil {
 		return nil, err
 	}
@@ -60,4 +79,47 @@ func CreateOrUpdateSecret(ctx context.Context, client kubernetes.Interface, secr
 	existingSecret.Labels = secret.Labels
 	_, err = client.CoreV1().Secrets(secret.Namespace).Update(ctx, existingSecret, metav1.UpdateOptions{})
 	return err
+}
+
+// DockerConfigJSON represents the structure of a docker config.json file
+type DockerConfigJSON struct {
+	Auths map[string]DockerAuthConfig `json:"auths"`
+}
+
+// DockerAuthConfig represents authentication configuration for a docker registry
+type DockerAuthConfig struct {
+	Auth string `json:"auth"`
+}
+
+// CreateGHCRPullSecret creates a docker-registry secret for pulling from GitHub Container Registry
+func CreateGHCRPullSecret(ctx context.Context, client kubernetes.Interface, namespace string, secretName string, token string) error {
+	auth := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("x-access-token:%s", token)))
+
+	dockerConfig := DockerConfigJSON{
+		Auths: map[string]DockerAuthConfig{
+			"ghcr.io": {Auth: auth},
+		},
+	}
+
+	dockerConfigBytes, err := json.Marshal(dockerConfig)
+	if err != nil {
+		return fmt.Errorf("failed to marshal docker config: %w", err)
+	}
+
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      secretName,
+			Namespace: namespace,
+			Labels: map[string]string{
+				"app.kubernetes.io/name":      "stolos-platform",
+				"app.kubernetes.io/component": "registry-auth",
+			},
+		},
+		Type: corev1.SecretTypeDockerConfigJson,
+		Data: map[string][]byte{
+			corev1.DockerConfigJsonKey: dockerConfigBytes,
+		},
+	}
+
+	return CreateOrUpdateSecret(ctx, client, secret, false)
 }

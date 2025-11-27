@@ -15,10 +15,10 @@ import (
 )
 
 type Claims struct {
-	UserID uuid.UUID   `json:"user_id"`
-	Email  string      `json:"email"`
-	Role   models.Role `json:"role"`
-	Teams  []uuid.UUID `json:"teams"`
+	UserID     uuid.UUID   `json:"user_id"`
+	Email      string      `json:"email"`
+	Role       models.Role `json:"role"`
+	Namespaces []uuid.UUID `json:"namespaces"`
 	jwt.RegisteredClaims
 }
 
@@ -37,16 +37,16 @@ func NewJWTService(cfg *config.Config) *JWTService {
 }
 
 func (j *JWTService) GenerateToken(user *models.User) (string, error) {
-	teamIDs := make([]uuid.UUID, len(user.Teams))
-	for i, team := range user.Teams {
-		teamIDs[i] = team.ID
+	namespaceIDs := make([]uuid.UUID, len(user.Namespaces))
+	for i, ns := range user.Namespaces {
+		namespaceIDs[i] = ns.ID
 	}
 
 	claims := Claims{
-		UserID: user.ID,
-		Email:  user.Email,
-		Role:   user.Role,
-		Teams:  teamIDs,
+		UserID:     user.ID,
+		Email:      user.Email,
+		Role:       user.Role,
+		Namespaces: namespaceIDs,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(j.expiryMinutes) * time.Minute)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -81,21 +81,24 @@ func (j *JWTService) ValidateToken(tokenString string) (*Claims, error) {
 
 func JWTAuthMiddleware(jwtService *JWTService, db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		tokenString := ""
 		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header required"})
+		if authHeader != "" {
+			parts := strings.Split(authHeader, " ")
+			if len(parts) == 2 && strings.EqualFold(parts[0], "Bearer") {
+				tokenString = parts[1]
+			}
+		}
+
+		if tokenString == "" {
+			tokenString = c.Query("token")
+		}
+
+		if tokenString == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization token required"})
 			c.Abort()
 			return
 		}
-
-		bearerToken := strings.Split(authHeader, " ")
-		if len(bearerToken) != 2 || bearerToken[0] != "Bearer" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid authorization header format"})
-			c.Abort()
-			return
-		}
-
-		tokenString := bearerToken[1]
 
 		claims, err := jwtService.ValidateToken(tokenString)
 		if err != nil {
@@ -105,7 +108,7 @@ func JWTAuthMiddleware(jwtService *JWTService, db *gorm.DB) gin.HandlerFunc {
 		}
 
 		var user models.User
-		if err := db.Preload("Teams").First(&user, "id = ?", claims.UserID).Error; err != nil {
+		if err := db.Preload("Namespaces").First(&user, "id = ?", claims.UserID).Error; err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
 			c.Abort()
 			return
@@ -143,7 +146,7 @@ func RequireRole(role models.Role) gin.HandlerFunc {
 	}
 }
 
-func RequireTeamAccess(teamID uuid.UUID) gin.HandlerFunc {
+func RequireNamespaceAccess(namespaceID uuid.UUID) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		user, err := GetUserFromContext(c)
 		if err != nil {
@@ -158,15 +161,15 @@ func RequireTeamAccess(teamID uuid.UUID) gin.HandlerFunc {
 			return
 		}
 
-		// Check if user belongs to the team
-		for _, team := range user.Teams {
-			if team.ID == teamID {
+		// Check if user belongs to the namespace
+		for _, ns := range user.Namespaces {
+			if ns.ID == namespaceID {
 				c.Next()
 				return
 			}
 		}
 
-		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied to team resources"})
+		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied to namespace resources"})
 		c.Abort()
 	}
 }

@@ -51,3 +51,13 @@ variable "architecture" {
   type        = string
   default     = "amd64"
 }
+
+variable "network_name" {
+  description = "Name of the VPC network"
+  type        = string
+}
+
+variable "subnetwork_name" {
+  description = "Name of the subnet"
+  type        = string
+}

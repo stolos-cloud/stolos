@@ -1,43 +1,53 @@
 package handlers
 
 import (
-	"github.com/stolos-cloud/stolos/backend/internal/config"
 	"github.com/stolos-cloud/stolos/backend/internal/middleware"
-	"github.com/stolos-cloud/stolos/backend/internal/services"
-	"github.com/stolos-cloud/stolos/backend/internal/services/talos"
 	wsservices "github.com/stolos-cloud/stolos/backend/internal/services/websocket"
 	"gorm.io/gorm"
 )
 
 type Handlers struct {
-	authHandlers *AuthHandlers
-	teamHandlers *TeamHandlers
-	userHandlers *UserHandlers
-	isoHandlers  *ISOHandlers
-	nodeHandlers *NodeHandlers
-	gcpHandlers  *GCPHandlers
-	jwtService   *middleware.JWTService
-	db           *gorm.DB
-	wsManager    *wsservices.Manager
+	authHandlers      *AuthHandlers
+	namespaceHandlers *NamespaceHandlers
+	userHandlers      *UserHandlers
+	isoHandlers       *ISOHandlers
+	nodeHandlers      *NodeHandlers
+	gcpHandlers       *GCPHandlers
+	eventHandlers     *EventHandlers
+	templatesHandlers *TemplatesHandler
+	scaffoldsHandlers *ScaffoldsHandler
+	jwtService        *middleware.JWTService
+	db                *gorm.DB
+	wsManager         *wsservices.Manager
 }
 
-func NewHandlers(db *gorm.DB, cfg *config.Config, providerManager *services.ProviderManager) *Handlers {
-	jwtService := middleware.NewJWTService(cfg)
-
-	// Create WebSocket manager and start it
-	wsManager := wsservices.NewManager()
-	go wsManager.Run()
-
+func NewHandlers(
+	authHandlers *AuthHandlers,
+	namespaceHandlers *NamespaceHandlers,
+	userHandlers *UserHandlers,
+	isoHandlers *ISOHandlers,
+	nodeHandlers *NodeHandlers,
+	gcpHandlers *GCPHandlers,
+	eventHandlers *EventHandlers,
+	templatesHandlers *TemplatesHandler,
+	scaffoldsHandlers *ScaffoldsHandler,
+	jwtService *middleware.JWTService,
+	db *gorm.DB,
+	wsManager *wsservices.Manager,
+) *Handlers {
 	return &Handlers{
-		authHandlers: NewAuthHandlers(db, jwtService),
-		teamHandlers: NewTeamHandlers(db),
-		userHandlers: NewUserHandlers(db),
-		isoHandlers:  NewISOHandlers(db, cfg),
-		nodeHandlers: NewNodeHandlers(db, cfg, providerManager, talos.NewTalosService(db, cfg)),
-		gcpHandlers:  NewGCPHandlers(db, cfg, providerManager, wsManager),
-		jwtService:   jwtService,
-		db:           db,
-		wsManager:    wsManager,
+		authHandlers:      authHandlers,
+		namespaceHandlers: namespaceHandlers,
+		userHandlers:      userHandlers,
+		isoHandlers:       isoHandlers,
+		nodeHandlers:      nodeHandlers,
+		gcpHandlers:       gcpHandlers,
+		eventHandlers:     eventHandlers,
+		templatesHandlers: templatesHandlers,
+		scaffoldsHandlers: scaffoldsHandlers,
+		jwtService:        jwtService,
+		db:                db,
+		wsManager:         wsManager,
 	}
 }
 
@@ -45,8 +55,8 @@ func (h *Handlers) AuthHandlers() *AuthHandlers {
 	return h.authHandlers
 }
 
-func (h *Handlers) TeamHandlers() *TeamHandlers {
-	return h.teamHandlers
+func (h *Handlers) NamespaceHandlers() *NamespaceHandlers {
+	return h.namespaceHandlers
 }
 
 func (h *Handlers) UserHandlers() *UserHandlers {
@@ -65,6 +75,10 @@ func (h *Handlers) GCPHandlers() *GCPHandlers {
 	return h.gcpHandlers
 }
 
+func (h *Handlers) EventHandlers() *EventHandlers {
+	return h.eventHandlers
+}
+
 func (h *Handlers) JWTService() *middleware.JWTService {
 	return h.jwtService
 }
@@ -72,3 +86,7 @@ func (h *Handlers) JWTService() *middleware.JWTService {
 func (h *Handlers) DB() *gorm.DB {
 	return h.db
 }
+
+func (h *Handlers) TemplatesHandlers() *TemplatesHandler { return h.templatesHandlers }
+
+func (h *Handlers) ScaffoldsHandlers() *ScaffoldsHandler { return h.scaffoldsHandlers }

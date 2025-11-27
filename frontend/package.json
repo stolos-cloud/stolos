@@ -12,12 +12,16 @@
   "dependencies": {
     "@intlify/unplugin-vue-i18n": "^11.0.1",
     "@mdi/font": "^7.0.96",
+    "apexcharts": "^5.3.5",
     "axios": "^1.12.2",
     "core-js": "^3.34.0",
     "dompurify": "^3.2.7",
+    "monaco-editor": "^0.54.0",
+    "monaco-yaml": "^5.4.0",
     "roboto-fontface": "*",
     "vue": "^3.3.0",
     "vue-i18n": "^11.1.12",
+    "vue3-apexcharts": "^1.10.0",
     "vuetify": "^3.9.7",
     "vuex": "^4.1.0"
   },

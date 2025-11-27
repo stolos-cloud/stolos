@@ -18,21 +18,22 @@
             <template #[`item.role`]="{ item }">
                 <div class="d-flex align-center">
                     <span>{{ item.role }}</span>
-                    <v-icon
+                    <v-btn
                         v-if="currentUserId !== item.id"
                         class="ml-2"
                         size="small"
+                        variant="plain"
                         icon="mdi-pencil"
                         @click="showEditRoleDialog(item)"
                     />
                 </div>
             </template>
             <template #[`item.actions`]="{ item }">
-                <v-btn v-tooltip="{ text: $t('administration.users.buttons.deleteUser') }" icon="mdi-delete" size="small" variant="text" :disabled="currentUserId === item.id" @click="deleteUser(item)" />
+                <v-btn v-tooltip="{ text: $t('administration.users.buttons.deleteUser') }" icon="mdi-delete" size="small" variant="plain" :disabled="currentUserId === item.id" @click="deleteUser(item)" />
             </template>
         </BaseDataTable>
         <EditUserRoleDialog v-model="dialogEditUserRole" :userSelected="userTemp" @userRoleUpdated="fetchUsers" @update:userSelected="userTemp = $event" />
-        <AddNewUserDialog v-model="dialogAddUser" @userAdded="fetchUsers" />
+        <AddNewUserDialog v-model="dialogAddUser" @newUserAdded="fetchUsers" />
         <BaseConfirmDialog ref="confirmDialog" />
     </PortalLayout>
 </template>
@@ -44,8 +45,8 @@ import { useStore } from "vuex";
 import { getUsers, deleteUserById } from '@/services/users.service';
 import { GlobalNotificationHandler } from "@/composables/GlobalNotificationHandler";
 import { GlobalOverlayHandler } from "@/composables/GlobalOverlayHandler";
-import EditUserRoleDialog from "./dialogs/administration/EditUserRoleDialog.vue";
-import AddNewUserDialog from "./dialogs/administration/AddNewUserDialog.vue";
+import EditUserRoleDialog from "@/pages/dialogs/administration/EditUserRoleDialog.vue";
+import AddNewUserDialog from "@/pages/dialogs/administration/AddNewUserDialog.vue";
 
 const { t } = useI18n();
 const store = useStore();

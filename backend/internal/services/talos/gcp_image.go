@@ -14,6 +14,7 @@ import (
 	"cloud.google.com/go/compute/apiv1/computepb"
 	"cloud.google.com/go/storage"
 	"github.com/siderolabs/image-factory/pkg/schematic"
+	"github.com/stolos-cloud/stolos/backend/internal/helpers"
 	"github.com/stolos-cloud/stolos/backend/internal/models"
 	"google.golang.org/api/option"
 )
@@ -81,9 +82,11 @@ func (s *TalosService) uploadAndRegisterTalosImage(ctx context.Context, gcpConfi
 
 	log.Printf("Uploaded to GCS: gs://%s/%s", gcpConfig.BucketName, gcsPath)
 
-	// Register as GCP compute image
-	imageName := fmt.Sprintf("talos-%s-%s", strings.TrimPrefix(version, "v"), arch)
-	imageName = strings.ReplaceAll(imageName, ".", "-") // e.g., talos-1-11-1-amd64
+	// Register as GCP compute image with cluster name prefix
+	// Format: <cluster>-talos-<version>-<arch> (e.g., prod-talos-1-11-1-amd64)
+	clusterPrefix := helpers.SanitizeResourceName(s.cfg.ClusterName)
+	imageName := fmt.Sprintf("%s-talos-%s-%s", clusterPrefix, strings.TrimPrefix(version, "v"), arch)
+	imageName = strings.ReplaceAll(imageName, ".", "-") // e.g., prod-talos-1-11-1-amd64
 
 	if err := s.registerGCPImage(ctx, gcpConfig, imageName, gcsPath); err != nil {
 		return "", fmt.Errorf("failed to register image: %w", err)

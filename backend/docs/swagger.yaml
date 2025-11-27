@@ -1,13 +1,13 @@
 basePath: /api/v1
 definitions:
-  api.TeamInfo:
+  api.NamespaceInfo:
     properties:
       id:
         type: string
       name:
         type: string
     type: object
-  api.TeamResponse:
+  api.NamespaceResponse:
     properties:
       id:
         type: string
@@ -24,12 +24,12 @@ definitions:
         type: string
       id:
         type: string
+      namespaces:
+        items:
+          $ref: '#/definitions/api.NamespaceInfo'
+        type: array
       role:
         $ref: '#/definitions/models.Role'
-      teams:
-        items:
-          $ref: '#/definitions/api.TeamInfo'
-        type: array
     type: object
   config.GCPMachineType:
     properties:
@@ -57,7 +57,7 @@ definitions:
           type: string
         type: array
     type: object
-  handlers.AddUserToTeamRequest:
+  handlers.AddUserToNamespaceRequest:
     properties:
       user_id:
         type: string
@@ -71,12 +71,29 @@ definitions:
       user:
         $ref: '#/definitions/api.UserResponse'
     type: object
-  handlers.CreateTeamRequest:
+  handlers.CreateNamespaceRequest:
     properties:
       name:
         type: string
     required:
     - name
+    type: object
+  handlers.DetailTemplate:
+    properties:
+      defaultYaml:
+        type: string
+      description:
+        type: string
+      jsonSchema:
+        $ref: '#/definitions/templates.JsonSchema'
+      labels:
+        additionalProperties:
+          type: string
+        type: object
+      name:
+        type: string
+      version:
+        type: string
     type: object
   handlers.LoginRequest:
     properties:
@@ -236,8 +253,23 @@ definitions:
       updated_at:
         type: string
     type: object
-  models.NodeProvisionConfig:
+  models.NodeStatus:
+    enum:
+    - pending
+    - provisioning
+    - active
+    - failed
+    type: string
+    x-enum-varnames:
+    - StatusPending
+    - StatusProvisioning
+    - StatusActive
+    - StatusFailed
+  models.OnPremNodeProvisionConfig:
     properties:
+      install_disk:
+        example: /dev/sda
+        type: string
       labels:
         example:
         - zone=us-east
@@ -255,25 +287,15 @@ definitions:
     - node_id
     - role
     type: object
-  models.NodeProvisionRequest:
+  models.OnPremNodeProvisionRequest:
     properties:
       nodes:
         items:
-          $ref: '#/definitions/models.NodeProvisionConfig'
+          $ref: '#/definitions/models.OnPremNodeProvisionConfig'
         type: array
     required:
     - nodes
     type: object
-  models.NodeStatus:
-    enum:
-    - pending
-    - active
-    - failed
-    type: string
-    x-enum-varnames:
-    - StatusPending
-    - StatusActive
-    - StatusFailed
   models.Role:
     enum:
     - admin
@@ -290,7 +312,7 @@ definitions:
     - RoleAdmin
     - RoleDeveloper
     - RoleViewer
-  services.NodeConfigUpdate:
+  node.NodeConfigUpdate:
     properties:
       id:
         type: string
@@ -298,6 +320,37 @@ definitions:
         items:
           type: string
         type: array
+    type: object
+  templates.Deployment:
+    properties:
+      healthy:
+        type: boolean
+      message:
+        type: string
+      name:
+        type: string
+      namespace:
+        type: string
+      template:
+        type: string
+      terminating:
+        type: boolean
+    type: object
+  templates.JsonSchema:
+    additionalProperties: true
+    type: object
+  templates.Template:
+    properties:
+      description:
+        type: string
+      labels:
+        additionalProperties:
+          type: string
+        type: object
+      name:
+        type: string
+      version:
+        type: string
     type: object
 info:
   contact:
@@ -406,6 +459,159 @@ paths:
       summary: Refresh JWT token
       tags:
       - auth
+  /cluster/info:
+    get:
+      description: Get general cluster information including name and GitOps repository
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: cluster_name, gitops_repo_owner, gitops_repo_name, gitops_branch
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get cluster info
+      tags:
+      - cluster
+  /deployment/delete:
+    post:
+      consumes:
+      - application/json
+      description: Deletes a deployment identified by template, deployment name, and
+        namespace.
+      parameters:
+      - description: Template name (CRD resource)
+        in: query
+        name: template
+        required: true
+        type: string
+      - description: Deployment name
+        in: query
+        name: deployment
+        required: true
+        type: string
+      - description: Kubernetes namespace
+        in: query
+        name: namespace
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Deletion confirmation
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Missing parameters
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete deployment
+      tags:
+      - deployments
+  /deployments/get:
+    get:
+      consumes:
+      - application/json
+      description: Returns a single deployment by template, deployment name, and namespace.
+      parameters:
+      - description: Template name (CRD resource)
+        in: query
+        name: template
+        required: true
+        type: string
+      - description: Deployment name
+        in: query
+        name: deployment
+        required: true
+        type: string
+      - description: Kubernetes namespace
+        in: query
+        name: namespace
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Deployment object
+          schema: {}
+        "400":
+          description: Missing parameters
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get deployment
+      tags:
+      - deployments
+  /deployments/list:
+    get:
+      consumes:
+      - application/json
+      description: Returns a list of deployments filtered by template, namespace,
+        and API group.
+      parameters:
+      - description: Template name
+        in: query
+        name: template
+        type: string
+      - description: Kubernetes namespace to filter on
+        in: query
+        name: namespace
+        type: string
+      - description: Only my templates
+        in: query
+        name: onlyMine
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of deployments
+          schema:
+            items:
+              $ref: '#/definitions/templates.Deployment'
+            type: array
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List deployments
+      tags:
+      - deployments
   /gcp/bucket:
     post:
       consumes:
@@ -620,6 +826,60 @@ paths:
       summary: Provision GCP nodes with Talos
       tags:
       - gcp
+  /gcp/nodes/provision/{request_id}/apply:
+    get:
+      description: Download the terraform apply JSON logs
+      parameters:
+      - description: Provision request ID
+        in: path
+        name: request_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Download terraform apply logs
+      tags:
+      - gcp
+  /gcp/nodes/provision/{request_id}/plan:
+    get:
+      description: Download the terraform plan output as a text file
+      parameters:
+      - description: Provision request ID
+        in: path
+        name: request_id
+        required: true
+        type: string
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Download terraform plan output
+      tags:
+      - gcp
   /gcp/nodes/provision/{request_id}/stream:
     get:
       description: Connect to this WebSocket endpoint to receive real-time logs and
@@ -814,194 +1074,12 @@ paths:
       summary: Generate a custom Talos ISO
       tags:
       - iso
-  /nodes:
+  /namespaces:
     get:
       consumes:
       - application/json
-      description: Get list of nodes with optional status filter
-      parameters:
-      - description: Node status filter (pending, active, failed)
-        in: query
-        name: status
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/models.Node'
-            type: array
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: List nodes
-      tags:
-      - nodes
-  /nodes/{id}/config:
-    put:
-      consumes:
-      - application/json
-      description: Update a single active node's role and labels
-      parameters:
-      - description: Node ID (UUID)
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Node configuration
-        in: body
-        name: request
-        required: true
-        schema:
-          properties:
-            labels:
-              items:
-                type: string
-              type: array
-            role:
-              type: string
-          type: object
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.Node'
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Update active node configuration
-      tags:
-      - nodes
-  /nodes/config:
-    put:
-      consumes:
-      - application/json
-      description: Update labels for multiple nodes (for active nodes only, does not
-        change role)
-      parameters:
-      - description: Array of node label updates
-        in: body
-        name: request
-        required: true
-        schema:
-          properties:
-            nodes:
-              items:
-                $ref: '#/definitions/services.NodeConfigUpdate'
-              type: array
-          type: object
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Returns updated count and nodes array
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Update multiple nodes labels
-      tags:
-      - nodes
-  /nodes/provision:
-    post:
-      consumes:
-      - application/json
-      description: Apply Talos configuration to multiple pending nodes and add them
-        to the cluster
-      parameters:
-      - description: Array of nodes to provision with role and labels
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/models.NodeProvisionRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Returns provisioned count and nodes array
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Provision multiple on-prem nodes
-      tags:
-      - nodes
-  /nodes/samples:
-    post:
-      consumes:
-      - application/json
-      description: Create samples pending nodes for testing purposes
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Message indicating success
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Create samples pending nodes
-      tags:
-      - nodes
-  /teams:
-    get:
-      consumes:
-      - application/json
-      description: Retrieve a list of all teams. Admins see all teams, users see only
-        their teams.
+      description: Retrieve a list of all namespaces. Admins see all namespaces, developers
+        see only their namespaces.
       produces:
       - application/json
       responses:
@@ -1010,7 +1088,7 @@ paths:
           schema:
             additionalProperties:
               items:
-                $ref: '#/definitions/api.TeamResponse'
+                $ref: '#/definitions/api.NamespaceResponse'
               type: array
             type: object
         "401":
@@ -1027,20 +1105,21 @@ paths:
             type: object
       security:
       - BearerAuth: []
-      summary: Get list of teams
+      summary: Get list of namespaces
       tags:
-      - teams
+      - namespaces
     post:
       consumes:
       - application/json
-      description: Create a new team with the provided name
+      description: Create a new namespace with the provided name and initialize GitOps
+        configuration
       parameters:
-      - description: Team creation request
+      - description: Namespace creation request
         in: body
-        name: team
+        name: namespace
         required: true
         schema:
-          $ref: '#/definitions/handlers.CreateTeamRequest'
+          $ref: '#/definitions/handlers.CreateNamespaceRequest'
       produces:
       - application/json
       responses:
@@ -1069,16 +1148,17 @@ paths:
             type: object
       security:
       - BearerAuth: []
-      summary: Create a new team
+      summary: Create a new namespace
       tags:
-      - teams
-  /teams/{id}:
+      - namespaces
+  /namespaces/{id}:
     delete:
       consumes:
       - application/json
-      description: Delete a specific team by ID. Team must have no associated deployments.
+      description: Delete a specific namespace by ID. Namespace must have no associated
+        deployments.
       parameters:
-      - description: Team ID (UUID)
+      - description: Namespace ID (UUID)
         in: path
         name: id
         required: true
@@ -1130,15 +1210,15 @@ paths:
             type: object
       security:
       - BearerAuth: []
-      summary: Delete a team
+      summary: Delete a namespace
       tags:
-      - teams
+      - namespaces
     get:
       consumes:
       - application/json
-      description: Retrieve details of a specific team by ID, including its users
+      description: Retrieve details of a specific namespace by ID, including its users
       parameters:
-      - description: Team ID (UUID)
+      - description: Namespace ID (UUID)
         in: path
         name: id
         required: true
@@ -1150,7 +1230,7 @@ paths:
           description: OK
           schema:
             additionalProperties:
-              $ref: '#/definitions/api.TeamResponse'
+              $ref: '#/definitions/api.NamespaceResponse'
             type: object
         "400":
           description: Bad Request
@@ -1184,16 +1264,16 @@ paths:
             type: object
       security:
       - BearerAuth: []
-      summary: Get team details
+      summary: Get namespace details
       tags:
-      - teams
-  /teams/{id}/users:
+      - namespaces
+  /namespaces/{id}/users:
     post:
       consumes:
       - application/json
-      description: Add a user to a specific team by user ID
+      description: Add a user to a specific namespace by user ID
       parameters:
-      - description: Team ID (UUID)
+      - description: Namespace ID (UUID)
         in: path
         name: id
         required: true
@@ -1203,7 +1283,7 @@ paths:
         name: user
         required: true
         schema:
-          $ref: '#/definitions/handlers.AddUserToTeamRequest'
+          $ref: '#/definitions/handlers.AddUserToNamespaceRequest'
       produces:
       - application/json
       responses:
@@ -1251,16 +1331,16 @@ paths:
             type: object
       security:
       - BearerAuth: []
-      summary: Add a user to a team
+      summary: Add a user to a namespace
       tags:
-      - teams
-  /teams/{id}/users/{user_id}:
+      - namespaces
+  /namespaces/{id}/users/{user_id}:
     delete:
       consumes:
       - application/json
-      description: Remove a user from a specific team by user ID
+      description: Remove a user from a specific namespace by user ID
       parameters:
-      - description: Team ID (UUID)
+      - description: Namespace ID (UUID)
         in: path
         name: id
         required: true
@@ -1311,9 +1391,492 @@ paths:
             type: object
       security:
       - BearerAuth: []
-      summary: Remove a user from a team
+      summary: Remove a user from a namespace
       tags:
-      - teams
+      - namespaces
+  /nodes:
+    get:
+      consumes:
+      - application/json
+      description: Get list of nodes with optional status filter
+      parameters:
+      - description: Node status filter (pending, active, failed)
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Node'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List nodes
+      tags:
+      - nodes
+  /nodes/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Remove a node from the database
+      parameters:
+      - description: Node ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete a node
+      tags:
+      - nodes
+  /nodes/{id}/config:
+    put:
+      consumes:
+      - application/json
+      description: Update a single active node's role and labels
+      parameters:
+      - description: Node ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Node configuration
+        in: body
+        name: request
+        required: true
+        schema:
+          properties:
+            labels:
+              items:
+                type: string
+              type: array
+            role:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Node'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update active node configuration
+      tags:
+      - nodes
+  /nodes/{id}/disks:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves the list of disks reported by the Talos machinery API
+        for the specified node.
+      parameters:
+      - description: Node ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Disks associated with node
+          schema:
+            additionalProperties:
+              items:
+                type: string
+              type: array
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get available disks for a node
+      tags:
+      - nodes
+  /nodes/config:
+    put:
+      consumes:
+      - application/json
+      description: Update labels for multiple nodes (for active nodes only, does not
+        change role)
+      parameters:
+      - description: Array of node label updates
+        in: body
+        name: request
+        required: true
+        schema:
+          properties:
+            nodes:
+              items:
+                $ref: '#/definitions/node.NodeConfigUpdate'
+              type: array
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Returns updated count and nodes array
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update multiple nodes labels
+      tags:
+      - nodes
+  /nodes/provision:
+    post:
+      consumes:
+      - application/json
+      description: Apply Talos configuration to multiple pending nodes and add them
+        to the cluster
+      parameters:
+      - description: Array of nodes to provision with role and labels
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.OnPremNodeProvisionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Returns provisioned count and nodes array
+          schema:
+            $ref: '#/definitions/models.OnPremNodeProvisionRequest'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Provision multiple on-prem nodes
+      tags:
+      - nodes
+  /nodes/samples:
+    post:
+      consumes:
+      - application/json
+      description: Create samples pending nodes for testing purposes
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Message indicating success
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create samples pending nodes
+      tags:
+      - nodes
+  /nodes/talosconfig:
+    get:
+      consumes:
+      - application/json
+      description: Returns the talosconfig file in TALOS_FOLDER, destined for operators
+        to do manual talosctl operations.
+      produces:
+      - application/yaml
+      responses:
+        "200":
+          description: Message indicating success
+          schema:
+            items:
+              format: int32
+              type: integer
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Returns talosconfig File in TALOS_FOLDER
+      tags:
+      - nodes
+  /scaffolds:
+    get:
+      description: returns a list of available template scaffolds in the GitOps repository
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: string
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get template scaffolds list
+      tags:
+      - scaffolds
+  /templates:
+    get:
+      description: returns a list of available templates on the cluster
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/templates.Template'
+            type: array
+        "500":
+          description: error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Get templates list
+      tags:
+      - templates
+  /templates/{id}:
+    get:
+      description: Get a template from a CRD and returns it, its json schema and a
+        default yaml
+      parameters:
+      - description: template CRD name
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.DetailTemplate'
+        "500":
+          description: error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Get a detailed template
+      tags:
+      - templates
+  /templates/{id}/apply/{instance_name}:
+    post:
+      consumes:
+      - text/plain
+      description: Applies a template deployment
+      parameters:
+      - description: template CRD name
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: deployment name
+        in: query
+        name: instance_name
+        required: true
+        type: string
+      - description: deploy to which namespace
+        in: query
+        name: namespace
+        required: true
+        type: string
+      - description: CRD yaml
+        in: body
+        name: request
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "422":
+          description: validation error
+          schema:
+            type: string
+        "500":
+          description: error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Applies a template deployment
+      tags:
+      - templates
+  /templates/{id}/validate/{instance_name}:
+    post:
+      consumes:
+      - text/plain
+      description: Validate a template deployment
+      parameters:
+      - description: template CRD name
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: deployment name
+        in: query
+        name: instance_name
+        required: true
+        type: string
+      - description: deploy to which namespace
+        in: query
+        name: namespace
+        required: true
+        type: string
+      - description: CRD yaml
+        in: body
+        name: request
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "422":
+          description: validation error
+          schema:
+            type: string
+        "500":
+          description: error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Validate a template deployment
+      tags:
+      - templates
+  /templates/create:
+    post:
+      description: Creates a new template directory by copying files from the chosen
+        scaffold directory.
+      parameters:
+      - description: name of the scaffold directory. see scaffolds API to list available
+          options.
+        in: query
+        name: scaffoldName
+        required: true
+        type: string
+      - description: name of the template directory to create.
+        in: query
+        name: templateName
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: done
+          schema:
+            type: string
+        "500":
+          description: error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Create a template directory based on pre-existing scaffold directory
+      tags:
+      - templates
   /users:
     get:
       description: Get a list of all users

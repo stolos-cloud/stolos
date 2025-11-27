@@ -5,14 +5,22 @@ import PremisesProvisioningPage from '@/pages/operator/PremisesProvisioningPage.
 import CloudProvisioningPage from '@/pages/operator/CloudProvisioningPage.vue';
 import CloudProviderPage from '@/pages/operator/CloudProviderPage.vue';
 import SecretsSecurityPage from '@/pages/operator/SecretsSecurityPage.vue';
-import TemplatesPage from '@/pages/operator/TemplatesPage.vue';
+import TemplateDefinitionsPage from '@/pages/operator/TemplateDefinitionsPage.vue';
+import DeployedApplicationsPage from '@/pages/DeployedApplicationsPage.vue';
 import UsersManagementPage from '@/pages/operator/UsersManagementPage.vue';
-import TeamsManagementPage from '@/pages/operator/TeamsManagementPage.vue';
+import NamespacesManagementPage from '@/pages/operator/NamespacesManagementPage.vue';
+import UIButtonsPage from '@/pages/ui/UIButtonsPage.vue';
+import UIInputsPage from '@/pages/ui/UIInputsPage.vue';
+import UISelectionControlsPage from '@/pages/ui/UISelectionControlsPage.vue';
+import UIDialogsPage from '@/pages/ui/UIDialogsPage.vue';
+import UIDataTablesPage from '@/pages/ui/UIDataTablesPage.vue';
+import UIAlertsPage from '@/pages/ui/UIAlertsPage.vue';
 import Error403Page from '@/pages/errors/Error403Page.vue';
 import Error404Page from '@/pages/errors/Error404Page.vue';
 import i18n from '@/plugins/i18n';
 import { createRouter, createWebHistory } from 'vue-router/auto';
 import store from '@/store';
+import DeployTemplate from "@/pages/developer/DeployTemplate.vue";
 
 const routes = [
     {
@@ -47,7 +55,15 @@ const routes = [
     {
         path: '/deployments',
         name: 'deployments',
-        meta: { title: 'deployments.title', requiresAuth: true },
+        meta: { title: 'deployments.title', requiresAuth: false },
+        children: [
+          {
+            path: 'new',
+            name: 'new-deployment',
+            meta: {title: 'new-deployment.title', requiresAuth: false},
+            component: DeployTemplate
+          }
+        ]
     },
     {
         path: '/secrets',
@@ -107,8 +123,14 @@ const routes = [
     {
         path: '/templates',
         name: 'templates',
-        component: TemplatesPage,
-        meta: { title: 'templates.title', requiresAuth: true, roles: ['admin'] },
+        component: TemplateDefinitionsPage,
+        meta: { title: 'templateDefinitions.title', requiresAuth: true, roles: ['admin'] },
+    },
+    {
+        path: '/deployed-applications',
+        name: 'deployed-applications',
+        component: DeployedApplicationsPage,
+        meta: { title: 'deployedApplications.title', requiresAuth: true, roles: ['admin', 'developer'] },
     },
     {
         path: '/secrets-security',
@@ -128,10 +150,10 @@ const routes = [
                 meta: { title: 'administration.users.title', requiresAuth: true, roles: ['admin'] },
             },
             {
-                path: 'teams',
-                name: 'administration-teams',
-                component: TeamsManagementPage,
-                meta: { title: 'administration.teams.title', requiresAuth: true, roles: ['admin'] },
+                path: 'namespaces',
+                name: 'administration-namespaces',
+                component: NamespacesManagementPage,
+                meta: { title: 'administration.namespaces.title', requiresAuth: true, roles: ['admin', 'developer'] },
             },
         ],
     },
@@ -162,6 +184,50 @@ const routes = [
         redirect: '/404',
     },
 ];
+if (import.meta.env.DEV) {
+    routes.push({
+        path: '/ui-components',
+        name: 'ui-components',
+        children: [
+            {
+                path: 'buttons',
+                name: 'buttons',
+                component: UIButtonsPage,
+                meta: { title: 'ui.buttons.title' },
+            },
+            {
+                path: 'inputs',
+                name: 'inputs',
+                component: UIInputsPage,
+                meta: { title: 'ui.inputs.title' },
+            },
+            {
+                path: 'selection-controls',
+                name: 'selection-controls',
+                component: UISelectionControlsPage,
+                meta: { title: 'ui.selectionControls.title' },
+            },
+            {
+                path: 'dialogs',
+                name: 'dialogs',
+                component: UIDialogsPage,
+                meta: { title: 'ui.dialogs.title' },
+            },
+            {
+                path: 'tables',
+                name: 'tables',
+                component: UIDataTablesPage,
+                meta: { title: 'ui.tables.title' },
+            },
+            {
+                path: 'alerts',
+                name: 'alerts',
+                component: UIAlertsPage,
+                meta: { title: 'ui.alerts.title' },
+            },
+        ],
+    });
+}
 
 const router = createRouter({
     history: createWebHistory(),

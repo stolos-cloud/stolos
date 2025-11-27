@@ -2,18 +2,18 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net"
+	"net/http"
 	"os"
-	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
 	"time"
-
-	manifests "github.com/stolos-cloud/stolos/k8s_manifests"
 
 	"github.com/cavaliergopher/grab/v3"
 	tea "github.com/charmbracelet/bubbletea"
@@ -32,9 +32,15 @@ import (
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/platform"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/platform_talos"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/talos"
+	"github.com/stolos-cloud/stolos/stolos-yoke/pkg/types"
+	"github.com/yokecd/yoke/pkg/yoke"
 	"golang.org/x/oauth2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
 var bootstrapInfos = &BootstrapInfo{}
@@ -51,7 +57,7 @@ var gcpToken *oauth2.Token
 var gcpEnabled = gcp.GCPClientId != "" && gcp.GCPClientSecret != ""
 
 // var gitHubEnabled = github.GithubOauthClientId != "" && github.GithubOauthClientSecret != "" // legacy
-var gitHubEnabled = false
+var gitHubEnabled = true
 var gitHubUser *github.User
 var gitHubAppManifestParams *github.AppManifestParams
 var gitHubAppManifest *github.AppManifest
@@ -59,6 +65,8 @@ var gitHubAppManifest *github.AppManifest
 const _bootstrapStateFile = "bootstrap-state.json"
 const _bootstrapConfigFile = "bootstrap-config.json"
 const _gigabyte = 1073741824
+
+const stolosAirwayTag = "v0.2.0-alpha"
 
 func main() {
 
@@ -68,13 +76,12 @@ func main() {
 
 	if !(errors.Is(err, os.ErrNotExist)) {
 		saveState, err = marshal.UnmarshalFromFile[SaveState](_bootstrapStateFile)
-		var err2 error
-		ConfigBundle, err2 = marshal.ReadSplitConfigBundleFiles()
-		if err == nil && err2 == nil {
+		if err == nil {
 			bootstrapInfos = &saveState.BootstrapInfo
 			didReadBootstrapInfos = true
 			doRestoreProgress = true
 		}
+		ConfigBundle, _ = marshal.ReadSplitConfigBundleFiles()
 	}
 	if !didReadBootstrapInfos {
 		saveState = SaveState{
@@ -141,6 +148,11 @@ func CreateSteps(err error) {
 				if err != nil {
 				}
 				bootstrapInfos.GitHubInfo = *githubInfo
+				saveState.BootstrapInfo = *bootstrapInfos
+				err = marshal.MarshalToFile(_bootstrapStateFile, saveState)
+				if err != nil {
+					m.Logger.Errorf("Error saving state: %s", err)
+				}
 			}
 		},
 	}
@@ -175,6 +187,23 @@ func CreateSteps(err error) {
 		IsDone:      false,
 		AutoAdvance: true,
 		OnEnter: func(m *tui.Model, s *tui.Step) tea.Cmd {
+			// Check if we should restore from saved state
+			if doRestoreProgress && saveState.GitHubApp.ID != 0 {
+				m.Logger.Info("State file found, restoring GitHub App from saved state")
+				gitHubAppManifest = &saveState.GitHubApp
+				// Restore the GitHub User from the saved state
+				ctx := context.Background()
+				var err error
+				gitHubUser, err = github.GetGitHubUser(ctx, bootstrapInfos.GitHubInfo.RepoOwner, nil)
+				if err != nil {
+					m.Logger.Warnf("Could not fetch GitHub User, but continuing with saved state: %v", err)
+				}
+				m.Logger.Successf("Restored GitHub App: %s (ID: %d)", gitHubAppManifest.Name, gitHubAppManifest.ID)
+				s.IsDone = true
+				s.AutoAdvance = true
+				return nil
+			}
+
 			m.Logger.Infof("Starting GitHub App Manifest Flow...")
 			go func() {
 				ctx := context.Background()
@@ -203,6 +232,11 @@ func CreateSteps(err error) {
 				}
 
 				saveState.GitHubApp = *gitHubAppManifest
+				saveState.BootstrapInfo = *bootstrapInfos
+				err = marshal.MarshalToFile(_bootstrapStateFile, saveState)
+				if err != nil {
+					m.Logger.Errorf("Error saving state: %s", err)
+				}
 				m.Logger.Successf("GitHub App created successfully! App name: %s, App ID: %d", gitHubAppManifest.Name, gitHubAppManifest.ID)
 				s.IsDone = true
 			}()
@@ -217,6 +251,15 @@ func CreateSteps(err error) {
 		IsDone:      false,
 		AutoAdvance: true,
 		OnEnter: func(m *tui.Model, s *tui.Step) tea.Cmd {
+			// Check if we should restore from saved state
+			if doRestoreProgress && saveState.GitHubAppInstallResult.InstallationID != "" {
+				m.Logger.Info("State file found, restoring GitHub App installation from saved state")
+				m.Logger.Successf("Restored GitHub App Installation (ID: %s)", saveState.GitHubAppInstallResult.InstallationID)
+				s.IsDone = true
+				s.AutoAdvance = true
+				return nil
+			}
+
 			m.Logger.Infof("Opening the GitHub app install page...")
 
 			go func() {
@@ -228,6 +271,11 @@ func CreateSteps(err error) {
 					return
 				}
 				saveState.GitHubAppInstallResult = *postInstallResult
+				saveState.BootstrapInfo = *bootstrapInfos
+				err = marshal.MarshalToFile(_bootstrapStateFile, saveState)
+				if err != nil {
+					m.Logger.Errorf("Error saving state: %s", err)
+				}
 				m.Logger.Successf("GitHub App installed successfully! Installation ID: %s", postInstallResult.InstallationID)
 
 				s.IsDone = true
@@ -254,6 +302,11 @@ func CreateSteps(err error) {
 				if err != nil {
 				}
 				bootstrapInfos.GCPInfo = *gcpInfo
+				saveState.BootstrapInfo = *bootstrapInfos
+				err = marshal.MarshalToFile(_bootstrapStateFile, saveState)
+				if err != nil {
+					m.Logger.Errorf("Error saving state: %s", err)
+				}
 			}
 		},
 	}
@@ -315,6 +368,11 @@ func CreateSteps(err error) {
 				if err != nil {
 				}
 				bootstrapInfos.TalosInfo = *talosInfo
+				saveState.BootstrapInfo = *bootstrapInfos
+				err = marshal.MarshalToFile(_bootstrapStateFile, saveState)
+				if err != nil {
+					m.Logger.Errorf("Error saving state: %s", err)
+				}
 			}
 		},
 	}
@@ -469,6 +527,23 @@ func RunGCPSAStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 }
 
 func RunGitHubRepoStepWithApp(m *tui.Model, s *tui.Step) tea.Cmd {
+	// Check if we should restore from saved state
+	if doRestoreProgress && saveState.GitHubRepoCreated {
+		m.Logger.Info("State file found, GitHub repository already created")
+		// Restore the GitHub config
+		githubConfig = github.NewGithubAppConfig(
+			bootstrapInfos.GitHubInfo.RepoOwner,
+			bootstrapInfos.GitHubInfo.RepoName,
+			strconv.FormatInt(gitHubAppManifest.ID, 10),
+			gitHubAppManifest.PEM,
+			saveState.GitHubAppInstallResult.InstallationID,
+		)
+		m.Logger.Successf("Restored GitHub repository: https://github.com/%s/%s.git", bootstrapInfos.GitHubInfo.RepoOwner, bootstrapInfos.GitHubInfo.RepoName)
+		s.IsDone = true
+		s.AutoAdvance = true
+		return nil
+	}
+
 	m.Logger.Infof("Creating GitHub repository %s...", bootstrapInfos.GitHubInfo.RepoName)
 
 	go func() {
@@ -508,6 +583,14 @@ func RunGitHubRepoStepWithApp(m *tui.Model, s *tui.Step) tea.Cmd {
 			gitHubAppManifest.PEM,
 			saveState.GitHubAppInstallResult.InstallationID,
 		)
+
+		// Mark repo as created in state
+		saveState.GitHubRepoCreated = true
+		saveState.BootstrapInfo = *bootstrapInfos
+		err = marshal.MarshalToFile(_bootstrapStateFile, saveState)
+		if err != nil {
+			m.Logger.Errorf("Error saving state: %s", err)
+		}
 
 		m.Logger.Successf("Repository created: https://github.com/%s/%s.git", bootstrapInfos.GitHubInfo.RepoOwner, bootstrapInfos.GitHubInfo.RepoName)
 		s.IsDone = true
@@ -559,11 +642,19 @@ func RunGitHubAuthStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 func RunWaitForServersStep(model *tui.Model, step *tui.Step) tea.Cmd {
 
 	if doRestoreProgress {
-		model.Logger.Info("State file found, skip looking for machines") // TODO ... FOR NOW!!
-		step.IsDone = true
-		step.AutoAdvance = true
-		step.OnExit = nil
-		return nil
+		// Only skip if machines have already been configured
+		if len(saveState.MachinesCache.ControlPlanes) > 0 || len(saveState.MachinesCache.Workers) > 0 {
+			model.Logger.Info("Machines already configured, skipping server wait")
+			step.IsDone = true
+			step.AutoAdvance = true
+			step.OnExit = nil
+			return nil
+		}
+
+		model.Logger.Info("Machines not yet configured, restoring discovered machines")
+		for ip := range saveState.MachinesDisks {
+			step.Body = step.Body + fmt.Sprintf("\nNode: %s", ip)
+		}
 	}
 
 	model.Logger.Infof("Cluster: %s", bootstrapInfos.TalosInfo.ClusterName)
@@ -574,6 +665,7 @@ func RunWaitForServersStep(model *tui.Model, step *tui.Step) tea.Cmd {
 			err := talos.EventSink(&bootstrapInfos.TalosInfo, func(ctx context.Context, event events.Event) error {
 				ip := strings.Split(event.Node, ":")[0]
 
+				//TODO WHY?
 				var blacklist = []string{
 					"192.168.2.67",
 					"192.168.2.68",
@@ -589,6 +681,7 @@ func RunWaitForServersStep(model *tui.Model, step *tui.Step) tea.Cmd {
 				if !ok {
 					saveState.MachinesDisks[ip] = ""
 					step.Body = step.Body + fmt.Sprintf("\nNode: %s", ip)
+					saveState.BootstrapInfo = *bootstrapInfos
 					err := marshal.MarshalToFile(_bootstrapStateFile, saveState)
 					if err != nil {
 						model.Logger.Errorf("Error saving state: %s", err)
@@ -613,6 +706,10 @@ func RunWaitForServersStep(model *tui.Model, step *tui.Step) tea.Cmd {
 }
 
 func ExitWaitForServersStep(model *tui.Model, step *tui.Step) {
+	// Once we're configuring machines, we're no longer in restore mode
+	doRestoreProgress = false
+	ConfigBundle = nil
+
 	i := 0
 	for k := range saveState.MachinesDisks {
 		var disks []*storage.Disk
@@ -691,14 +788,13 @@ func ExitConfigureServer(serverIp string, disks *[]*storage.Disk) func(model *tu
 		switch config.Role {
 		case 1:
 			saveState.MachinesCache.ControlPlanes[serverIp] = make([]byte, 0)
-			break
 		case 2:
 			saveState.MachinesCache.Workers[serverIp] = make([]byte, 0)
-			break
 		default:
 			model.Logger.Errorf("Invalid role: %d", config.Role)
 		}
 
+		saveState.BootstrapInfo = *bootstrapInfos
 		err = marshal.MarshalToFile(_bootstrapStateFile, saveState)
 		if err != nil {
 			model.Logger.Errorf("Error saving state: %s", err)
@@ -707,8 +803,10 @@ func ExitConfigureServer(serverIp string, disks *[]*storage.Disk) func(model *tu
 }
 
 func RunTalosISOStep(m *tui.Model, s *tui.Step) tea.Cmd {
-	if doRestoreProgress {
-		m.Logger.Info("State file found, skipping ISO download")
+	// Check if we can skip - machines already configured
+	if doRestoreProgress &&
+		(len(saveState.MachinesCache.ControlPlanes) > 0 || len(saveState.MachinesCache.Workers) > 0) {
+		m.Logger.Info("Machines already configured, skipping ISO download")
 		s.IsDone = true
 		return nil
 	}
@@ -744,6 +842,21 @@ func RunTalosISOStep(m *tui.Model, s *tui.Step) tea.Cmd {
 		}
 
 		talosImagePath := fmt.Sprintf("metal-%s.%s", bootstrapInfos.TalosInfo.TalosArchitecture, talosImageFormat)
+		isoExists := false
+		if _, err := os.Stat(talosImagePath); err == nil {
+			isoExists = true
+		}
+
+		if isoExists {
+			m.Logger.Infof("Deleting existing ISO: %s", talosImagePath)
+			err := os.Remove(talosImagePath)
+			if err != nil {
+				m.Logger.Errorf("Failed to delete old ISO: %s", err)
+			}
+		} else if !isoExists {
+			m.Logger.Infof("ISO does not exist, will download: %s", talosImagePath)
+		}
+
 		talosImageUrl := fmt.Sprintf("https://factory.talos.dev/image/%s/%s/%s", schematicId, bootstrapInfos.TalosInfo.TalosVersion, talosImagePath)
 		//m.Logger.Infof("%s", talosImageUrl)
 
@@ -755,12 +868,24 @@ func RunTalosISOStep(m *tui.Model, s *tui.Step) tea.Cmd {
 
 		m.Logger.Successf("Download saved to: %s", resp.Filename)
 
+		err = marshal.MarshalToFile(_bootstrapStateFile, saveState)
+		if err != nil {
+			m.Logger.Errorf("Failed to save schematic ID to state: %s", err)
+		}
+
 		s.IsDone = true
 	}()
 	return nil
 }
 
 func RunClusterBootstrapStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
+	// If restoring progress and ConfigBundle files exist, skip this step
+	if doRestoreProgress && ConfigBundle != nil {
+		m.Logger.Info("ConfigBundle already exists, skipping cluster bootstrap")
+		s.IsDone = true
+		return nil
+	}
+
 	go func() {
 		var err error
 		m.Logger.Debug("RunClusterBootstrapStepInBackground")
@@ -769,9 +894,14 @@ func RunClusterBootstrapStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 		ConfigBundle, err = talos.ApplyConfigsToNodes(&saveState.MachinesCache, saveState.MachinesDisks, &bootstrapInfos.TalosInfo, ConfigBundle)
 		if err != nil {
 			m.Logger.Errorf("Failed to apply configs: %s", err)
-		} else {
-			m.Logger.Debug("Configs applied")
+			return
 		}
+		if ConfigBundle == nil {
+			m.Logger.Errorf("ConfigBundle is nil after applying configs")
+			return
+		}
+		m.Logger.Debug("Configs applied")
+
 		err = marshal.SaveSplitConfigBundleFiles(ConfigBundle)
 		if err != nil {
 			m.Logger.Errorf("Failed to save split config bundle files: %s", err)
@@ -815,6 +945,16 @@ func RunClusterBootstrapStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 }
 
 func RunArgoStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
+	// If restoring progress and kubeconfig doesn't exist, skip
+	if doRestoreProgress && len(kubeconfig) == 0 {
+		_, err := os.Stat("kubeconfig")
+		if errors.Is(err, os.ErrNotExist) {
+			m.Logger.Info("Cluster not ready yet, skipping Argo deployment")
+			return nil
+		}
+		kubeconfig, _ = os.ReadFile("kubeconfig")
+	}
+
 	go func() {
 		m.Logger.Debug("RunArgoStepInBackground")
 		DeployArgoCD(m.Logger)
@@ -824,9 +964,206 @@ func RunArgoStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 }
 
 func RunPortalStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
+	// If restoring progress and kubeconfig doesn't exist, skip
+	if doRestoreProgress && len(kubeconfig) == 0 {
+		_, err := os.Stat("kubeconfig")
+		if errors.Is(err, os.ErrNotExist) {
+			m.Logger.Info("Cluster not ready yet, skipping Portal deployment")
+			return nil
+		}
+		kubeconfig, _ = os.ReadFile("kubeconfig")
+	}
+
 	go func() {
 		m.Logger.Debug("RunPortalStepInBackground")
 		CreateBackendSecrets(m.Logger)
+
+		k8sClient, err := k8s.NewClientFromKubeconfig(kubeconfig)
+		if err != nil {
+			m.Logger.Errorf("Failed to create k8s client: %v", err)
+			return
+		}
+		k8sDynamicClient, err := k8s.NewDynamicClientFromKubeconfig(kubeconfig)
+		if err != nil {
+			m.Logger.Errorf("Failed to create k8s dynamic client: %v", err)
+			return
+		}
+
+		k8sClient.CoreV1().Namespaces().Create(context.Background(), &corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "atc",
+				Labels: map[string]string{
+					"pod-security.kubernetes.io/enforce": "privileged",
+				},
+			},
+		}, metav1.CreateOptions{})
+
+		cmdr, err := yoke.FromKubeConfig("kubeconfig")
+		if err != nil {
+			m.Logger.Errorf("Failed to load kubeconfig: %v", err)
+		}
+
+		// Create docker-registry secret for ATC to pull private flights from GHCR
+		// Using PAT from user input since GitHub App tokens don't work with GHCR
+		if err := k8s.CreateGHCRPullSecret(context.Background(), k8sClient, "atc", "ghcr-pull-secret", bootstrapInfos.GitHubInfo.PackagesPAT); err != nil {
+			m.Logger.Errorf("Failed to create GHCR pull secret: %v", err)
+		} else {
+			m.Logger.Success("Created GHCR pull secret for ATC")
+		}
+
+		err = cmdr.Takeoff(context.Background(), yoke.TakeoffParams{
+			Namespace: "atc",
+			Flight: yoke.FlightParams{
+				Path: "oci://ghcr.io/yokecd/atc-installer:0.15.0",
+				Args: []string{
+					"--skip-version-check", "true",
+					"--set", "dockerConfigSecretName=ghcr-pull-secret",
+				},
+			},
+			Release: "atc",
+		})
+
+		if err != nil {
+			m.Logger.Errorf("Failed to deploy yoke: %v", err)
+		}
+
+		time.Sleep(30 * time.Second)
+
+		stolosAirwayUrl := fmt.Sprintf("https://raw.githubusercontent.com/stolos-cloud/stolos/refs/tags/%s/stolos-yoke/airway.yml", stolosAirwayTag)
+		resp, err := http.Get(stolosAirwayUrl)
+		if err != nil {
+			m.Logger.Errorf("Failed to download stolos airway url: %v", err)
+			return
+		}
+
+		stolosAirwayYaml, err := io.ReadAll(resp.Body)
+		if err != nil {
+			m.Logger.Errorf("Failed to get stolos airway from response: %v", err)
+			return
+		}
+
+		stolosAirwayUnstructured := &unstructured.Unstructured{}
+		dec := yaml.NewYAMLOrJSONDecoder(
+			bytes.NewReader(stolosAirwayYaml),
+			1024,
+		)
+		if err := dec.Decode(stolosAirwayUnstructured); err != nil {
+			m.Logger.Errorf("Failed to decode stolos airway yaml: %v", err)
+			return
+		}
+
+		_, err = k8sDynamicClient.Resource(schema.GroupVersionResource{
+			Group:    "yoke.cd",
+			Version:  "v1alpha1",
+			Resource: "Airway",
+		}).Namespace("atc").Apply(context.Background(), "stolosplatforms.stolos.cloud", stolosAirwayUnstructured, metav1.ApplyOptions{})
+
+		time.Sleep(10 * time.Second)
+
+		stolosCR := types.Stolos{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "StolosPlatform",
+				APIVersion: "stolos.cloud/v1alpha",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "stolos-platform",
+			},
+			Spec: types.StolosSpec{
+				ClusterName: bootstrapInfos.TalosInfo.ClusterName,
+				BaseDomain:  bootstrapInfos.GitHubInfo.BaseDomain,
+				LocalPathProvisioner: types.LocalPathProvisioner{
+					Deploy:    bootstrapInfos.TalosInfo.DeployLocalPathStorage == "true",
+					Namespace: "local-path-storage",
+					Version:   "v0.0.32",
+				},
+				MetalLB: types.MetalLB{
+					Deploy:       true,
+					Namespace:    "metallb-system",
+					Version:      "v0.15.2",
+					ArpIp:        bootstrapInfos.GitHubInfo.LoadBalancerIP,
+					ConfigureArp: true,
+				},
+				ArgoCD: types.ArgoCD{
+					Deploy:              true,
+					Namespace:           "argocd",
+					Version:             "7.8.26",
+					Subdomain:           "argocd",
+					ImageUpdaterVersion: "v0.13.1",
+					RepositoryOwner:     bootstrapInfos.GitHubInfo.RepoOwner,
+					RepositoryName:      bootstrapInfos.GitHubInfo.RepoName,
+					RepositoryRevision:  "feature/yoke",
+				},
+				Contour: types.Contour{
+					Deploy:    true,
+					Namespace: "projectcontour",
+					Version:   "release-1.33",
+				},
+				CertManager: types.CertManager{
+					Deploy:               true,
+					Namespace:            "cert-manager",
+					Version:              "v1.18.2",
+					ClusterIssuerProd:    "letsencrypt-prod",
+					ClusterIssuerStaging: "letsencrypt-staging",
+					DefaultClusterIssuer: "letsencrypt-staging",
+					Email:                "stolos@stolos.cloud",
+					SelfSigned:           true,
+				},
+				CNPG: types.CNPG{
+					Deploy:        true,
+					Namespace:     "cnpg-system",
+					Version:       "0.26.0",
+					BarmanVersion: "v0.6.0",
+				},
+				StolosPlatform: types.StolosPlatform{
+					Deploy:               true,
+					Namespace:            "stolos-system",
+					BackendSubdomain:     "api",
+					DefaultAdminEmail:    "admin@stolos.cloud",
+					DefaultAdminPassword: "Password1!",
+					FrontendSubdomain:    "k8s",
+					Database: types.CnpgDbConfig{
+						InstanceCount:   1,
+						SizeInGigabytes: 2,
+						Image:           "ghcr.io/cloudnative-pg/postgresql:17.6",
+					},
+					PathToYaml: "stolos/stolos-platform.yaml",
+				},
+			},
+		}
+
+		mapStolosCR, err := runtime.DefaultUnstructuredConverter.ToUnstructured(&stolosCR)
+		unstructuredStolosCR := unstructured.Unstructured{Object: mapStolosCR}
+
+		githubClient, err := github.NewClientFromApp(
+			context.Background(),
+			gitHubAppManifest.ID,
+			gitHubAppManifest.PEM,
+			saveState.GitHubAppInstallResult.InstallationID,
+		)
+		if err != nil {
+			m.Logger.Errorf("Failed to create GitHub client from app: %v", err)
+		}
+
+		err = githubClient.CreateInitialConfig(&unstructuredStolosCR, &bootstrapInfos.GitHubInfo)
+		if err != nil {
+			m.Logger.Errorf("Failed to create stolos config on github: %v", err)
+		}
+
+		k8sClientDyn, err := k8s.NewDynamicClientFromKubeconfig(kubeconfig)
+		if err != nil {
+			m.Logger.Errorf("Failed to create Kubernetes client: %s", err)
+		}
+
+		_, err = k8sClientDyn.Resource(schema.GroupVersionResource{
+			Group:    "stolos.cloud",
+			Version:  "v1alpha",
+			Resource: "stolosplatforms",
+		}).Create(context.Background(), &unstructuredStolosCR, metav1.CreateOptions{})
+
+		if err != nil {
+			m.Logger.Errorf("Failed to create stolos platforms: %v", err)
+		}
+
 		s.IsDone = true
 	}()
 	return nil
@@ -834,8 +1171,7 @@ func RunPortalStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 
 func DeployArgoCD(loggerRef *tui.UILogger) {
 	loggerRef.Info("Setting up helm...")
-	var logger logging.Logger
-	logger = loggerRef
+	logger := logging.Logger(loggerRef)
 	helmClient, err := helm.SetupHelmClient(&logger, kubeconfig)
 	if err != nil {
 		loggerRef.Errorf("Failed to setup helm client: %s", err)
@@ -852,12 +1188,7 @@ func DeployArgoCD(loggerRef *tui.UILogger) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	valuesPath := filepath.Join(tmpDir, "values.yaml")
-	if err := os.WriteFile(valuesPath, manifests.ArgoValuesYaml, 0644); err != nil {
-		panic(err)
-	}
-
-	release, err := helm.HelmInstallArgo(helmClient, "stolos-argocd", "stolos-argocd", []string{valuesPath})
+	release, err := helm.HelmInstallArgo(helmClient, "argocd", "argocd", []string{})
 	if err != nil {
 		loggerRef.Errorf("Failed to deploy ArgoCD: %s", err)
 		return
@@ -932,7 +1263,7 @@ func CreateBackendSecrets(loggerRef *tui.UILogger) {
 				loggerRef.Success("GitHub credentials secret created successfully")
 			}
 			repoUrl := "https://github.com/" + bootstrapInfos.GitHubInfo.RepoOwner + "/" + bootstrapInfos.GitHubInfo.RepoName
-			err = github.CreateOrUpdateArgoCDGitHubSecrets(ctx, k8sClient, "stolos-argocd", "stolos-github-repo", strconv.FormatInt(gitHubAppManifest.ID, 10), gitHubAppManifest.PEM, repoUrl, saveState.GitHubAppInstallResult.InstallationID)
+			err = github.CreateOrUpdateArgoCDGitHubSecrets(ctx, k8sClient, "argocd", "stolos-github-repo", strconv.FormatInt(gitHubAppManifest.ID, 10), gitHubAppManifest.PEM, repoUrl, saveState.GitHubAppInstallResult.InstallationID)
 			if err != nil {
 				loggerRef.Errorf("Failed to create GitHub Argo Repo secret: %s", err)
 			} else {

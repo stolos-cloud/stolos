@@ -1,6 +1,7 @@
 package github
 
 import (
+	"bytes"
 	"context"
 	"crypto/x509"
 	"encoding/pem"
@@ -16,12 +17,13 @@ import (
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/logger"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/oauth"
 	"github.com/stolos-cloud/stolos-bootstrap/pkg/oauth/providers"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
-	"github.com/goccy/go-yaml"
 	"github.com/google/go-github/v74/github"
 	"golang.org/x/oauth2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8s_json "k8s.io/apimachinery/pkg/runtime/serializer/json"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -133,6 +135,7 @@ type GitHubInfo struct {
 	RepoName       string `json:"RepoName" field_label:"Github Repository Name" field_required:"true"`
 	BaseDomain     string `json:"BaseDomain" field_label:"Base Domain (DNS)" field_required:"true"`
 	LoadBalancerIP string `json:"LoadBalancerIP" field_label:"LoadBalancer IP" field_required:"true"`
+	PackagesPAT    string `json:"PackagesPAT" field_label:"GitHub PAT for Packages (read:packages)" field_required:"true"`
 }
 
 // Config contains GitHub credentials for backend usage
@@ -172,24 +175,29 @@ func (client *OauthClient) InitRepo(info *GitHubInfo, isPrivate bool) (*github.R
 	time.Sleep(5 * time.Second) // Wait for github to init repo, as createfile can happen before it is fully initialized
 
 	// Create initial config file
-	if err := client.createInitialConfig(info); err != nil {
-		return nil, fmt.Errorf("failed to create initial config: %w", err)
-	}
+	//if err := client.createInitialConfig(info); err != nil {
+	//	return nil, fmt.Errorf("failed to create initial config: %w", err)
+	//}
 
 	return repo, nil
 }
 
 // createInitialConfig creates the initial common.yml configuration file
-func (c *OauthClient) createInitialConfig(info *GitHubInfo) error {
-	commonConfig := struct {
-		BaseDomain string `yaml:"base_domain"`
-		LbIP       string `yaml:"lb_ip"`
-	}{
-		BaseDomain: info.BaseDomain,
-		LbIP:       info.LoadBalancerIP,
-	}
+func (c *OauthClient) CreateInitialConfig(config *unstructured.Unstructured, info *GitHubInfo) error {
 
-	commonConfigYaml, err := yaml.Marshal(commonConfig)
+	s := k8s_json.NewSerializerWithOptions(
+		k8s_json.DefaultMetaFactory,
+		nil, // scheme — nil works for unstructured
+		nil,
+		k8s_json.SerializerOptions{
+			Yaml:   true,
+			Pretty: true,
+			Strict: false,
+		},
+	)
+
+	var out bytes.Buffer
+	err := s.Encode(config, &out)
 	if err != nil {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
@@ -206,10 +214,10 @@ func (c *OauthClient) createInitialConfig(info *GitHubInfo) error {
 		context.Background(),
 		info.RepoOwner,
 		info.RepoName,
-		"common.yml",
+		"system/stolos-system.yaml",
 		&github.RepositoryContentFileOptions{
 			Message:   github.Ptr("Initial config file"),
-			Content:   commonConfigYaml,
+			Content:   out.Bytes(),
 			Branch:    github.Ptr("main"),
 			Committer: &author,
 		},
@@ -268,11 +276,11 @@ func NewGithubAppConfig(repoOwner, repoName, appID, appPEM, installationID strin
 // ToSecret serializes GitHub config to Kubernetes secret
 func (c *Config) ToSecret(namespace, secretName string) *corev1.Secret {
 	data := map[string][]byte{
-		"GITHUB_REPO_OWNER":            []byte(c.RepoOwner),
-		"GITHUB_REPO_NAME":             []byte(c.RepoName),
-		"GITHUB_APP_ID":                []byte(c.AppID),
-		"GITHUB_APP_PRIVATE_KEY":       []byte(c.AppPEM),
-		"GITHUB_APP_INSTALLATION_ID":   []byte(c.InstallationID),
+		"GITHUB_REPO_OWNER":          []byte(c.RepoOwner),
+		"GITHUB_REPO_NAME":           []byte(c.RepoName),
+		"GITHUB_APP_ID":              []byte(c.AppID),
+		"GITHUB_APP_PRIVATE_KEY":     []byte(c.AppPEM),
+		"GITHUB_APP_INSTALLATION_ID": []byte(c.InstallationID),
 	}
 
 	return &corev1.Secret{
@@ -300,10 +308,10 @@ func FromSecret(secret *corev1.Secret) (*Config, error) {
 	}
 
 	return &Config{
-		RepoOwner:   string(secret.Data["GITHUB_REPO_OWNER"]),
-		RepoName:    string(secret.Data["GITHUB_REPO_NAME"]),
-		AppID:       string(secret.Data["GITHUB_APP_ID"]),
-		AppPEM:      string(secret.Data["GITHUB_APP_PRIVATE_KEY"]),
+		RepoOwner:      string(secret.Data["GITHUB_REPO_OWNER"]),
+		RepoName:       string(secret.Data["GITHUB_REPO_NAME"]),
+		AppID:          string(secret.Data["GITHUB_APP_ID"]),
+		AppPEM:         string(secret.Data["GITHUB_APP_PRIVATE_KEY"]),
 		InstallationID: string(secret.Data["GITHUB_APP_INSTALLATION_ID"]),
 	}, nil
 }

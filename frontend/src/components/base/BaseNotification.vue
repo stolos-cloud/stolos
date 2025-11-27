@@ -6,8 +6,9 @@
         location="bottom right"
         class="rounded px-4 py-2"
         elevation="8"
+        variant="tonal"
     >
-        <span>{{ text }}</span>
+        <span v-html="text"></span>
         <template v-slot:actions v-if="closable">
             <v-btn
                 icon="mdi-close"

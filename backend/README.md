@@ -21,7 +21,7 @@ Move .env.template to .env and adjust settings as needed.
 If env `DB_HOST` is not set, it defaults to sqlite.
 
 ```bash
-go run cmd/server/main.go
+go run cmd/server
 ```
 
 To use Postgres, set:
@@ -29,7 +29,7 @@ To use Postgres, set:
 ```bash
 export DB_HOST=localhost
 export DB_PASSWORD=postgres
-go run cmd/server/main.go
+go run cmd/server
 ```
 
 ## Build
@@ -61,6 +61,7 @@ Swagger UI available at: <http://localhost:8080/swagger/index.html>
 To regenerate the Swagger docs after making changes to API annotations:
 
 ```bash
+go install github.com/swaggo/swag/cmd/swag@latest
 swag init -g cmd/server/main.go -o docs
 ```
 
