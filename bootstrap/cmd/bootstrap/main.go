@@ -1082,7 +1082,7 @@ func RunPortalStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 					ImageUpdaterVersion: "v0.13.1",
 					RepositoryOwner:     bootstrapInfos.GitHubInfo.RepoOwner,
 					RepositoryName:      bootstrapInfos.GitHubInfo.RepoName,
-					RepositoryRevision:  "feature/yoke",
+					RepositoryRevision:  "main",
 				},
 				Contour: types.Contour{
 					Deploy:    true,
