@@ -11,14 +11,16 @@ import (
 	clusterapi "github.com/siderolabs/talos/pkg/machinery/api/cluster"
 	machineryClient "github.com/siderolabs/talos/pkg/machinery/client"
 	clusterres "github.com/siderolabs/talos/pkg/machinery/resources/cluster"
-	runtime "github.com/siderolabs/talos/pkg/machinery/resources/runtime"
 	"github.com/stolos-cloud/stolos/backend/internal/models"
+	"github.com/stolos-cloud/stolos/backend/internal/services/k8s"
 	"github.com/stolos-cloud/stolos/backend/internal/services/node"
 	"github.com/stolos-cloud/stolos/backend/internal/services/talos"
 	wsservices "github.com/stolos-cloud/stolos/backend/internal/services/websocket"
 	"google.golang.org/grpc/codes"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // -- job definitions
@@ -102,57 +104,69 @@ var ClusterHealthCheckJob = &StolosJob{
 var NodeStatusUpdateJob *StolosJob = &StolosJob{
 	Name:       "NodeStatusUpdateJob",
 	Definition: gocron.DurationJob(30 * time.Second),
-	JobFunc: func(ts *talos.TalosService, db *gorm.DB, wsManager *wsservices.Manager) {
-		var nodes []models.Node
-		if err := db.Find(&nodes).Error; err != nil {
+	JobFunc: func(ts *talos.TalosService, db *gorm.DB, wsManager *wsservices.Manager, k8sClient *k8s.K8sClient) {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		var dbNodes []models.Node
+		if err := db.Find(&dbNodes).Error; err != nil {
 			log.Printf("NodeStatusUpdateJob: failed to load nodes: %v", err)
 			return
 		}
 
-		for i := range nodes {
-			node := &nodes[i]
-			newStatus := node.Status
+		if k8sClient == nil || k8sClient.Clientset == nil {
+			log.Printf("NodeStatusUpdateJob: Kubernetes client not available")
+			return
+		}
+
+		k8sNodes, err := k8sClient.Clientset.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+		if err != nil {
+			log.Printf("NodeStatusUpdateJob: failed to list Kubernetes nodes: %v", err)
+			return
+		}
+
+		statusMap := make(map[string]models.NodeStatus, len(k8sNodes.Items))
+		for _, kNode := range k8sNodes.Items {
+			statusMap[kNode.Name] = mapK8sNodeStatus(&kNode)
+		}
+
+		for i := range dbNodes {
+			node := &dbNodes[i]
 
 			if node.Status == models.StatusPending {
-				// Keep pending nodes untouched until they move to provisioning/ready
 				continue
 			}
 
-			newStatus = models.StatusFailed
-
-			if node.IPAddress != "" {
-				client, err := ts.GetMachineryClient(node.IPAddress)
-				if err != nil {
-					log.Printf("NodeStatusUpdateJob: unable to get client for %s: %v", node.IPAddress, err)
-				} else {
-					statusSpec, err := talos.GetMachineStatus(client)
-					if err != nil {
-						log.Printf("NodeStatusUpdateJob: failed to get machine status for %s: %v", node.IPAddress, err)
-					} else if statusSpec != nil && statusSpec.Stage == runtime.MachineStageRunning && statusSpec.Status.Ready {
-						// Node is fully running.
-						newStatus = models.StatusActive
-					}
-				}
-			} else {
-				log.Printf("NodeStatusUpdateJob: node %s has no IP address, marking as not ready", node.Name)
-			}
-
-			if node.Status != newStatus {
-				if err := db.Model(&models.Node{}).
-					Where("id = ?", node.ID).
-					Update("status", newStatus).Error; err != nil {
-					log.Printf("NodeStatusUpdateJob: failed to update status for node %s: %v", node.Name, err)
+			desiredStatus, exists := statusMap[node.Name]
+			if !exists {
+				if node.Status == models.StatusProvisioning {
 					continue
 				}
-				node.Status = newStatus
+				desiredStatus = models.StatusFailed
 			}
+
+			if node.Status == models.StatusProvisioning && desiredStatus == models.StatusFailed {
+				continue
+			}
+
+			if node.Status == desiredStatus {
+				continue
+			}
+
+			if err := db.Model(&models.Node{}).
+				Where("id = ?", node.ID).
+				Update("status", desiredStatus).Error; err != nil {
+				log.Printf("NodeStatusUpdateJob: failed to update status for node %s: %v", node.Name, err)
+				continue
+			}
+			node.Status = desiredStatus
 		}
 
 		if wsManager != nil {
 			wsManager.BroadcastToSessionType(wsservices.SessionTypeEvent, wsservices.Message{
 				Type: "NodeStatusUpdated",
 				Payload: map[string]any{
-					"nodes":     nodes,
+					"nodes":     dbNodes,
 					"updatedAt": time.Now().UTC(),
 				},
 			})
@@ -162,6 +176,7 @@ var NodeStatusUpdateJob *StolosJob = &StolosJob{
 		(*talos.TalosService)(nil),
 		(*gorm.DB)(nil),
 		(*wsservices.Manager)(nil),
+		(*k8s.K8sClient)(nil),
 	},
 	Options: nil,
 }
@@ -338,4 +353,21 @@ var NodeInfoReconciler = &StolosJob{
 			}
 		}
 	},
+}
+
+func mapK8sNodeStatus(node *corev1.Node) models.NodeStatus {
+	if node == nil {
+		return models.StatusFailed
+	}
+
+	for _, condition := range node.Status.Conditions {
+		if condition.Type == corev1.NodeReady {
+			if condition.Status == corev1.ConditionTrue {
+				return models.StatusActive
+			}
+			return models.StatusFailed
+		}
+	}
+
+	return models.StatusFailed
 }
