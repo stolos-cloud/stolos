@@ -296,11 +296,11 @@ func NewGithubAppConfig(repoOwner, repoName, appID, appPEM, installationID strin
 // ToSecret serializes GitHub config to Kubernetes secret
 func (c *Config) ToSecret(namespace, secretName string) *corev1.Secret {
 	data := map[string][]byte{
-		"GITHUB_REPO_OWNER":          []byte(c.RepoOwner),
-		"GITHUB_REPO_NAME":           []byte(c.RepoName),
-		"GITHUB_APP_ID":              []byte(c.AppID),
-		"GITHUB_APP_PRIVATE_KEY":     []byte(c.AppPEM),
-		"GITHUB_APP_INSTALLATION_ID": []byte(c.InstallationID),
+		"GITHUB_REPO_OWNER":      []byte(c.RepoOwner),
+		"GITHUB_REPO_NAME":       []byte(c.RepoName),
+		"GITHUB_APP_ID":          []byte(c.AppID),
+		"GITHUB_APP_PRIVATE_KEY": []byte(c.AppPEM),
+		"GITHUB_INSTALLATION_ID": []byte(c.InstallationID),
 	}
 
 	return &corev1.Secret{
@@ -332,7 +332,7 @@ func FromSecret(secret *corev1.Secret) (*Config, error) {
 		RepoName:       string(secret.Data["GITHUB_REPO_NAME"]),
 		AppID:          string(secret.Data["GITHUB_APP_ID"]),
 		AppPEM:         string(secret.Data["GITHUB_APP_PRIVATE_KEY"]),
-		InstallationID: string(secret.Data["GITHUB_APP_INSTALLATION_ID"]),
+		InstallationID: string(secret.Data["GITHUB_INSTALLATION_ID"]),
 	}, nil
 }
 

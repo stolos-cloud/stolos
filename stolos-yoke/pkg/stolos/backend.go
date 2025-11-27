@@ -319,14 +319,18 @@ func CreateBackendSecrets(input types.Stolos) *corev1.Secret {
 	secretName := "stolos-backend-secrets"
 	existingSecret, err := utils.GetExistingSecret(secretName, input.Spec.StolosPlatform.Namespace)
 
+	// Preserve existing JWT secret if it exists
+	jwtSecret := ""
 	if err == nil && existingSecret != nil {
-		if _, ok := existingSecret.Data["JWT_SECRET_KEY"]; ok {
-			return existingSecret
+		if val, ok := existingSecret.Data["JWT_SECRET_KEY"]; ok {
+			jwtSecret = string(val)
 		}
 	}
 
-	// Generate new JWT secret since it doesn't exist
-	jwtSecret := utils.GenerateRandomString(32)
+	// Generate new JWT secret if not found
+	if jwtSecret == "" {
+		jwtSecret = utils.GenerateRandomString(32)
+	}
 
 	secret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{

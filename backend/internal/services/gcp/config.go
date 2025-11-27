@@ -58,7 +58,16 @@ func (s *GCPService) ConfigureGCP(ctx context.Context, projectID, region, servic
 	var bucketName string
 	// Only create bucket if it doesn't exist in DB
 	if err != nil || config.BucketName == "" {
-		bucketName, err = s.CreateTerraformBucket(ctx, projectID, region, s.cfg.ClusterName)
+		// Create client directly from provided credentials
+		gcpCfg, err := gcpconfig.NewConfig(projectID, region, serviceAccountJSON, "")
+		if err != nil {
+			return nil, fmt.Errorf("invalid service account configuration: %w", err)
+		}
+		gcpClient, err := gcp.NewClientFromConfig(gcpCfg)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create GCP client: %w", err)
+		}
+		bucketName, err = gcpClient.CreateTerraformBucket(ctx, s.cfg.ClusterName)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create terraform bucket: %w", err)
 		}
