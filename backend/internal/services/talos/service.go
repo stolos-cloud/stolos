@@ -185,10 +185,40 @@ func (s *TalosService) GetMachineryClient(nodeIP string) (*machineryClient.Clien
 	)
 }
 
+// GetMachineryClientWithCtx gets Talos machinery client from database or TALOS_FOLDER. provide ctx
+// DB first, then file fallback
+func (s *TalosService) GetMachineryClientWithCtx(ctx context.Context, endpointNodeIP string) (*machineryClient.Client, error) {
+	endpoint := net.JoinHostPort(endpointNodeIP, "50000")
+
+	talosConfigBytes, err := s.GetTalosConfigFromDB()
+	if err != nil {
+		// Fallback to file
+		if s.cfg.TalosFolder != "" {
+			talosConfigBytes, err = os.ReadFile(filepath.Join(s.cfg.TalosFolder, "talosconfig"))
+			if err != nil {
+				return nil, fmt.Errorf("failed to load talosconfig from DB or file: %w", err)
+			}
+		} else {
+			return nil, fmt.Errorf("no talosconfig in database and TALOS_FOLDER not configured: %w", err)
+		}
+	}
+
+	talosconfig, err := machineryClientConfig.FromBytes(talosConfigBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse talosconfig: %w", err)
+	}
+
+	return machineryClient.New(
+		ctx,
+		machineryClient.WithConfig(talosconfig), // talosconfig provides certs
+		machineryClient.WithEndpoints(endpoint),
+	)
+}
+
 // GetReachableMachineryClient iterates over nodes to find the first reachable Talos machinery client.
 func (s *TalosService) GetReachableMachineryClient(ctx context.Context) (*machineryClient.Client, *models.Node, error) {
 	var nodes []models.Node
-	if err := s.db.Where("ip_address <> ''").Find(&nodes).Error; err != nil {
+	if err := s.db.Where("ip_address <> '' AND provider = ?", "onprem").Find(&nodes).Error; err != nil {
 		return nil, nil, fmt.Errorf("failed to load nodes: %w", err)
 	}
 
