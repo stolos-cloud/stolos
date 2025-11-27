@@ -1005,11 +1005,11 @@ func RunPortalStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 		err = cmdr.Takeoff(context.Background(), yoke.TakeoffParams{
 			Namespace: "atc",
 			Flight: yoke.FlightParams{
-				Path: "oci://ghcr.io/yokecd/atc-installer:0.15.0",
+				Path: "oci://ghcr.io/yokecd/atc-installer:0.16.0",
 				Args: []string{
 					"--skip-version-check", "true",
-					"--set", "dockerConfigSecretName=ghcr-pull-secret",
 				},
+				Input: strings.NewReader("dockerConfigSecretName: ghcr-pull-secret\n"),
 			},
 			Release: "atc",
 		})
@@ -1048,6 +1048,11 @@ func RunPortalStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 			Version:  "v1alpha1",
 			Resource: "Airway",
 		}).Namespace("atc").Apply(context.Background(), "stolosplatforms.stolos.cloud", stolosAirwayUnstructured, metav1.ApplyOptions{})
+
+		if err != nil {
+			m.Logger.Errorf("Failed to apply stolos airway: %v", err)
+			return
+		}
 
 		time.Sleep(10 * time.Second)
 
@@ -1123,6 +1128,9 @@ func RunPortalStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 		}
 
 		mapStolosCR, err := runtime.DefaultUnstructuredConverter.ToUnstructured(&stolosCR)
+		if err != nil {
+			m.Logger.Errorf("Failed to convert stolos CR to unstructured: %v", err)
+		}
 		unstructuredStolosCR := unstructured.Unstructured{Object: mapStolosCR}
 
 		githubClient, err := github.NewClientFromApp(
@@ -1147,7 +1155,7 @@ func RunPortalStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 
 		_, err = k8sClientDyn.Resource(schema.GroupVersionResource{
 			Group:    "stolos.cloud",
-			Version:  "v1alpha",
+			Version:  "v1alpha1",
 			Resource: "stolosplatforms",
 		}).Create(context.Background(), &unstructuredStolosCR, metav1.CreateOptions{})
 

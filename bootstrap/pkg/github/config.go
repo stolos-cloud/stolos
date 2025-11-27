@@ -210,24 +210,44 @@ func (c *OauthClient) CreateInitialConfig(config *unstructured.Unstructured, inf
 		},
 	}
 
+	filePath := "system/stolos-system.yaml"
+
+	// Check if file already exists to get its SHA for update
+	existingFile, _, _, _ := c.Repositories.GetContents(
+		context.Background(),
+		info.RepoOwner,
+		info.RepoName,
+		filePath,
+		&github.RepositoryContentGetOptions{Ref: "main"},
+	)
+
+	opts := &github.RepositoryContentFileOptions{
+		Message:   github.Ptr("Update stolos config file"),
+		Content:   out.Bytes(),
+		Branch:    github.Ptr("main"),
+		Committer: &author,
+	}
+
+	// If file exists, include SHA to update it
+	if existingFile != nil {
+		opts.SHA = existingFile.SHA
+	} else {
+		opts.Message = github.Ptr("Initial config file")
+	}
+
 	_, response, err := c.Repositories.CreateFile(
 		context.Background(),
 		info.RepoOwner,
 		info.RepoName,
-		"system/stolos-system.yaml",
-		&github.RepositoryContentFileOptions{
-			Message:   github.Ptr("Initial config file"),
-			Content:   out.Bytes(),
-			Branch:    github.Ptr("main"),
-			Committer: &author,
-		},
+		filePath,
+		opts,
 	)
 
 	if err != nil {
 		return fmt.Errorf("failed to create config file: %w", err)
 	}
 
-	if response.StatusCode != 201 {
+	if response.StatusCode != 200 && response.StatusCode != 201 {
 		return fmt.Errorf("CreateFile returned %d", response.StatusCode)
 	}
 
