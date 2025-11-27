@@ -178,7 +178,7 @@ func (h *TemplatesHandler) doApplyAction(c *gin.Context, onlyDryRun bool) {
 		cr["metadata"] = make(map[string]interface{})
 	}
 	cr["metadata"].(map[string]interface{})["name"] = c.Param("instance_name")
-	cr["metadata"].(map[string]interface{})["namespace"] = k8s.K8sNamespacePrefix + userNamespace.Name
+	cr["metadata"].(map[string]interface{})["namespace"] = userNamespace.Name
 
 	apiVersion := crdTemplate.GetCRD().Spec.Group + "/" + crdTemplate.GetCRD().Spec.Versions[0].Name
 	cr["kind"] = crdTemplate.GetCRD().Spec.Names.Kind
@@ -286,15 +286,24 @@ func (h *TemplatesHandler) GetDeployment(c *gin.Context) {
 
 	if templateName == "" || deploymentName == "" || namespace == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "missing parameters"})
+		return
+	}
+
+	crdTemplate, err := templates.GetTemplate(h.k8sClient, templateName)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "template not found"})
+		return
 	}
 
 	deployment, err := h.k8sClient.DynamicClient.Resource(schema.GroupVersionResource{
-		Group:    templateGroup,
-		Resource: templateName,
+		Group:    crdTemplate.GetCRD().Spec.Group,
+		Version:  crdTemplate.GetCRD().Spec.Versions[0].Name,
+		Resource: crdTemplate.GetCRD().Spec.Names.Plural,
 	}).Namespace(namespace).Get(context.TODO(), deploymentName, metav1.GetOptions{})
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
 
 	c.JSON(http.StatusOK, deployment)
@@ -325,6 +334,7 @@ func (h *TemplatesHandler) DeleteDeployment(c *gin.Context) {
 
 	if templateName == "" || deploymentName == "" || namespace == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "missing parameters"})
+		return
 	}
 
 	userNamespace, err := gorm.G[models.Namespace](h.db).Where("name = ?", namespace).First(context.Background())
@@ -342,15 +352,24 @@ func (h *TemplatesHandler) DeleteDeployment(c *gin.Context) {
 
 	if !slices.Contains(claims.Namespaces, userNamespace.ID) && claims.Role != models.RoleAdmin {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User cannot deploy to this namespace"})
+		return
+	}
+
+	crdTemplate, err := templates.GetTemplate(h.k8sClient, templateName)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "template not found"})
+		return
 	}
 
 	err = h.k8sClient.DynamicClient.Resource(schema.GroupVersionResource{
-		Group:    templateGroup,
-		Resource: templateName,
+		Group:    crdTemplate.GetCRD().Spec.Group,
+		Version:  crdTemplate.GetCRD().Spec.Versions[0].Name,
+		Resource: crdTemplate.GetCRD().Spec.Names.Plural,
 	}).Namespace(namespace).Delete(context.TODO(), deploymentName, metav1.DeleteOptions{})
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})

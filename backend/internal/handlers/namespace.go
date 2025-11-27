@@ -65,8 +65,10 @@ func (h *NamespaceHandlers) CreateNamespace(c *gin.Context) {
 		return
 	}
 
+	fullName := k8s.K8sNamespacePrefix + req.Name
+
 	var existingNamespace models.Namespace
-	if err := h.db.First(&existingNamespace, "name = ?", req.Name).Error; err == nil {
+	if err := h.db.First(&existingNamespace, "name = ?", fullName).Error; err == nil {
 		c.JSON(http.StatusConflict, gin.H{"error": "Namespace already exists"})
 		return
 	}
@@ -79,7 +81,7 @@ func (h *NamespaceHandlers) CreateNamespace(c *gin.Context) {
 	}
 
 	namespace := models.Namespace{
-		Name: req.Name,
+		Name: fullName,
 	}
 
 	if err := h.db.Create(&namespace).Error; err != nil {
@@ -94,12 +96,12 @@ func (h *NamespaceHandlers) CreateNamespace(c *gin.Context) {
 	}
 
 	// Create the actual Kubernetes namespace
-	if err := h.k8sClient.CreateNamespace(context.Background(), req.Name); err != nil {
-		fmt.Printf("Warning: Failed to create Kubernetes namespace %s: %v\n", req.Name, err)
+	if err := h.k8sClient.CreateNamespace(context.Background(), fullName); err != nil {
+		fmt.Printf("Warning: Failed to create Kubernetes namespace %s: %v\n", fullName, err)
 	}
 
 	// Create GitOps manifests for the namespace
-	if err := h.gitopsService.CreateNamespaceDirectory(context.Background(), req.Name); err != nil {
+	if err := h.gitopsService.CreateNamespaceDirectory(context.Background(), fullName); err != nil {
 		fmt.Printf("Warning: Failed to create GitOps manifests for namespace %s: %v\n", req.Name, err)
 	}
 
