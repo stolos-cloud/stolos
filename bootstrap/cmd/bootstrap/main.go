@@ -55,7 +55,7 @@ var gcpConfig *gcp.GCPConfig
 var githubConfig *github.Config
 var githubToken *oauth2.Token
 var gcpToken *oauth2.Token
-var gcpEnabled = false //gcp.GCPClientId != "" && gcp.GCPClientSecret != ""
+var gcpEnabled = gcp.GCPClientId != "" && gcp.GCPClientSecret != ""
 
 // var gitHubEnabled = github.GithubOauthClientId != "" && github.GithubOauthClientSecret != "" // legacy
 var gitHubEnabled = true
@@ -1067,7 +1067,26 @@ func RunPortalStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 			m.Logger.Info("Stolos airway already exists, skipping creation")
 		}
 
-		time.Sleep(10 * time.Second)
+		// Wait for the StolosPlatform CRD to be created by the airway controller
+		m.Logger.Info("Waiting for StolosPlatform CRD to be ready...")
+		stolosPlatformGVR := schema.GroupVersionResource{
+			Group:    "stolos.cloud",
+			Version:  "v1alpha",
+			Resource: "stolosplatforms",
+		}
+		maxRetries := 30
+		for i := 0; i < maxRetries; i++ {
+			_, err := k8sDynamicClient.Resource(stolosPlatformGVR).List(context.Background(), metav1.ListOptions{Limit: 1})
+			if err == nil {
+				m.Logger.Success("StolosPlatform CRD is ready")
+				break
+			}
+			if i == maxRetries-1 {
+				m.Logger.Errorf("Timed out waiting for StolosPlatform CRD to be ready: %v", err)
+				return
+			}
+			time.Sleep(2 * time.Second)
+		}
 
 		stolosCR := types.Stolos{
 			TypeMeta: metav1.TypeMeta{
