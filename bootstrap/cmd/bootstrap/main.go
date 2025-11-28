@@ -36,6 +36,7 @@ import (
 	"github.com/yokecd/yoke/pkg/yoke"
 	"golang.org/x/oauth2"
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -66,11 +67,10 @@ const _bootstrapStateFile = "bootstrap-state.json"
 const _bootstrapConfigFile = "bootstrap-config.json"
 const _gigabyte = 1073741824
 
-const stolosAirwayTag = "v0.2.0-alpha"
-
 func main() {
 
 	tui.RegisterDefaultFunc("GetOutboundIP", GetOutboundIP)
+	tui.RegisterDefaultFunc("GetLatestStolosRelease", GetLatestStolosRelease)
 
 	_, err := os.Stat(_bootstrapStateFile)
 
@@ -318,25 +318,35 @@ func main() {
 		OnEnter:     RunGCPSAStepInBackground,
 	}
 
+	// Only auto-advance TalosInfo step if we have actual TalosInfo data
+	hasTalosInfo := didReadBootstrapInfos && bootstrapInfos.TalosInfo.ClusterName != ""
 	talosInfoStep := tui.Step{
 		Name:        "TalosInfo",
 		Title:       "3) Talos and Kubernetes Information",
 		Kind:        tui.StepForm,
 		Fields:      tui.CreateFieldsForStruct[talos.TalosInfo](),
 		IsDone:      true,
-		AutoAdvance: didReadBootstrapInfos,
+		AutoAdvance: hasTalosInfo,
 		OnEnter: func(m *tui.Model, s *tui.Step) tea.Cmd {
-			if doRestoreProgress {
+			// Only skip if TalosInfo was actually saved
+			if doRestoreProgress && bootstrapInfos.TalosInfo.ClusterName != "" {
 				m.Logger.Info("State file found, skipping talos info form")
+				// Ensure StolosAirwayTag has a value
+				if bootstrapInfos.TalosInfo.StolosAirwayTag == "" {
+					bootstrapInfos.TalosInfo.StolosAirwayTag = GetLatestStolosRelease()
+					m.Logger.Infof("StolosAirwayTag not in state, using latest: %s", bootstrapInfos.TalosInfo.StolosAirwayTag)
+				}
 				s.IsDone = true
 				s.AutoAdvance = true
 			}
 			return nil
 		},
 		OnExit: func(m *tui.Model, s *tui.Step) {
-			if !didReadBootstrapInfos {
+			// Save TalosInfo if it wasn't restored from state (or was incomplete)
+			if !hasTalosInfo {
 				talosInfo, err := tui.RetrieveStructFromFields[talos.TalosInfo](s.Fields)
 				if err != nil {
+					m.Logger.Errorf("Error retrieving talos info: %s", err)
 				}
 				bootstrapInfos.TalosInfo = *talosInfo
 				saveState.BootstrapInfo = *bootstrapInfos
@@ -1005,11 +1015,11 @@ func RunPortalStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 		err = cmdr.Takeoff(context.Background(), yoke.TakeoffParams{
 			Namespace: "atc",
 			Flight: yoke.FlightParams{
-				Path: "oci://ghcr.io/yokecd/atc-installer:0.15.0",
+				Path: "oci://ghcr.io/yokecd/atc-installer:0.16.0",
 				Args: []string{
 					"--skip-version-check", "true",
-					"--set", "dockerConfigSecretName=ghcr-pull-secret",
 				},
+				Input: strings.NewReader("dockerConfigSecretName: ghcr-pull-secret\n"),
 			},
 			Release: "atc",
 		})
@@ -1020,7 +1030,7 @@ func RunPortalStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 
 		time.Sleep(30 * time.Second)
 
-		stolosAirwayUrl := fmt.Sprintf("https://raw.githubusercontent.com/stolos-cloud/stolos/refs/tags/%s/stolos-yoke/airway.yml", stolosAirwayTag)
+		stolosAirwayUrl := fmt.Sprintf("https://raw.githubusercontent.com/stolos-cloud/stolos/refs/tags/%s/stolos-yoke/airway.yml", bootstrapInfos.TalosInfo.StolosAirwayTag)
 		resp, err := http.Get(stolosAirwayUrl)
 		if err != nil {
 			m.Logger.Errorf("Failed to download stolos airway url: %v", err)
@@ -1046,10 +1056,37 @@ func RunPortalStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 		_, err = k8sDynamicClient.Resource(schema.GroupVersionResource{
 			Group:    "yoke.cd",
 			Version:  "v1alpha1",
-			Resource: "Airway",
-		}).Namespace("atc").Apply(context.Background(), "stolosplatforms.stolos.cloud", stolosAirwayUnstructured, metav1.ApplyOptions{})
+			Resource: "airways",
+		}).Create(context.Background(), stolosAirwayUnstructured, metav1.CreateOptions{})
 
-		time.Sleep(10 * time.Second)
+		if err != nil && !k8serrors.IsAlreadyExists(err) {
+			m.Logger.Errorf("Failed to create stolos airway: %v", err)
+			return
+		}
+		if k8serrors.IsAlreadyExists(err) {
+			m.Logger.Info("Stolos airway already exists, skipping creation")
+		}
+
+		// Wait for the StolosPlatform CRD to be created by the airway controller
+		m.Logger.Info("Waiting for StolosPlatform CRD to be ready...")
+		stolosPlatformGVR := schema.GroupVersionResource{
+			Group:    "stolos.cloud",
+			Version:  "v1alpha",
+			Resource: "stolosplatforms",
+		}
+		maxRetries := 30
+		for i := 0; i < maxRetries; i++ {
+			_, err := k8sDynamicClient.Resource(stolosPlatformGVR).List(context.Background(), metav1.ListOptions{Limit: 1})
+			if err == nil {
+				m.Logger.Success("StolosPlatform CRD is ready")
+				break
+			}
+			if i == maxRetries-1 {
+				m.Logger.Errorf("Timed out waiting for StolosPlatform CRD to be ready: %v", err)
+				return
+			}
+			time.Sleep(2 * time.Second)
+		}
 
 		stolosCR := types.Stolos{
 			TypeMeta: metav1.TypeMeta{
@@ -1123,6 +1160,9 @@ func RunPortalStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 		}
 
 		mapStolosCR, err := runtime.DefaultUnstructuredConverter.ToUnstructured(&stolosCR)
+		if err != nil {
+			m.Logger.Errorf("Failed to convert stolos CR to unstructured: %v", err)
+		}
 		unstructuredStolosCR := unstructured.Unstructured{Object: mapStolosCR}
 
 		githubClient, err := github.NewClientFromApp(
@@ -1278,4 +1318,43 @@ func GetOutboundIP() string {
 	localAddr := conn.LocalAddr().(*net.UDPAddr)
 
 	return localAddr.IP.String()
+}
+
+func GetLatestStolosRelease() string {
+	const fallbackVersion = "v0.2.0-alpha" // since latest is v0.3.0-alpha just to show latest works. Remove if you read this
+	const repoOwner = "stolos-cloud"
+	const repoName = "stolos"
+
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/latest", repoOwner, repoName)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return fallbackVersion
+	}
+	req.Header.Set("Accept", "application/vnd.github.v3+json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return fallbackVersion
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fallbackVersion
+	}
+
+	var release struct {
+		TagName string `json:"tag_name"`
+	}
+
+	if err := yaml.NewYAMLOrJSONDecoder(resp.Body, 1024).Decode(&release); err != nil {
+		return fallbackVersion
+	}
+
+	if release.TagName == "" {
+		return fallbackVersion
+	}
+
+	return release.TagName
 }

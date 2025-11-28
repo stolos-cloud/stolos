@@ -23,6 +23,11 @@ func CreateMetalLBNamespace(input types.Stolos) *v1.Namespace {
 	ns := v1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: input.Spec.MetalLB.Namespace,
+			Labels: map[string]string{
+				"pod-security.kubernetes.io/enforce": "privileged",
+				"pod-security.kubernetes.io/audit":   "privileged",
+				"pod-security.kubernetes.io/warn":    "privileged",
+			},
 		},
 	}
 

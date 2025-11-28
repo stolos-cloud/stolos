@@ -1,7 +1,12 @@
-name: Publish stolos yoke
+name: stolos-yoke CI/CD
 on:
   workflow_dispatch:
   push:
+    branches:
+      - main
+    paths:
+      - stolos-yoke/**
+  pull_request:
     branches:
       - main
     paths:
@@ -12,7 +17,26 @@ permissions:
   packages: write
 
 jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+
+      - name: Build flight
+        run: |
+          cd stolos-yoke
+          go mod download
+          go vet ./...
+          GOOS=wasip1 GOARCH=wasm go build -o flight.wasm ./cmd/main/
+
   publish:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     env:
       IMAGE: "ghcr.io/stolos-cloud/stolosplatform-yoke:${{ github.sha }}"
@@ -26,7 +50,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version: "1.25"
 
       - name: Setup yoke
         run: |

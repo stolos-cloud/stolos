@@ -210,24 +210,44 @@ func (c *OauthClient) CreateInitialConfig(config *unstructured.Unstructured, inf
 		},
 	}
 
+	filePath := "system/stolos-system.yaml"
+
+	// Check if file already exists to get its SHA for update
+	existingFile, _, _, _ := c.Repositories.GetContents(
+		context.Background(),
+		info.RepoOwner,
+		info.RepoName,
+		filePath,
+		&github.RepositoryContentGetOptions{Ref: "main"},
+	)
+
+	opts := &github.RepositoryContentFileOptions{
+		Message:   github.Ptr("Update stolos config file"),
+		Content:   out.Bytes(),
+		Branch:    github.Ptr("main"),
+		Committer: &author,
+	}
+
+	// If file exists, include SHA to update it
+	if existingFile != nil {
+		opts.SHA = existingFile.SHA
+	} else {
+		opts.Message = github.Ptr("Initial config file")
+	}
+
 	_, response, err := c.Repositories.CreateFile(
 		context.Background(),
 		info.RepoOwner,
 		info.RepoName,
-		"system/stolos-system.yaml",
-		&github.RepositoryContentFileOptions{
-			Message:   github.Ptr("Initial config file"),
-			Content:   out.Bytes(),
-			Branch:    github.Ptr("main"),
-			Committer: &author,
-		},
+		filePath,
+		opts,
 	)
 
 	if err != nil {
 		return fmt.Errorf("failed to create config file: %w", err)
 	}
 
-	if response.StatusCode != 201 {
+	if response.StatusCode != 200 && response.StatusCode != 201 {
 		return fmt.Errorf("CreateFile returned %d", response.StatusCode)
 	}
 
@@ -276,11 +296,11 @@ func NewGithubAppConfig(repoOwner, repoName, appID, appPEM, installationID strin
 // ToSecret serializes GitHub config to Kubernetes secret
 func (c *Config) ToSecret(namespace, secretName string) *corev1.Secret {
 	data := map[string][]byte{
-		"GITHUB_REPO_OWNER":          []byte(c.RepoOwner),
-		"GITHUB_REPO_NAME":           []byte(c.RepoName),
-		"GITHUB_APP_ID":              []byte(c.AppID),
-		"GITHUB_APP_PRIVATE_KEY":     []byte(c.AppPEM),
-		"GITHUB_APP_INSTALLATION_ID": []byte(c.InstallationID),
+		"GITHUB_REPO_OWNER":      []byte(c.RepoOwner),
+		"GITHUB_REPO_NAME":       []byte(c.RepoName),
+		"GITHUB_APP_ID":          []byte(c.AppID),
+		"GITHUB_APP_PRIVATE_KEY": []byte(c.AppPEM),
+		"GITHUB_INSTALLATION_ID": []byte(c.InstallationID),
 	}
 
 	return &corev1.Secret{
@@ -312,7 +332,7 @@ func FromSecret(secret *corev1.Secret) (*Config, error) {
 		RepoName:       string(secret.Data["GITHUB_REPO_NAME"]),
 		AppID:          string(secret.Data["GITHUB_APP_ID"]),
 		AppPEM:         string(secret.Data["GITHUB_APP_PRIVATE_KEY"]),
-		InstallationID: string(secret.Data["GITHUB_APP_INSTALLATION_ID"]),
+		InstallationID: string(secret.Data["GITHUB_INSTALLATION_ID"]),
 	}, nil
 }
 
