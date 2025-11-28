@@ -38,7 +38,7 @@ func HelmInstallArgo(helmClient helmclient.Client, releaseName string, namespace
 	}
 
 	chartSpec := helmclient.ChartSpec{
-		ReleaseName: "stolos-argocd",
+		ReleaseName: "argocd",
 		Description: "ArgoCD Deployed by Stolos Cloud",
 		ChartName:   "argo/argo-cd",
 		Namespace:   namespace,

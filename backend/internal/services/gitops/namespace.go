@@ -228,3 +228,90 @@ func matchesPath(filePath, dirPath string) bool {
 	// Exact match or starts with dirPath/
 	return len(filePath) == len(dirPath) || (len(filePath) > len(dirPath) && filePath[len(dirPath)] == '/')
 }
+
+// CreateDeploymentFile creates a deployment YAML file in the GitOps repo under deployments/<namespace>/<deploymentName>.yml
+func (s *GitOpsService) CreateDeploymentFile(ctx context.Context, namespace, deploymentName, yamlContent string) error {
+	ghClient, err := s.GetGitHubClient()
+	if err != nil {
+		return fmt.Errorf("failed to get GitHub client: %w", err)
+	}
+
+	owner, repo := ghClient.GetRepoInfo()
+	branch := ghClient.GetRepoBranch()
+
+	gitopsConfig, err := s.GetConfigOrDefault()
+	if err != nil {
+		return fmt.Errorf("failed to get GitOps config: %w", err)
+	}
+
+	// Create deployment file in deployments/<namespace>/<deploymentName>.yml
+	filePath := fmt.Sprintf("deployments/%s/%s.yml", namespace, deploymentName)
+	files := map[string]string{
+		filePath: yamlContent,
+	}
+
+	commitMsg := fmt.Sprintf("Create deployment %s in namespace %s", deploymentName, namespace)
+	if err := s.commitFilesToGitHub(ctx, ghClient.Client, owner, repo, branch, files, commitMsg, gitopsConfig); err != nil {
+		return fmt.Errorf("failed to commit deployment file: %w", err)
+	}
+
+	fmt.Printf("Successfully created deployment file %s\n", filePath)
+	return nil
+}
+
+// DeleteDeploymentFile deletes a deployment YAML file from the GitOps repo
+func (s *GitOpsService) DeleteDeploymentFile(ctx context.Context, namespace, deploymentName string) error {
+	ghClient, err := s.GetGitHubClient()
+	if err != nil {
+		return fmt.Errorf("failed to get GitHub client: %w", err)
+	}
+
+	owner, repo := ghClient.GetRepoInfo()
+	branch := ghClient.GetRepoBranch()
+
+	gitopsConfig, err := s.GetConfigOrDefault()
+	if err != nil {
+		return fmt.Errorf("failed to get GitOps config: %w", err)
+	}
+
+	filePath := fmt.Sprintf("deployments/%s/%s.yml", namespace, deploymentName)
+	commitMsg := fmt.Sprintf("Delete deployment %s from namespace %s", deploymentName, namespace)
+
+	if err := s.deleteFileFromGitHub(ctx, ghClient.Client, owner, repo, branch, filePath, commitMsg, gitopsConfig); err != nil {
+		return fmt.Errorf("failed to delete deployment file: %w", err)
+	}
+
+	fmt.Printf("Successfully deleted deployment file %s\n", filePath)
+	return nil
+}
+
+// deleteFileFromGitHub deletes a single file from GitHub
+func (s *GitOpsService) deleteFileFromGitHub(ctx context.Context, ghClient *github.Client, owner, repo, branch, filePath, message string, config *models.GitOpsConfig) error {
+	// Get the file to obtain its SHA
+	fileContent, _, _, err := ghClient.Repositories.GetContents(ctx, owner, repo, filePath, &github.RepositoryContentGetOptions{
+		Ref: branch,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to get file content: %w", err)
+	}
+
+	// Delete the file
+	_, _, err = ghClient.Repositories.DeleteFile(ctx, owner, repo, filePath, &github.RepositoryContentFileOptions{
+		Message: github.Ptr(message),
+		SHA:     fileContent.SHA,
+		Branch:  github.Ptr(branch),
+		Author: &github.CommitAuthor{
+			Name:  github.Ptr(config.Username),
+			Email: github.Ptr(config.Email),
+		},
+		Committer: &github.CommitAuthor{
+			Name:  github.Ptr(config.Username),
+			Email: github.Ptr(config.Email),
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to delete file: %w", err)
+	}
+
+	return nil
+}
