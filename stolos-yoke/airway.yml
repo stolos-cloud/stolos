@@ -6,7 +6,7 @@ metadata:
     stolos.cloud/template-display-name: Stolos Platform
 spec:
   wasmUrls:
-    flight: oci://ghcr.io/stolos-cloud/stolosplatform-yoke:675ef7fc88f129b233bd99b4117bf0dd6189f8ca
+    flight: oci://ghcr.io/stolos-cloud/stolosplatform-yoke:d581fc81201756b6f8971de484f81b314bd6cc61
   fixDriftInterval: 5m0s
   clusterAccess: true
   resourceAccessMatchers:
