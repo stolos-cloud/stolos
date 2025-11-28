@@ -36,9 +36,9 @@ import (
 	"github.com/yokecd/yoke/pkg/yoke"
 	"golang.org/x/oauth2"
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/yaml"
@@ -55,7 +55,7 @@ var gcpConfig *gcp.GCPConfig
 var githubConfig *github.Config
 var githubToken *oauth2.Token
 var gcpToken *oauth2.Token
-var gcpEnabled = gcp.GCPClientId != "" && gcp.GCPClientSecret != ""
+var gcpEnabled = false //gcp.GCPClientId != "" && gcp.GCPClientSecret != ""
 
 // var gitHubEnabled = github.GithubOauthClientId != "" && github.GithubOauthClientSecret != "" // legacy
 var gitHubEnabled = true
@@ -67,11 +67,10 @@ const _bootstrapStateFile = "bootstrap-state.json"
 const _bootstrapConfigFile = "bootstrap-config.json"
 const _gigabyte = 1073741824
 
-const stolosAirwayTag = "v0.2.0-alpha"
-
 func main() {
 
 	tui.RegisterDefaultFunc("GetOutboundIP", GetOutboundIP)
+	tui.RegisterDefaultFunc("GetLatestStolosRelease", GetLatestStolosRelease)
 
 	_, err := os.Stat(_bootstrapStateFile)
 
@@ -319,25 +318,35 @@ func main() {
 		OnEnter:     RunGCPSAStepInBackground,
 	}
 
+	// Only auto-advance TalosInfo step if we have actual TalosInfo data
+	hasTalosInfo := didReadBootstrapInfos && bootstrapInfos.TalosInfo.ClusterName != ""
 	talosInfoStep := tui.Step{
 		Name:        "TalosInfo",
 		Title:       "3) Talos and Kubernetes Information",
 		Kind:        tui.StepForm,
 		Fields:      tui.CreateFieldsForStruct[talos.TalosInfo](),
 		IsDone:      true,
-		AutoAdvance: didReadBootstrapInfos,
+		AutoAdvance: hasTalosInfo,
 		OnEnter: func(m *tui.Model, s *tui.Step) tea.Cmd {
-			if doRestoreProgress {
+			// Only skip if TalosInfo was actually saved
+			if doRestoreProgress && bootstrapInfos.TalosInfo.ClusterName != "" {
 				m.Logger.Info("State file found, skipping talos info form")
+				// Ensure StolosAirwayTag has a value
+				if bootstrapInfos.TalosInfo.StolosAirwayTag == "" {
+					bootstrapInfos.TalosInfo.StolosAirwayTag = GetLatestStolosRelease()
+					m.Logger.Infof("StolosAirwayTag not in state, using latest: %s", bootstrapInfos.TalosInfo.StolosAirwayTag)
+				}
 				s.IsDone = true
 				s.AutoAdvance = true
 			}
 			return nil
 		},
 		OnExit: func(m *tui.Model, s *tui.Step) {
-			if !didReadBootstrapInfos {
+			// Save TalosInfo if it wasn't restored from state (or was incomplete)
+			if !hasTalosInfo {
 				talosInfo, err := tui.RetrieveStructFromFields[talos.TalosInfo](s.Fields)
 				if err != nil {
+					m.Logger.Errorf("Error retrieving talos info: %s", err)
 				}
 				bootstrapInfos.TalosInfo = *talosInfo
 				saveState.BootstrapInfo = *bootstrapInfos
@@ -1021,7 +1030,7 @@ func RunPortalStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 
 		time.Sleep(30 * time.Second)
 
-		stolosAirwayUrl := fmt.Sprintf("https://raw.githubusercontent.com/stolos-cloud/stolos/refs/tags/%s/stolos-yoke/airway.yml", stolosAirwayTag)
+		stolosAirwayUrl := fmt.Sprintf("https://raw.githubusercontent.com/stolos-cloud/stolos/refs/tags/%s/stolos-yoke/airway.yml", bootstrapInfos.TalosInfo.StolosAirwayTag)
 		resp, err := http.Get(stolosAirwayUrl)
 		if err != nil {
 			m.Logger.Errorf("Failed to download stolos airway url: %v", err)
@@ -1290,4 +1299,43 @@ func GetOutboundIP() string {
 	localAddr := conn.LocalAddr().(*net.UDPAddr)
 
 	return localAddr.IP.String()
+}
+
+func GetLatestStolosRelease() string {
+	const fallbackVersion = "v0.2.0-alpha" // since latest is v0.3.0-alpha just to show latest works. Remove if you read this
+	const repoOwner = "stolos-cloud"
+	const repoName = "stolos"
+
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/latest", repoOwner, repoName)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return fallbackVersion
+	}
+	req.Header.Set("Accept", "application/vnd.github.v3+json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return fallbackVersion
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fallbackVersion
+	}
+
+	var release struct {
+		TagName string `json:"tag_name"`
+	}
+
+	if err := yaml.NewYAMLOrJSONDecoder(resp.Body, 1024).Decode(&release); err != nil {
+		return fallbackVersion
+	}
+
+	if release.TagName == "" {
+		return fallbackVersion
+	}
+
+	return release.TagName
 }

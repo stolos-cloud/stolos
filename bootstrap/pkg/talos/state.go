@@ -14,6 +14,7 @@ type TalosInfo struct {
 	PXEEnabled             string `json:"PXEEnabled" field_label:"PXE Server Enabled (true/false)" field_default:"false"`
 	PXEPort                string `json:"PXEPort" field_label:"PXE Server Port (Optional)"`
 	DeployLocalPathStorage string `json:"DeployLocalPathStorage" field_label:"Deploy Local-Path Provisioner? (true/false)" field_default:"false"`
+	StolosAirwayTag        string `json:"StolosAirwayTag" field_label:"Stolos Airway Version Tag" field_default_func:"GetLatestStolosRelease"`
 }
 
 type Machines struct {
