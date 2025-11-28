@@ -265,5 +265,8 @@ func DeploySystemApps(input types.Stolos) flight.Resource {
 		},
 	}
 
+	gvks, _, _ := scheme.Scheme.ObjectKinds(&app)
+	app.SetGroupVersionKind(gvks[0])
+
 	return &app
 }
