@@ -1,4 +1,4 @@
-name: Publish stolos yoke
+name: stolos-yoke CI/CD
 on:
   workflow_dispatch:
   push:
