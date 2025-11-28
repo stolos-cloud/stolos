@@ -252,9 +252,9 @@ func DeploySystemApps(input types.Stolos) flight.Resource {
 		},
 		Spec: types.ApplicationSpec{
 			Source: &types.ApplicationSource{
-				RepoURL: fmt.Sprintf("https://github.com/%s/%s", input.Spec.ArgoCD.RepositoryOwner, input.Spec.ArgoCD.RepositoryName),
-				Ref:     input.Spec.ArgoCD.RepositoryRevision,
-				Path:    "system/argoapps",
+				RepoURL:        fmt.Sprintf("https://github.com/%s/%s", input.Spec.ArgoCD.RepositoryOwner, input.Spec.ArgoCD.RepositoryName),
+				TargetRevision: input.Spec.ArgoCD.RepositoryRevision,
+				Path:           "system/argoapps",
 			},
 			Destination: types.ApplicationDestination{
 				Server:    "https://kubernetes.default.svc",

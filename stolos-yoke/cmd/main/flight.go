@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/stolos-cloud/stolos/stolos-yoke/pkg/argocd"
@@ -20,7 +19,6 @@ import (
 	"github.com/yokecd/yoke/pkg/flight"
 	k8s "github.com/yokecd/yoke/pkg/flight/wasi/k8s"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/yaml"
@@ -116,35 +114,35 @@ func run() ([]byte, error) {
 	return json.Marshal(resultResources)
 }
 
-func selfArgoApp(input types.Stolos) *types.Application {
-	app := types.Application{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Application",
-			APIVersion: "argoproj.io/v1alpha1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "stolos-flight",
-			Namespace: input.Spec.ArgoCD.Namespace,
-		},
-		Spec: types.ApplicationSpec{
-			Source: &types.ApplicationSource{
-				RepoURL:        fmt.Sprintf("https://github.com/%s/%s", input.Spec.ArgoCD.RepositoryOwner, input.Spec.ArgoCD.RepositoryName),
-				TargetRevision: input.Spec.ArgoCD.RepositoryRevision,
-				Path:           filepath.Dir(input.Spec.StolosPlatform.PathToYaml),
-				Directory: &types.ApplicationSourceDirectory{
-					Include: filepath.Base(input.Spec.StolosPlatform.PathToYaml),
-				},
-			},
-			Destination: types.ApplicationDestination{
-				Server: "https://kubernetes.default.svc",
-			},
-			Project:    "default",
-			SyncPolicy: argocd.DefaultSyncPolicy,
-		},
-	}
+// func selfArgoApp(input types.Stolos) *types.Application {
+// 	app := types.Application{
+// 		TypeMeta: metav1.TypeMeta{
+// 			Kind:       "Application",
+// 			APIVersion: "argoproj.io/v1alpha1",
+// 		},
+// 		ObjectMeta: metav1.ObjectMeta{
+// 			Name:      "stolos-flight",
+// 			Namespace: input.Spec.ArgoCD.Namespace,
+// 		},
+// 		Spec: types.ApplicationSpec{
+// 			Source: &types.ApplicationSource{
+// 				RepoURL:        fmt.Sprintf("https://github.com/%s/%s", input.Spec.ArgoCD.RepositoryOwner, input.Spec.ArgoCD.RepositoryName),
+// 				TargetRevision: input.Spec.ArgoCD.RepositoryRevision,
+// 				Path:           filepath.Dir(input.Spec.StolosPlatform.PathToYaml),
+// 				Directory: &types.ApplicationSourceDirectory{
+// 					Include: filepath.Base(input.Spec.StolosPlatform.PathToYaml),
+// 				},
+// 			},
+// 			Destination: types.ApplicationDestination{
+// 				Server: "https://kubernetes.default.svc",
+// 			},
+// 			Project:    "default",
+// 			SyncPolicy: argocd.DefaultSyncPolicy,
+// 		},
+// 	}
 
-	gvks, _, _ := scheme.Scheme.ObjectKinds(&app)
-	app.SetGroupVersionKind(gvks[0])
+// 	gvks, _, _ := scheme.Scheme.ObjectKinds(&app)
+// 	app.SetGroupVersionKind(gvks[0])
 
-	return &app
-}
+// 	return &app
+// }
