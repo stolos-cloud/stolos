@@ -1178,13 +1178,17 @@ func RunPortalStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 		err = githubClient.CreateInitialConfig(&unstructuredStolosCR, &bootstrapInfos.GitHubInfo)
 		if err != nil {
 			m.Logger.Errorf("Failed to create stolos config on github: %v", err)
+			return
 		}
+		m.Logger.Success("Created initial GitOps configuration on GitHub")
 
 		k8sClientDyn, err := k8s.NewDynamicClientFromKubeconfig(kubeconfig)
 		if err != nil {
 			m.Logger.Errorf("Failed to create Kubernetes client: %s", err)
+			return
 		}
 
+		m.Logger.Info("Creating StolosPlatform CR...")
 		_, err = k8sClientDyn.Resource(schema.GroupVersionResource{
 			Group:    "stolos.cloud",
 			Version:  "v1alpha",
@@ -1193,7 +1197,11 @@ func RunPortalStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 
 		if err != nil {
 			m.Logger.Errorf("Failed to create stolos platforms: %v", err)
+			return
 		}
+		m.Logger.Success("StolosPlatform CR created successfully")
+
+		m.Logger.Info("Bootstrap complete!")
 
 		s.IsDone = true
 	}()

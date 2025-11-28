@@ -82,8 +82,6 @@ jobs:
           go run -tags airway ./cmd/main/ -flight-url "oci://$IMAGE" | yq -P > airway.yml
           git add airway.yml || true
           cd -
-        env:
-          CHANGED: ${{ steps.changes.outputs.changed }}
 
       - name: Commit and push if any files staged
         run: |
