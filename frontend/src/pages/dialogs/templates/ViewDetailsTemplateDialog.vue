@@ -5,7 +5,7 @@
             <BaseExpansion :title="$t('templateDefinitions.dialogs.viewDetailsTemplate.crdDefinition')">
                 <template #actions>
                     <BaseChip class="ml-2">
-                        v{{ template?.version || '1.0' }}
+                        {{ template?.version }}
                     </BaseChip>
                 </template>
                 <v-sheet color="grey-darken-4" rounded style="position: relative;">

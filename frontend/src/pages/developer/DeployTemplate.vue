@@ -65,12 +65,15 @@ onMounted(async () => {
     template.value = await getTemplate(props.templateId)
     console.log(template)
 
+    monaco.languages.json.jsonDefaults.setDiagnosticsOptions({ schemas: [] });
+    const modelUri = `file:///${template.value.name}.yaml`;
+
     configureMonacoYaml(monaco, {
         enableSchemaRequest: true,
         schemas: [
             {
                 // If YAML file is opened matching this glob
-                fileMatch: ['*'],
+                fileMatch: [modelUri],
                 // The following schema will be applied
                 schema: JSON.parse(JSON.stringify(template.value.jsonSchema)),
                 // And the URI will be linked to as the source.
@@ -93,7 +96,7 @@ onMounted(async () => {
 
     const model = monaco.editor.createModel(
         "",
-        undefined,
+        "yaml",
         monaco.Uri.parse(`file:///${template.value.name}.yaml`)
     )
 
@@ -114,7 +117,12 @@ onMounted(async () => {
 
 })
 onBeforeUnmount(() => {
+    const editor = monaco.editor.getEditors().find(ed => ed.getModel()?.uri.path === `/${template.value.name}.yaml`);
     const model = monaco.editor.getModel(monaco.Uri.parse(`file:///${template.value.name}.yaml`));
+
+    if (editor) {
+        editor.dispose();
+    }
     if (model) {
         model.dispose();
     }
