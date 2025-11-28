@@ -38,6 +38,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/yaml"
@@ -1047,11 +1048,14 @@ func RunPortalStepInBackground(m *tui.Model, s *tui.Step) tea.Cmd {
 			Group:    "yoke.cd",
 			Version:  "v1alpha1",
 			Resource: "airways",
-		}).Namespace("atc").Apply(context.Background(), "stolosplatforms.stolos.cloud", stolosAirwayUnstructured, metav1.ApplyOptions{})
+		}).Create(context.Background(), stolosAirwayUnstructured, metav1.CreateOptions{})
 
-		if err != nil {
-			m.Logger.Errorf("Failed to apply stolos airway: %v", err)
+		if err != nil && !k8serrors.IsAlreadyExists(err) {
+			m.Logger.Errorf("Failed to create stolos airway: %v", err)
 			return
+		}
+		if k8serrors.IsAlreadyExists(err) {
+			m.Logger.Info("Stolos airway already exists, skipping creation")
 		}
 
 		time.Sleep(10 * time.Second)
