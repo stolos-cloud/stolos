@@ -244,7 +244,7 @@ func DeployArgoCDImageUpdaterResources(input types.Stolos) []flight.Resource {
 func DeploySystemApps(input types.Stolos) flight.Resource {
 	app := types.Application{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "argocd",
+			Name:      "system-argoapps",
 			Namespace: input.Spec.ArgoCD.Namespace,
 			Annotations: map[string]string{
 				"argocd.argoproj.io/sync-wave": "-10",

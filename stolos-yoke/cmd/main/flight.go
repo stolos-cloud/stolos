@@ -7,11 +7,11 @@ import (
 	"path/filepath"
 	"time"
 
-	localpathprovisioner "github.com/stolos-cloud/stolos/stolos-yoke/pkg/local-path-provisioner"
 	"github.com/stolos-cloud/stolos/stolos-yoke/pkg/argocd"
 	cert_manager "github.com/stolos-cloud/stolos/stolos-yoke/pkg/cert-manager"
 	"github.com/stolos-cloud/stolos/stolos-yoke/pkg/cnpg"
 	"github.com/stolos-cloud/stolos/stolos-yoke/pkg/contour"
+	localpathprovisioner "github.com/stolos-cloud/stolos/stolos-yoke/pkg/local-path-provisioner"
 	"github.com/stolos-cloud/stolos/stolos-yoke/pkg/metallb"
 	"github.com/stolos-cloud/stolos/stolos-yoke/pkg/stolos"
 	types "github.com/stolos-cloud/stolos/stolos-yoke/pkg/types"
@@ -88,7 +88,7 @@ func run() ([]byte, error) {
 		resources = append(resources, stolos.AllStolos(input)...)
 	}
 
-	resources = append(resources, selfArgoApp(input))
+	// resources = append(resources, selfArgoApp(input))
 
 	resultResources := []flight.Resource{}
 	coreScheme := k8sruntime.NewScheme()
