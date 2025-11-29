@@ -258,7 +258,7 @@ func (h *TemplatesHandler) ListDeployments(c *gin.Context) {
 			Table("user_namespaces").
 			Joins("JOIN namespaces ON namespaces.id = user_namespaces.namespace_id").
 			Where("user_namespaces.user_id = ?", claims.UserID).
-			Pluck("CONCAT('app-', namespaces.name)", &myNamespaces).Error; err != nil {
+			Pluck("namespaces.name", &myNamespaces).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		}
 
