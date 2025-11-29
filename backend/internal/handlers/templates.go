@@ -16,7 +16,8 @@ import (
 	"gorm.io/gorm"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/util/yaml"
+	k8syaml "k8s.io/apimachinery/pkg/util/yaml"
+	"sigs.k8s.io/yaml"
 )
 
 const templateGroup = "stolos.cloud"
@@ -152,7 +153,7 @@ func (h *TemplatesHandler) doApplyAction(c *gin.Context, onlyDryRun bool) {
 		return
 	}
 
-	if err := yaml.Unmarshal(body, &cr); err != nil {
+	if err := k8syaml.Unmarshal(body, &cr); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("invalid YAML: %v", err)})
 		return
 	}
@@ -172,12 +173,15 @@ func (h *TemplatesHandler) doApplyAction(c *gin.Context, onlyDryRun bool) {
 
 	if !slices.Contains(claims.Namespaces, userNamespace.ID) && claims.Role != models.RoleAdmin {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User cannot deploy to this namespace"})
+		return
 	}
+
+	instanceName := c.Param("instance_name")
 
 	if cr["metadata"] == nil {
 		cr["metadata"] = make(map[string]interface{})
 	}
-	cr["metadata"].(map[string]interface{})["name"] = c.Param("instance_name")
+	cr["metadata"].(map[string]interface{})["name"] = instanceName
 	cr["metadata"].(map[string]interface{})["namespace"] = userNamespace.Name
 
 	apiVersion := crdTemplate.GetCRD().Spec.Group + "/" + crdTemplate.GetCRD().Spec.Versions[0].Name
@@ -193,6 +197,18 @@ func (h *TemplatesHandler) doApplyAction(c *gin.Context, onlyDryRun bool) {
 	if err := h.k8sClient.ApplyCR(cr, gvr, onlyDryRun); err != nil {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error()})
 		return
+	}
+
+	if !onlyDryRun {
+		yamlBytes, err := yaml.Marshal(cr)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to marshal YAML: %v", err)})
+			return
+		}
+
+		if err := h.gitOpsService.CreateDeploymentFile(context.Background(), userNamespace.Name, instanceName, string(yamlBytes)); err != nil {
+			fmt.Printf("Warning: Failed to create deployment file in GitOps repo: %v\n", err)
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"status": "ok", "cr": cr})
@@ -355,20 +371,9 @@ func (h *TemplatesHandler) DeleteDeployment(c *gin.Context) {
 		return
 	}
 
-	crdTemplate, err := templates.GetTemplate(h.k8sClient, templateName)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "template not found"})
-		return
-	}
-
-	err = h.k8sClient.DynamicClient.Resource(schema.GroupVersionResource{
-		Group:    crdTemplate.GetCRD().Spec.Group,
-		Version:  crdTemplate.GetCRD().Spec.Versions[0].Name,
-		Resource: crdTemplate.GetCRD().Spec.Names.Plural,
-	}).Namespace(namespace).Delete(context.TODO(), deploymentName, metav1.DeleteOptions{})
-
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	// Delete deployment file from GitOps repo
+	if err := h.gitOpsService.DeleteDeploymentFile(context.Background(), namespace, deploymentName); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to delete deployment file: %v", err)})
 		return
 	}
 

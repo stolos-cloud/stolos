@@ -180,6 +180,20 @@ func (h *GCPHandlers) ConfigureGCP(c *gin.Context) {
 		return
 	}
 
+	// Initialize infrastructure in background only if not already ready
+	if gcpConfig.InfrastructureStatus != "ready" {
+		go func() {
+			log.Printf("Starting infrastructure initialization for GCP provider...")
+			if err := h.infrastructureService.InitializeInfrastructure(context.Background(), "gcp"); err != nil {
+				log.Printf("Failed to initialize GCP infrastructure: %v", err)
+			} else {
+				log.Printf("GCP infrastructure initialized successfully")
+			}
+		}()
+	} else {
+		log.Printf("GCP infrastructure already ready, skipping initialization")
+	}
+
 	c.JSON(http.StatusOK, gcpConfig)
 }
 
@@ -234,6 +248,20 @@ func (h *GCPHandlers) ConfigureGCPUpload(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
+	}
+
+	// Initialize infrastructure in background only if not already ready
+	if gcpConfig.InfrastructureStatus != "ready" {
+		go func() {
+			log.Printf("Starting infrastructure initialization for GCP provider...")
+			if err := h.infrastructureService.InitializeInfrastructure(context.Background(), "gcp"); err != nil {
+				log.Printf("Failed to initialize GCP infrastructure: %v", err)
+			} else {
+				log.Printf("GCP infrastructure initialized successfully")
+			}
+		}()
+	} else {
+		log.Printf("GCP infrastructure already ready, skipping initialization")
 	}
 
 	c.JSON(http.StatusOK, gcpConfig)

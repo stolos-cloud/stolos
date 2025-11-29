@@ -223,13 +223,11 @@ func (K8sClient K8sClient) getAllFromGvrsList(gvrs []schema.GroupVersionResource
 	return resources, nil
 }
 
-// CreateNamespace creates a Kubernetes namespace with the app- prefix
+// CreateNamespace creates a Kubernetes namespace
 func (k8sClient K8sClient) CreateNamespace(ctx context.Context, namespaceName string) error {
-	k8sNamespaceName := K8sNamespacePrefix + namespaceName
-
 	namespace := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: k8sNamespaceName,
+			Name: namespaceName,
 			Labels: map[string]string{
 				"app.kubernetes.io/managed-by": "stolos",
 			},
@@ -238,22 +236,20 @@ func (k8sClient K8sClient) CreateNamespace(ctx context.Context, namespaceName st
 
 	_, err := k8sClient.Clientset.CoreV1().Namespaces().Create(ctx, namespace, metav1.CreateOptions{})
 	if err != nil {
-		return fmt.Errorf("failed to create namespace %s: %w", k8sNamespaceName, err)
+		return fmt.Errorf("failed to create namespace %s: %w", namespaceName, err)
 	}
 
-	fmt.Printf("Successfully created namespace %s\n", k8sNamespaceName)
+	fmt.Printf("Successfully created namespace %s\n", namespaceName)
 	return nil
 }
 
 // DeleteNamespace deletes a Kubernetes namespace
 func (k8sClient K8sClient) DeleteNamespace(ctx context.Context, namespaceName string) error {
-	k8sNamespaceName := K8sNamespacePrefix + namespaceName
-
-	err := k8sClient.Clientset.CoreV1().Namespaces().Delete(ctx, k8sNamespaceName, metav1.DeleteOptions{})
+	err := k8sClient.Clientset.CoreV1().Namespaces().Delete(ctx, namespaceName, metav1.DeleteOptions{})
 	if err != nil {
-		return fmt.Errorf("failed to delete namespace %s: %w", k8sNamespaceName, err)
+		return fmt.Errorf("failed to delete namespace %s: %w", namespaceName, err)
 	}
 
-	fmt.Printf("Successfully deleted namespace %s\n", k8sNamespaceName)
+	fmt.Printf("Successfully deleted namespace %s\n", namespaceName)
 	return nil
 }
