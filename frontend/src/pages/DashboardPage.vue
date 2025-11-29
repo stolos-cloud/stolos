@@ -38,21 +38,21 @@ const actions = computed(() => {
             { icon: "mdi-download", text: t('actionButtons.downloadISOOnPremise'), tooltip: t('actionButtons.downloadISOOnPremise'), onClick: () => showDownloadISODialog() }
         ];
     } else {
-        return [];
+        return [
+            { icon: "mdi-github", text: t('actionButtons.viewRepo'), tooltip: t('actionButtons.viewRepo'), onClick: () => redirectToRepository() },
+        ];
     }
 });
 
 // Mounted
 onMounted(() => {
-    if(userRole.value === 'admin') {
-        getClusterInfo().then((response) => {
-            if(response.gitops_configured) {
-                clusterInfo.value = response;
-            }
-        }).catch(error => {
-            console.error('Failed to fetch cluster info:', error);
-        });
-    }
+    getClusterInfo().then((response) => {
+        if(response.gitops_configured) {
+            clusterInfo.value = response;
+        }
+    }).catch(error => {
+        console.error('Failed to fetch cluster info:', error);
+    });
 });
 
 // Methods

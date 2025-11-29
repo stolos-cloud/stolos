@@ -46,53 +46,53 @@ const { textfieldRules, emailRules } = FormValidationRules();
 // Computed
 const textfieldCode = computed(() =>
     `
-    //Template
-    <BaseTextfield :Textfield="fields.textfield" ${fields.icon.value ? `:iconAction="'mdi-eye'"` : ''} />
+//Template
+<BaseTextfield :Textfield="fields.textfield" ${fields.icon.value ? `:iconAction="'mdi-eye'"` : ''} />
 
-    //Reactive
-    textfield: new TextField({
-        label: t('ui.alerts.notice.controls.textfield.label'),
-        placeholder: t('ui.alerts.notice.controls.textfield.placeholder'),
-        type: ${fields.textfieldType.value},
-        readonly: ${fields.readonly.value},
-        required: true,
-        rules: textfieldRules
-    }),
+//Reactive
+textfield: new TextField({
+    label: t('ui.alerts.notice.controls.textfield.label'),
+    placeholder: t('ui.alerts.notice.controls.textfield.placeholder'),
+    type: ${fields.textfieldType.value},
+    readonly: ${fields.readonly.value},
+    required: true,
+    rules: textfieldRules
+}),
     `
 );
 const autoCompleteCode = computed(() =>
     `
-    //Template
-    <BaseAutoComplete :AutoComplete="fields.autocomplete" />
+//Template
+<BaseAutoComplete :AutoComplete="fields.autocomplete" />
 
-    //Reactive
-    autocomplete: new AutoComplete({
-        label: t('provisioning.cloud.nodeFormfields.zone'),
-        items: [
-            { label: 'test1', value: 'test1' },
-            { label: 'test2', value: 'test2' },
-            { label: 'test3', value: 'test3' },
-            { label: 'test4', value: 'test4' }
-        ],
-        disabled: ${fields.autocompleteDisabled.value},
-        multiple: ${fields.autocompleteMultiple.value},
-        required: true,
-        rules: textfieldRules
-    }),
+//Reactive
+autocomplete: new AutoComplete({
+    label: t('provisioning.cloud.nodeFormfields.zone'),
+    items: [
+        { label: 'test1', value: 'test1' },
+        { label: 'test2', value: 'test2' },
+        { label: 'test3', value: 'test3' },
+        { label: 'test4', value: 'test4' }
+    ],
+    disabled: ${fields.autocompleteDisabled.value},
+    multiple: ${fields.autocompleteMultiple.value},
+    required: true,
+    rules: textfieldRules
+}),
     `
 );
 const fileInputCode = computed(() =>
     `
-    //Template
-    <BaseFileInput :FileInput="fields.fileInput" />
+//Template
+<BaseFileInput :FileInput="fields.fileInput" />
 
-    //Reactive
-    fileInput: new FileInput({
-        label: t('ui.inputs.fileInput.file.label'),
-        required: true,
-        accept: ".json, application/json",
-        rules: textfieldRules
-    }),
+//Reactive
+fileInput: new FileInput({
+    label: t('ui.inputs.fileInput.file.label'),
+    required: true,
+    accept: ".json, application/json",
+    rules: textfieldRules
+}),
     `
 );
 const showIconTextfield = computed(() => fields.icon.value ? 'mdi-eye' : undefined);

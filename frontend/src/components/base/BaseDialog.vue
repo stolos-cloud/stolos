@@ -1,7 +1,7 @@
 <template>
-    <v-dialog v-model="isOpen" :width="width" :persistent="persistent" content-class="elevation-8"
+    <v-dialog v-model="isOpen" :width="width" :persistent="persistent" content-class="elevation-8 rounded-lg"
         style="backdrop-filter: blur(4px);">
-        <v-card>
+        <v-card class="border rounded-lg">
             <template v-slot:title>
                 <div class="d-flex align-center my-2">
                     <BaseTitle :level="5" :title="title" />

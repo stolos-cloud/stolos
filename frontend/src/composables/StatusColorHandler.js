@@ -2,6 +2,7 @@ export function StatusColorHandler() {
     function getStatusColor(status) {
         switch (status.toLowerCase()) {
             case 'active':
+            case 'healthy':
                 return 'rgba(var(--v-theme-success), 1)';
             case 'provisioning':
                 return 'rgba(var(--v-theme-info), 1)';

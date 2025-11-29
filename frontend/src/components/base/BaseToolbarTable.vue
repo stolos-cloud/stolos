@@ -1,6 +1,6 @@
 <template>
     <div>
-        <v-toolbar color="surface" flat>
+        <v-toolbar color="surface" flat class="rounded-lg">
             <v-toolbar-title>            
                 <BaseTitle :level="6" :title="title" />
             </v-toolbar-title>

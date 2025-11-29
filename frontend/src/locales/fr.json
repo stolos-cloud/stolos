@@ -330,7 +330,16 @@
                 }
             },
             "viewDetailsDeployedApp": {
-                "title": "{ appName } - Détails"
+                "title": "{ appName } - Détails",
+                "subheading": "Informations générales",
+                "details": {
+                    "image": "Image",
+                    "replicas": "Répliques",
+                    "port": "Port",
+                    "nodePort": "Port du noeud",
+                    "owner": "Propriétaire"
+                },
+                "yamlDeployment": "Déploiement YAML"
             },
             "deleteDeployment": {
                 "title": "Supprimer l'application déployée",
@@ -483,10 +492,14 @@
         },
         "gcp": {
             "title": "Noeuds GCP"
+        },
+        "deployments": {
+            "title": "Déploiements"
         }
     },
     "status": {
         "active": "Actif",
+        "healthy": "En santé",
         "provisioning": "Provisionnement",
         "failed": "Échoué",
         "pending": "En attente",
@@ -515,7 +528,7 @@
         "showCode": "Afficher le code",
         "hideCode": "Masquer le code",
         "copyCode": "Copier le code",
-        "viewDocs": "Voir la documentation",
+        "viewStolosDocs": "Voir la documentation Stolos",
         "return": "Retour"
     },
     "rules": {

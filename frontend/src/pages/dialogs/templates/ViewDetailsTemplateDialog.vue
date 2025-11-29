@@ -2,24 +2,6 @@
     <div class="view-details-template-dialog">
         <BaseDialog v-model="isOpen"
             :title="$t('templateDefinitions.dialogs.viewDetailsTemplate.title', { template: template?.name })" closable>
-            <BaseExpansion :title="$t('templateDefinitions.dialogs.viewDetailsTemplate.crdDefinition')">
-                <template #actions>
-                    <BaseChip class="ml-2">
-                        {{ template?.version }}
-                    </BaseChip>
-                </template>
-                <v-sheet color="grey-darken-4" rounded style="position: relative;">
-                    <v-btn
-                        v-if="templateDetails?.jsonSchema"
-                        :icon="copiedItem === templateDetails?.jsonSchema ? 'mdi-check' : 'mdi-content-copy'"
-                        size="x-small"
-                        variant="text"
-                        style="position: absolute; top: 6px; right: 6px;"
-                        @click="copyToClipboard(templateDetails?.jsonSchema)"
-                    />
-                    <pre style="white-space: pre-wrap;">{{ templateDetails?.jsonSchema }}</pre>
-                </v-sheet>
-            </BaseExpansion>
             <BaseCard>
                 <template #title>
                     <BaseTitle :level="6" :title="$t('templateDefinitions.dialogs.viewDetailsTemplate.deployedApps')" />
@@ -54,6 +36,24 @@
                     </template>
                 </v-virtual-scroll>
             </BaseCard>
+            <BaseExpansion :title="$t('templateDefinitions.dialogs.viewDetailsTemplate.crdDefinition')">
+                <template #actions>
+                    <BaseChip class="ml-2">
+                        {{ template?.version }}
+                    </BaseChip>
+                </template>
+                <v-sheet color="grey-darken-4 pa-1" rounded style="position: relative; overflow-y: auto; max-height: 400px;">
+                    <v-btn
+                        v-if="templateDetails?.jsonSchema"
+                        :icon="copiedItem === templateDetails?.jsonSchema ? 'mdi-check' : 'mdi-content-copy'"
+                        size="x-small"
+                        variant="text"
+                        style="position: absolute; top: 6px; right: 6px;"
+                        @click="copyToClipboard(templateDetails?.jsonSchema)"
+                    />
+                    <pre style="white-space: pre-wrap;">{{ templateDetails?.jsonSchema }}</pre>
+                </v-sheet>
+            </BaseExpansion>
         </BaseDialog>
     </div>
 </template>

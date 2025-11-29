@@ -1,6 +1,6 @@
 <template>
     <div>
-        <v-sheet class="mt-4 border rounded">
+        <v-sheet class="mt-4 border rounded-lg">
             <v-data-table 
                 :headers="headers" 
                 :items="items" 

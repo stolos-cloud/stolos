@@ -78,7 +78,7 @@ export async function listMyDeployments({ template, namespace }) {
   }
 }
 
-export async function getDeployment(template, namespace, deployment) {
+export async function getDeployment({ template, namespace, deployment }) {
   try {
     const response = await api.get(`/deployments/get?namespace=${namespace}&template=${template}&deployment=${deployment}`);
     return response.data;
