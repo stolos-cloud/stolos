@@ -53,33 +53,33 @@ const formFields = reactive({
 // Computed
 const baseDialogTemplateCode = computed(() => 
     `
-    <BaseDialog v-model="isBaseDialogOpen" title="Test" closable>
-        <v-form v-model="isValidForm">
-            <BaseTextfield :Textfield="formFields.name" />
-        </v-form>
-        <template #actions>
-            <BaseButton variant="outlined" :text="$t('actionButtons.cancel')" @click="closeBaseDialog" />
-            <BaseButton :text="$t('actionButtons.add')" :disabled="!isValidForm" @click="closeBaseDialog" />
-        </template>
-    </BaseDialog>
+<BaseDialog v-model="isBaseDialogOpen" title="Test" closable>
+    <v-form v-model="isValidForm">
+        <BaseTextfield :Textfield="formFields.name" />
+    </v-form>
+    <template #actions>
+        <BaseButton variant="outlined" :text="$t('actionButtons.cancel')" @click="closeBaseDialog" />
+        <BaseButton :text="$t('actionButtons.add')" :disabled="!isValidForm" @click="closeBaseDialog" />
+    </template>
+</BaseDialog>
     `
 );
 const confirmDialogTemplateCode = computed(() => 
     `
-    //Template
-    <BaseConfirmDialog ref="confirmDialog" />
+//Template
+<BaseConfirmDialog ref="confirmDialog" />
 
-    //Methods
-    function openConfirmDialog() {
-        confirmDialog.value.open({
-            title: "Test Confirm Dialog",
-            message: "Are you sure you want to proceed with this action?",
-            confirmText: t('actionButtons.confirm'),
-            onConfirm: () => {
-                closeConfirmDialog();
-            }
-        })
-    }
+//Methods
+function openConfirmDialog() {
+    confirmDialog.value.open({
+        title: "Test Confirm Dialog",
+        message: "Are you sure you want to proceed with this action?",
+        confirmText: t('actionButtons.confirm'),
+        onConfirm: () => {
+            closeConfirmDialog();
+        }
+    })
+}
     `
 );
 

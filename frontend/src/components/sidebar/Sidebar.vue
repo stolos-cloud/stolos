@@ -1,46 +1,52 @@
 <template>
     <v-navigation-drawer v-model="drawerModel" :width="sidebarWidth" app :permanent="!temporary" :temporary="temporary" :elevation="elevation">
-      <v-list-item :style="{ height: props.toolbarHeight + 'px' }">
-        <template #prepend>
-            <v-icon>mdi-rocket</v-icon>
-        </template>
-        <v-list-item-title>{{ $t('applicationName') }}</v-list-item-title>
-      </v-list-item>
-
-      <v-divider></v-divider>
-
-      <v-list density="compact" nav>
-        <template v-for="item in menuItems" :key="item.title">
-          <v-list-group v-if="item.children" :prepend-icon="item.icon">
-            <template #activator="{ props }">
-              <v-list-item v-bind="props">
-                <v-list-item-title>{{ $t(item.title) }}</v-list-item-title>
-              </v-list-item>
-            </template>
-
-            <v-list-item
-              v-for="child in item.children"
-              :key="child.title"
-              :to="child.route"
-              link
-              active-class="active-nav"
-            >
-              <v-list-item-title>{{ $t(child.title) }}</v-list-item-title>
-            </v-list-item>
-          </v-list-group>
-
-          <v-list-item v-else :to="item.route || '/'" link rounded="0" active-class="active-nav">
+        <v-list-item :style="{ height: props.toolbarHeight + 'px' }">
             <template #prepend>
-              <v-icon>{{ item.icon }}</v-icon>
+                <v-icon>mdi-rocket</v-icon>
             </template>
-            <v-list-item-title v-if="drawer">{{ $t(item.title) }}</v-list-item-title>
-          </v-list-item>
-        </template>
-      </v-list>
-      <template #append>
+            <v-list-item-title>{{ $t('applicationName') }}</v-list-item-title>
+        </v-list-item>
+
         <v-divider></v-divider>
-        <BottomSidebar />
-      </template>
+
+        <v-list density="compact" nav>
+            <template v-for="item in menuItems" :key="item.title">
+                <v-list-group v-if="item.children" :prepend-icon="item.icon">
+                    <template #activator="{ props }">
+                        <v-list-item v-bind="props">
+                            <v-list-item-title>{{ $t(item.title) }}</v-list-item-title>
+                        </v-list-item>
+                    </template>
+
+                    <v-list-item
+                        v-for="child in item.children"
+                        :key="child.title"
+                        :to="child.route"
+                        link
+                        active-class="active-nav"
+                    >
+                        <v-list-item-title>{{ $t(child.title) }}</v-list-item-title>
+                    </v-list-item>
+                </v-list-group>
+
+                <v-list-item v-else :to="item.route || '/'" link rounded="0" active-class="active-nav">
+                    <template #prepend>
+                        <v-icon>{{ item.icon }}</v-icon>
+                    </template>
+                    <v-list-item-title v-if="drawer">{{ $t(item.title) }}</v-list-item-title>
+                </v-list-item>
+            </template>
+        </v-list>
+        <template #append>
+            <div class="ma-2">            
+                <BaseButton variant="outlined" class="w-100" 
+                    :text="$t('actionButtons.viewStolosDocs')" 
+                    @click="redirectToWikiDocs"
+                />
+            </div>
+            <v-divider></v-divider>
+            <BottomSidebar />
+        </template>
     </v-navigation-drawer>
 </template>
 
@@ -108,6 +114,10 @@ const drawerModel = computed({
     }
 });
 
+// Methods
+function redirectToWikiDocs() {
+    window.open("https://github.com/stolos-cloud/stolos/wiki");
+}
 </script>
 
 <style scoped>

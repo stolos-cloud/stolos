@@ -38,7 +38,7 @@ const chartOptions = reactive({
                 margin: 5,
             },
             hollow: {
-                size: '60%'
+                size: `${80 - props.series.length * 4}%`
             },
             dataLabels: {
                 name: { show: true },

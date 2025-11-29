@@ -19,9 +19,7 @@ onMounted(() => {
 // Methods
 function fetchMyDeployments() {
     listMyDeployments({ template: "", namespace: "" })
-        .then((response) => {
-            console.log(response);
-            
+        .then((response) => {            
             deploymentsChart.value = response.map(
                 deployment => toCamelCaseObject(deployment)
             );

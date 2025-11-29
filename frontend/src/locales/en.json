@@ -329,7 +329,16 @@
                 }
             },
             "viewDetailsDeployedApp": {
-                "title": "{ appName } - Details"
+                "title": "{ appName } - Details",
+                "subheading": "General informations",
+                "details": {
+                    "image": "Image",
+                    "replicas": "Replicas",
+                    "port": "Port",
+                    "nodePort": "Node Port",
+                    "owner": "Owner"
+                },
+                "yamlDeployment": "YAML deployment"
             },
             "deleteDeployment": {
                 "title": "Delete deployed application",
@@ -482,6 +491,9 @@
         },
         "gcp": {
             "title": "GCP nodes"
+        },
+        "deployments": {
+            "title": "Deployments"
         }
     },
     "status": {
@@ -515,7 +527,7 @@
         "showCode": "Show code",
         "hideCode": "Hide code",
         "copyCode": "Copy code",
-        "viewDocs": "View documentation",
+        "viewStolosDocs": "View Stolos docs",
         "return": "Return"
     },
     "rules": {

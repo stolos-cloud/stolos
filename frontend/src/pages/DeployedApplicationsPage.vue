@@ -27,7 +27,7 @@
             </template>
         </BaseDataTable>
         <CreateDeployedAppDialog v-model="dialogDeployNewApp" @deployedAppCreated="fetchDeployedApps" />
-        <ViewDetailsDeployedAppDialog v-model="dialogViewDetailsDeployedApp" :deployedApp="selectedDeployedApp" />
+        <ViewDetailsDeployedAppDialog v-model="dialogViewDetailsDeployedApp" :deployment="selectedDeployedApp" />
         <BaseConfirmDialog ref="confirmDialog" />
     </PortalLayout>
 </template>
@@ -67,10 +67,10 @@ const deployedApplicationsHeaders = computed(() => [
 ]);
 const actionsButtonForTable = computed(() => [
     {
-        icon: "mdi-text-box",
-        tooltip: t('actionButtons.viewDocs'),
-        text: t('actionButtons.viewDocs'),
-        click: redirectToWikiDocs
+        icon: "mdi-refresh",
+        tooltip: t('actionButtons.refresh'),
+        text: t('actionButtons.refresh'),
+        click: fetchDeployedApps
     },
     {
         icon: "mdi-plus",
@@ -107,9 +107,6 @@ function fetchDeployedApps() {
         }).finally(() => {
              loading.value = false;
         });
-}
-function redirectToWikiDocs() {
-    window.open("https://github.com/stolos-cloud/stolos/wiki");
 }
 function deleteDeploymentDialog(item) {
     confirmDialog.value.open({

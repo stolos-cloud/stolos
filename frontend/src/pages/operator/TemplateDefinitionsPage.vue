@@ -44,10 +44,10 @@ const templateHeaders = computed(() => [
 ]);
 const actionsButtonForTable = computed(() => [
     {
-        icon: "mdi-text-box",
-        tooltip: t('actionButtons.viewDocs'),
-        text: t('actionButtons.viewDocs'),
-        click: redirectToWikiDocs
+        icon: "mdi-refresh",
+        tooltip: t('actionButtons.refresh'),
+        text: t('actionButtons.refresh'),
+        click: fetchTemplates
     },
     {
         icon: "mdi-plus",
@@ -89,8 +89,5 @@ async function fetchTemplates() {
     }).finally(() => {
         loading.value = false;
     });
-}
-function redirectToWikiDocs() {
-    window.open("https://github.com/stolos-cloud/stolos/wiki");
 }
 </script>

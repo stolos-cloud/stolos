@@ -35,7 +35,7 @@ const translatedLabels = computed(() =>
 const myDeployments = computed(() => [
     {
         key: 'deployment1',
-        title: t('charts.onPremises.title'),
+        title: t('charts.deployments.title'),
         series: buildSeriesByDeployment(),
         colors: rawLabels.value.map(label => getStatusColor(label))
     }
@@ -44,10 +44,10 @@ const myDeployments = computed(() => [
 // Methods
 function buildSeriesByDeployment() {
     return rawLabels.value.map(label =>
-        props.deployments.map(
-            deployment =>
-                deployment.status === label
-        ).length
+        props.deployments.map(deployment =>
+            deployment.healthy === true ? 'Healthy' : 'Failed'
+        )
+        .filter(status => status === label).length
     );
 }
 </script>
