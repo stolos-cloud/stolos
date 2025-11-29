@@ -98,15 +98,15 @@ function fetchDeployedApps() {
     const request = isAdmin.value ? listDeployments : listMyDeployments;
 
     request({ template: "", namespace: "" })
-         .then((response) => {
+        .then((response) => {
             deployedApplications.value = response.map(
                 deployment => toCamelCaseObject(deployment)
             );
-         }).catch(error => {
+        }).catch(error => {
              console.error("Error fetching my deployed applications:", error);
-         }).finally(() => {
+        }).finally(() => {
              loading.value = false;
-         });
+        });
 }
 function redirectToWikiDocs() {
     window.open("https://github.com/stolos-cloud/stolos/wiki");

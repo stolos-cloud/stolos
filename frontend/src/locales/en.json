@@ -486,6 +486,7 @@
     },
     "status": {
         "active": "Active",
+        "healthy": "Healthy",
         "provisioning": "Provisioning",
         "failed": "Failed",
         "pending": "Pending",

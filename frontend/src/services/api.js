@@ -26,7 +26,7 @@ api.interceptors.response.use(
         return response;
     },
     error => {
-        if (error.response?.status === 401) {
+        if (error.response?.status === 403) {
             StorageService.remove('token');
             StorageService.remove('user');
             router.push({ name: 'login', query: { message: 'sessionExpired' } });
