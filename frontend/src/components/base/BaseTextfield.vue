@@ -13,7 +13,12 @@
         hide-details="auto"
         variant="outlined"
         class="my-4"
-    ></v-text-field>
+    >
+        <template #label>
+            {{ Textfield.label }}
+            <span v-if="Textfield.required" class="text-red">*</span>
+        </template>
+    </v-text-field>
 </template>
 
 <script setup>

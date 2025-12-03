@@ -122,7 +122,7 @@ function redirectToWikiDocs() {
 
 <style scoped>
 .active-nav {
-  border-left: 4px solid #f97316;
+  border-left: 4px solid rgba(var(--v-theme-primary), 1);
   font-weight: 600;
   text-shadow: 0 0 2px rgba(255, 255, 255, 0.7);
 }

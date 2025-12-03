@@ -14,7 +14,12 @@
         class="my-4"
         @update:search-input="emit('search', $event)"
         @click:clear="emit('cleared')"
-    ></v-autocomplete>
+    >
+        <template #label>
+            {{ AutoComplete.label }}
+            <span v-if="AutoComplete.required" class="text-red">*</span>
+        </template>
+    </v-autocomplete>
 </template>
 
 <script setup>

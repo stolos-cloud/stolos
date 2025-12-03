@@ -5,7 +5,7 @@
                 <v-img src="@/assets/logo.png" alt="Logo" max-width="100" class="mx-auto" />
                 <BaseTitle :level="4" :title="$t('login.title')" class="mt-2" />
             </v-col>
-            <v-card width="500" class="pa-2" elevation="8">
+            <v-card width="500" elevation="8" class="pa-2 border rounded-lg">
                 <v-card-text>
                     <v-form v-model="isValid" @submit.prevent="loginUser">
                         <BaseTextfield :Textfield="textfields.email" />
@@ -16,7 +16,7 @@
                     </v-form>
                 </v-card-text>
                 <v-card-actions class="d-flex flex-column align-center mt-4">
-                    <RouterLink to="/403" class="mb-1 text-router-link">
+                    <RouterLink to="/login" class="mb-1 text-router-link">
                         {{ $t('login.forgotPassword') }}
                     </RouterLink>
                 </v-card-actions>

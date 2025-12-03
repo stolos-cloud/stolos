@@ -1,6 +1,6 @@
 <template>
     <div class="edit-user-role-dialog">
-        <BaseDialog v-model="isOpen" :title="$t('administration.users.dialogs.editUser.title')" closable>
+        <BaseDialog v-model="isOpen" :title="$t('administration.users.dialogs.editUserRole.title', { userName: userName })" closable>
             <v-form v-model="isValidForm">
                 <BaseSelect v-model="formFields.role.value" :Select="formFields.role" />
             </v-form>
@@ -44,6 +44,7 @@ const isOpen = ref(props.modelValue);
 
 // Computed
 const userRoles = computed(() => store.getters['referenceLists/getUserRoles']);
+const userName = computed(() => props.userSelected ? props.userSelected.email : '');
 
 // Form state
 const formFields = reactive({
