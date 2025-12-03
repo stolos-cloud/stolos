@@ -12,7 +12,12 @@
         density="comfortable"
         hide-details="auto"
         class="my-4"
-    />
+    >
+        <template #label>
+            {{ Select.label }}
+            <span v-if="Select.required" class="text-red">*</span>
+        </template>
+    </v-select>
 </template>
 
 <script setup>

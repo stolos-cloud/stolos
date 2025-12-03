@@ -60,11 +60,11 @@ const showTooltip = computed(() => !!props.icon && !display.mdAndUp.value && !!p
 
 <style scoped>
 .v-btn:hover {
-    background-color: #bf5b26 !important;
+    background-color: rgba(var(--v-theme-primary-darken-1), 0.65) !important;
 }
 
 .v-btn.v-btn--disabled {
-  background-color: #ff9248 !important;
+  background-color: rgba(var(--v-theme-primary-darken-1), 0.65) !important;
   opacity: 0.5 !important;
 }
 </style>

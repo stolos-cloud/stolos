@@ -1,13 +1,9 @@
 <template>
-    <v-row class="mt-2">
-        <v-col v-for="deployment in myDeployments" :key="deployment.key" cols="12" md="6" sm="6">
-            <BaseCard class="pa-1">
-                <BaseTitle :level="6" :title="deployment.title" />
-                <BaseRadialBarChart :key="`${deployment.key}-${$i18n.locale}`" :series="deployment.series"
-                    :labels="translatedLabels" :colors="deployment.colors" />
-            </BaseCard>
-        </v-col>
-    </v-row>
+    <BaseCard class="pa-1">
+        <BaseTitle :level="6" :title="myDeployment.title" />
+        <BaseRadialBarChart :key="`${myDeployment.key}-${$i18n.locale}`" :series="myDeployment.series"
+            :labels="translatedLabels" :colors="myDeployment.colors" />
+    </BaseCard>
 </template>
 
 <script setup>
@@ -32,14 +28,14 @@ const rawLabels = ref(['Healthy', 'Failed']);
 const translatedLabels = computed(() =>
     rawLabels.value.map(label => t(`status.${label.toLowerCase()}`))
 );
-const myDeployments = computed(() => [
-    {
+const myDeployment = computed(() => { 
+    return  {
         key: 'deployment1',
         title: t('charts.deployments.title'),
         series: buildSeriesByDeployment(),
         colors: rawLabels.value.map(label => getStatusColor(label))
     }
-]);
+});
 
 // Methods
 function buildSeriesByDeployment() {

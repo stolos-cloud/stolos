@@ -9,7 +9,6 @@
             :footerMessage="$t('deployedApplications.table.footerMessage', { src: 'Stolos Custom Resources' })"
             :actionsButtonForTable="actionsButtonForTable" rowClickable
             @click:row="(event, item) => showViewDetailsDeployedAppDialog(item.item)">
-
             <template #[`item.healthy`]="{ item }">
                 <BaseChip :color="getStatusInfo(item).color">
                     <template #prepend> 

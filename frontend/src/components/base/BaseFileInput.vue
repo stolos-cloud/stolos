@@ -12,7 +12,12 @@
         hide-details="auto"
         variant="outlined"
         class="my-4"
-    ></v-file-input>
+    >
+        <template #label>
+            {{ FileInput.label }}
+            <span v-if="FileInput.required" class="text-red">*</span>
+        </template>
+    </v-file-input>
 </template>
 
 <script setup>

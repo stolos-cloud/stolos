@@ -13,6 +13,8 @@
                 :items-per-page-options="[10]"
                 :items-per-page-text="itemsPerPageText" 
                 :hide-default-footer="items.length < 10"
+                :height="height"
+                :fixed-header="fixedHeader"
                 mobile-breakpoint="md"
                 v-on="rowClickable ? { 'click:row': handleClickRow } : {}"
                 :class="{ 'clickable-rows': rowClickable}"
@@ -87,6 +89,14 @@ const props = defineProps({
     footerMessage: {
         type: String,
         default: ''
+    },
+    height: {
+        type: [String, Number],
+        default: null
+    },
+    fixedHeader: {
+        type: Boolean,
+        default: false
     }
 });
 

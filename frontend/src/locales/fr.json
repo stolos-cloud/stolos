@@ -75,6 +75,18 @@
                     }
                 }
             }
+        },
+        "developer": {
+            "table": {
+                "title": "Namespaces avec déploiements",
+                "loadingText": "Chargement des namespaces...",
+                "noDataText": "Aucun namespace trouvé.",
+                "itemsPerPageText": "Namespaces par page :",
+                "headers": {
+                    "namespaces": "Namespaces",
+                    "numberOfDeployments": "Nombre de déploiements"
+                }
+            }
         }
     },
     "applications": {
@@ -392,8 +404,8 @@
                 "addUser": {
                     "title": "Ajouter un nouvel utilisateur"
                 },
-                "editUser": {
-                    "title": "Modifier l'utilisateur"
+                "editUserRole": {
+                    "title": "Modifier le rôle - { userName }"
                 },
                 "deleteUser": {
                     "title": "Supprimer l'utilisateur",
