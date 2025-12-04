@@ -309,7 +309,7 @@ const fetchInfrastructureStatus = async () => {
 // Connect to event WebSocket for real-time infrastructure status updates
 const connectEventWebSocket = () => {
     const token = StorageService.get('token');
-    const wsUrl = `${WS_BASE_URL}/api/v1/events/stream?token=${token}`;
+    const wsUrl = `${WS_BASE_URL}/events/stream?token=${token}`;
 
     eventWs.value = new WebSocket(wsUrl);
 
