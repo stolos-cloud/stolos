@@ -94,7 +94,7 @@ function fetchNamespaces() {
 }
 function redirectToNamespace(item) {
     router.push({ 
-        name: 'administration-namespaces', 
+        name: 'deployed-applications', 
         query: { search: item.name }
     });
 }

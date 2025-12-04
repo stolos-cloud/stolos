@@ -35,6 +35,7 @@
 import { ref, onMounted, computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { useStore } from "vuex";
+import { useRoute } from "vue-router";
 import { listDeployments, listMyDeployments, deleteDeployment } from "@/services/templates.service";
 import { GlobalNotificationHandler } from "@/composables/GlobalNotificationHandler";
 import { GlobalOverlayHandler } from "@/composables/GlobalOverlayHandler";
@@ -45,6 +46,7 @@ const { t } = useI18n();
 const store = useStore();
 const { showNotification } = GlobalNotificationHandler();
 const { showOverlay, hideOverlay } = GlobalOverlayHandler();
+const route = useRoute();
 
 // State
 const loading = ref(false);
@@ -81,6 +83,7 @@ const actionsButtonForTable = computed(() => [
 
 //Mounted
 onMounted(() => {
+    search.value = route.query.search || '';
     fetchDeployedApps();
 });
 

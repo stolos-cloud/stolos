@@ -29,7 +29,6 @@
 <script setup>
 import { ref, onMounted, computed } from "vue";
 import { useI18n } from "vue-i18n";
-import { useRoute } from "vue-router";
 import { getNamespaces, deleteNamespaceById } from '@/services/namespaces.service';
 import { GlobalNotificationHandler } from "@/composables/GlobalNotificationHandler";
 import { GlobalOverlayHandler } from "@/composables/GlobalOverlayHandler";
@@ -40,7 +39,6 @@ import ViewDetailsNamespaceDialog from "@/pages/dialogs/administration/ViewDetai
 const { t } = useI18n();
 const { showNotification } = GlobalNotificationHandler();
 const { showOverlay, hideOverlay } = GlobalOverlayHandler();
-const route = useRoute();
 
 // State
 const dialogCreateNamespace = ref(false);
@@ -75,7 +73,6 @@ const actionsButtonForTable = computed(() => [
 
 //Mounted
 onMounted(() => {
-    search.value = route.query.search || '';
     fetchNamespaces();
 });
 
