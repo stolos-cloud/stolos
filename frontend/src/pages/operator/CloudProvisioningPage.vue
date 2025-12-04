@@ -47,7 +47,7 @@
             <v-card class="mb-4 border">
                 <v-card-title>
                     <div class="d-flex align-center">
-                        <v-icon left>mdi-file-document-outline</v-icon>
+                        <v-icon start size="20">mdi-file-document-outline</v-icon>
                         {{ $t('provisioning.cloud.phases.terraformPlan') }}
                         <BaseChip v-if="provisioningPhase === 'plan'" color="info" class="ml-2">
                             {{ $t('provisioning.cloud.status.running') }}
@@ -97,7 +97,7 @@
             <!-- Phase 2: Approval Section -->
             <v-card v-if="provisioningPhase === 'awaiting_approval'" class="mb-4 border">
                 <v-card-title>
-                    <v-icon left>mdi-alert-circle</v-icon>
+                    <v-icon start size="20">mdi-alert-circle</v-icon>
                     {{ $t('provisioning.cloud.phases.approvalRequired') }}
                 </v-card-title>
                 <v-card-subtitle class="pt-2">
@@ -129,8 +129,8 @@
             <v-card v-if="['apply', 'complete', 'error'].includes(provisioningPhase)" class="mb-4 border"> 
                 <v-card-title>
                     <div class="d-flex align-center">
-                        <v-icon left>mdi-play-circle-outline</v-icon>
-                        {{ $t('provisioning.cloud.phases.terraformApply') }}
+                        <v-icon start size="20">mdi-clock-outline</v-icon>
+                        {{ $t('provisioning.cloud.phases.applyPending') }}
                         <BaseChip v-if="provisioningPhase === 'apply'" color="info" class="ml-2">
                             {{ $t('provisioning.cloud.status.running') }}
                         </BaseChip>

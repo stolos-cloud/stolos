@@ -166,7 +166,7 @@
             "phases": {
                 "terraformPlan": "Terraform plan",
                 "approvalRequired": "Approval required",
-                "terraformApply": "Terraform apply"
+                "applyPending": "Apply pending"
             },
             "status": {
                 "running": "Running...",

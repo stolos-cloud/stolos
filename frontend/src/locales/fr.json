@@ -167,7 +167,7 @@
             "phases": {
                 "terraformPlan": "Plan Terraform",
                 "approvalRequired": "Approbation requise",
-                "terraformApply": "Application Terraform"
+                "applyPending": "Application en attente"
             },
             "status": {
                 "running": "En cours...",
