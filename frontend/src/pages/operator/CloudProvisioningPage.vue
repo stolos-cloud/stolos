@@ -44,40 +44,28 @@
         <!-- Notebook-style sequential layout -->
         <div v-if="provisioningPhase !== 'idle'">
             <!-- Phase 1: Terraform Plan -->
-            <v-card class="mb-4">
-                <v-card-title class="bg-orange-darken-2">
-                    <v-icon left>mdi-file-document-outline</v-icon>
-                    {{ $t('provisioning.cloud.phases.terraformPlan') }}
-                    <v-chip
-                        v-if="provisioningPhase === 'plan'"
-                        class="ml-2 text-white"
-                        color="blue"
-                        size="small"
-                        variant="flat"
-                    >
-                        {{ $t('provisioning.cloud.status.running') }}
-                    </v-chip>
-                    <v-chip
-                        v-else
-                        class="ml-2 text-white"
-                        color="success"
-                        size="small"
-                        variant="flat"
-                    >
-                        {{ $t('provisioning.cloud.status.complete') }}
-                    </v-chip>
-                    <v-spacer></v-spacer>
-                    <v-btn
-                        v-if="provisioningPhase !== 'idle' && provisioningPhase !== 'plan'"
-                        color="grey-darken-4"
-                        variant="outlined"
-                        size="small"
-                        @click="downloadPlan"
-                    >
-                        <v-icon left>mdi-download</v-icon>
-                        {{ $t('provisioning.cloud.buttons.downloadPlan') }}
-                    </v-btn>
+            <v-card class="mb-4 border">
+                <v-card-title>
+                    <div class="d-flex align-center">
+                        <v-icon start size="20">mdi-file-document-outline</v-icon>
+                        {{ $t('provisioning.cloud.phases.terraformPlan') }}
+                        <BaseChip v-if="provisioningPhase === 'plan'" color="info" class="ml-2">
+                            {{ $t('provisioning.cloud.status.running') }}
+                        </BaseChip>
+                        <BaseChip v-else color="success" class="ml-2">
+                            {{ $t('provisioning.cloud.status.complete') }}
+                        </BaseChip>
+                        <v-spacer></v-spacer>
+                        <BaseButton
+                            v-if="provisioningPhase !== 'idle' && provisioningPhase !== 'plan'"
+                            icon="mdi-download"
+                            variant="outlined"
+                            :text="$t('provisioning.cloud.buttons.downloadPlan')"
+                            @click="downloadPlan"
+                        />
+                    </div>
                 </v-card-title>
+                <v-divider></v-divider>
                 <v-card-text>
                     <v-sheet color="grey-darken-4" class="pa-4" rounded>
                         <div
@@ -107,14 +95,15 @@
             />
 
             <!-- Phase 2: Approval Section -->
-            <v-card v-if="provisioningPhase === 'awaiting_approval'" class="mb-4">
-                <v-card-title class="bg-orange-darken-2">
-                    <v-icon left>mdi-alert-circle</v-icon>
+            <v-card v-if="provisioningPhase === 'awaiting_approval'" class="mb-4 border">
+                <v-card-title>
+                    <v-icon start size="20">mdi-alert-circle</v-icon>
                     {{ $t('provisioning.cloud.phases.approvalRequired') }}
                 </v-card-title>
                 <v-card-subtitle class="pt-2">
                     {{ approvalSummary }}
                 </v-card-subtitle>
+                <v-divider></v-divider>
                 <v-card-text>
                     <div class="text-body-2 mb-4">
                         {{ $t('provisioning.cloud.messages.reviewPlan') }}
@@ -122,66 +111,46 @@
                 </v-card-text>
                 <v-card-actions class="pa-4">
                     <v-spacer></v-spacer>
-                    <v-btn
-                        color="error"
+                    <BaseButton 
                         variant="outlined"
-                        size="large"
+                        :icon="mdi-close"
+                        :text="$t('provisioning.cloud.buttons.reject')"
                         @click="rejectProvisioning"
-                    >
-                        <v-icon left>mdi-close</v-icon>
-                        {{ $t('provisioning.cloud.buttons.reject') }}
-                    </v-btn>
-                    <v-btn color="success" variant="flat" size="large" @click="approveProvisioning">
-                        <v-icon left>mdi-check</v-icon>
-                        {{ $t('provisioning.cloud.buttons.approve') }}
-                    </v-btn>
+                    />
+                    <BaseButton 
+                        :icon="mdi-check"
+                        :text="$t('provisioning.cloud.buttons.approve')"
+                        @click="approveProvisioning"
+                    />
                 </v-card-actions>
             </v-card>
 
             <!-- Phase 3: Terraform Apply -->
-            <v-card v-if="['apply', 'complete', 'error'].includes(provisioningPhase)" class="mb-4">
-                <v-card-title class="bg-green-darken-2">
-                    <v-icon left>mdi-play-circle-outline</v-icon>
-                    {{ $t('provisioning.cloud.phases.terraformApply') }}
-                    <v-chip
-                        v-if="provisioningPhase === 'apply'"
-                        class="ml-2 text-white"
-                        color="blue"
-                        size="small"
-                        variant="flat"
-                    >
-                        {{ $t('provisioning.cloud.status.running') }}
-                    </v-chip>
-                    <v-chip
-                        v-else-if="provisioningPhase === 'complete'"
-                        class="ml-2 text-white"
-                        color="success"
-                        size="small"
-                        variant="flat"
-                    >
-                        {{ $t('provisioning.cloud.status.complete') }}
-                    </v-chip>
-                    <v-chip
-                        v-else-if="provisioningPhase === 'error'"
-                        class="ml-2 text-white"
-                        color="error"
-                        size="small"
-                        variant="flat"
-                    >
-                        {{ $t('provisioning.cloud.status.error') }}
-                    </v-chip>
-                    <v-spacer></v-spacer>
-                    <v-btn
-                        v-if="['complete', 'error'].includes(provisioningPhase)"
-                        color="grey-darken-4"
-                        variant="outlined"
-                        size="small"
-                        @click="downloadApply"
-                    >
-                        <v-icon left>mdi-download</v-icon>
-                        {{ $t('provisioning.cloud.buttons.downloadApply') }}
-                    </v-btn>
+            <v-card v-if="['apply', 'complete', 'error'].includes(provisioningPhase)" class="mb-4 border"> 
+                <v-card-title>
+                    <div class="d-flex align-center">
+                        <v-icon start size="20">mdi-clock-outline</v-icon>
+                        {{ $t('provisioning.cloud.phases.applyPending') }}
+                        <BaseChip v-if="provisioningPhase === 'apply'" color="info" class="ml-2">
+                            {{ $t('provisioning.cloud.status.running') }}
+                        </BaseChip>
+                        <BaseChip v-else-if="provisioningPhase === 'complete'" color="success" class="ml-2">
+                            {{ $t('provisioning.cloud.status.complete') }}
+                        </BaseChip>
+                        <BaseChip v-else-if="provisioningPhase === 'error'" color="error" class="ml-2">
+                            {{ $t('provisioning.cloud.status.error') }}
+                        </BaseChip>
+                        <v-spacer></v-spacer>
+                        <BaseButton
+                            v-if="['complete', 'error'].includes(provisioningPhase)"
+                            icon="mdi-download"
+                            variant="outlined"
+                            :text="$t('provisioning.cloud.buttons.downloadApply')"
+                            @click="downloadApply"
+                        />
+                    </div>
                 </v-card-title>
+                <v-divider></v-divider>
                 <v-card-text>
                     <v-sheet color="grey-darken-4" class="pa-4" rounded>
                         <div
@@ -213,10 +182,6 @@
                 class="mb-4"
             />
         </div>
-
-        <v-overlay class="d-flex align-center justify-center" v-model="overlay" persistent>
-            <v-progress-circular indeterminate></v-progress-circular>
-        </v-overlay>
     </PortalLayout>
 </template>
 
@@ -236,7 +201,6 @@ const { t } = useI18n();
 const store = useStore();
 const { textfieldRules } = FormValidationRules();
 
-const overlay = ref(false);
 const isProvisioning = ref(false);
 const isValidForm = ref(false);
 const planLogs = ref([]);

@@ -1,6 +1,6 @@
 <template>
     <div>
-        <v-row class="mt-2">
+        <v-row>
             <v-col cols="12" md="6" sm="6">
                 <DeploymentsCharts :deployments="deploymentsChart"></DeploymentsCharts>
             </v-col>

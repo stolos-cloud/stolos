@@ -1,5 +1,5 @@
 <template>
-    <v-row class="mt-2">
+    <v-row>
         <v-col v-for="provider in providers" :key="provider.key" cols="12" md="6" sm="6">
             <BaseCard class="pa-1">
                 <BaseTitle :level="6" :title="provider.title" />
