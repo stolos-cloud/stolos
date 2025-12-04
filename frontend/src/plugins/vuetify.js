@@ -35,8 +35,8 @@ export default createVuetify({
             dark: {
                 colors: {
                     background: '#040609', //040609
-                    surface: '#000018ff', //0d0f15ff
-                    'surface-variant': '#000009ff', //9c9a9aff
+                    surface: '#000015ff', //0d0f15ff
+                    'surface-variant': '#5a86d8ff', //9c9a9aff
                     primary: '#5a86d8ff', //f97316
                     'primary-darken-1': '#5a86d8a7', //ff9248
                     secondary: '#5a73f5ff',
@@ -48,14 +48,14 @@ export default createVuetify({
                     title: '#ffffff',
                     subtitlte: '#dddddd',
                     text: '#bbbbbb',
-                    'list-item': '#1e1e1eff',
+                    'list-item': '#131313ff',
                 },
             },
             light: {
                 colors: {
                     background: '#ffffff',
                     surface: '#f5f5f5',
-                    'surface-variant': '#9a9898ff',
+                    'surface-variant': '#86a5deff',
                     primary: '#5a86d8ff',
                     'primary-darken-1': '#4274d0b6',
                     secondary: '#5a73f5ff',

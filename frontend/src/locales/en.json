@@ -164,9 +164,9 @@
                 "downloadApply": "Download Apply"
             },
             "phases": {
-                "terraformPlan": "Terraform Plan",
-                "approvalRequired": "Approval Required",
-                "terraformApply": "Terraform Apply"
+                "terraformPlan": "Terraform plan",
+                "approvalRequired": "Approval required",
+                "terraformApply": "Terraform apply"
             },
             "status": {
                 "running": "Running...",
