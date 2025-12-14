@@ -5,7 +5,7 @@ digraph ProviderStrategyPattern {
     nodesep=2.0;
     ranksep=2.5;
     fontname="Helvetica";
-    fontsize=28;
+    fontsize=36;
     node [fontname="Helvetica", fontsize=24];
     edge [fontname="Helvetica", fontsize=20, penwidth=2.5];
 
@@ -18,13 +18,13 @@ digraph ProviderStrategyPattern {
         style=dashed;
         color="#2196F3";
         fontcolor="#2196F3";
-        fontsize=28;
+        fontsize=36;
 
         // Interface Stratégie
         Provider [
             label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="14">
-                <TR><TD BGCOLOR="#E3F2FD" PORT="title"><FONT POINT-SIZE="24"><B>&lt;&lt;interface&gt;&gt;<BR/>Provider</B></FONT></TD></TR>
-                <TR><TD ALIGN="LEFT" BALIGN="LEFT" PORT="methods"><FONT POINT-SIZE="20">+ GetTerraformBackendConfig() map[string]string<BR ALIGN="LEFT"/>+ GetProviderName() string<BR ALIGN="LEFT"/>+ GetRegion() string<BR ALIGN="LEFT"/>+ IsConfigured() bool<BR ALIGN="LEFT"/></FONT></TD></TR>
+                <TR><TD BGCOLOR="#E3F2FD" PORT="title"><FONT POINT-SIZE="40"><B>&lt;&lt;interface&gt;&gt;<BR/>Provider</B></FONT></TD></TR>
+                <TR><TD ALIGN="LEFT" BALIGN="LEFT" PORT="methods"><FONT POINT-SIZE="36">+ GetTerraformBackendConfig() map[string]string<BR ALIGN="LEFT"/>+ GetProviderName() string<BR ALIGN="LEFT"/>+ GetRegion() string<BR ALIGN="LEFT"/>+ IsConfigured() bool<BR ALIGN="LEFT"/></FONT></TD></TR>
             </TABLE>>
             shape=plaintext
         ];
@@ -32,8 +32,8 @@ digraph ProviderStrategyPattern {
         // Stratégie Concrète - GCP
         GCPService [
             label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="14">
-                <TR><TD BGCOLOR="#C8E6C9" PORT="title"><FONT POINT-SIZE="24"><B>GCPService</B></FONT><BR/><FONT POINT-SIZE="18">services/gcp/config.go</FONT></TD></TR>
-                <TR><TD ALIGN="LEFT" BALIGN="LEFT" PORT="methods"><FONT POINT-SIZE="20">+ GetTerraformBackendConfig()<BR ALIGN="LEFT"/>+ GetProviderName() → "gcp"<BR ALIGN="LEFT"/>+ GetRegion()<BR ALIGN="LEFT"/>+ IsConfigured()<BR ALIGN="LEFT"/>──────────────────<BR ALIGN="LEFT"/>+ InitializeGCP()<BR ALIGN="LEFT"/>+ ConfigureGCP()<BR ALIGN="LEFT"/>+ GetClient() *gcp.Client<BR ALIGN="LEFT"/>+ GetCurrentConfig()<BR ALIGN="LEFT"/></FONT></TD></TR>
+                <TR><TD BGCOLOR="#C8E6C9" PORT="title"><FONT POINT-SIZE="40"><B>GCPService</B></FONT><BR/><FONT POINT-SIZE="30">services/gcp/config.go</FONT></TD></TR>
+                <TR><TD ALIGN="LEFT" BALIGN="LEFT" PORT="methods"><FONT POINT-SIZE="36">+ GetTerraformBackendConfig()<BR ALIGN="LEFT"/>+ GetProviderName() → "gcp"<BR ALIGN="LEFT"/>+ GetRegion()<BR ALIGN="LEFT"/>+ IsConfigured()<BR ALIGN="LEFT"/>──────────────────<BR ALIGN="LEFT"/>+ InitializeGCP()<BR ALIGN="LEFT"/>+ ConfigureGCP()<BR ALIGN="LEFT"/>+ GetClient() *gcp.Client<BR ALIGN="LEFT"/>+ GetCurrentConfig()<BR ALIGN="LEFT"/></FONT></TD></TR>
             </TABLE>>
             shape=plaintext
         ];
@@ -41,8 +41,8 @@ digraph ProviderStrategyPattern {
         // Stratégie Concrète Future - AWS
         AWSService [
             label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="14">
-                <TR><TD BGCOLOR="#EEEEEE" PORT="title"><FONT POINT-SIZE="24"><B>AWSService</B></FONT><BR/><FONT POINT-SIZE="18">(implémentation future)</FONT></TD></TR>
-                <TR><TD ALIGN="LEFT" BALIGN="LEFT" PORT="methods"><FONT POINT-SIZE="20">+ GetTerraformBackendConfig()<BR ALIGN="LEFT"/>+ GetProviderName() → "aws"<BR ALIGN="LEFT"/>+ GetRegion()<BR ALIGN="LEFT"/>+ IsConfigured()<BR ALIGN="LEFT"/></FONT></TD></TR>
+                <TR><TD BGCOLOR="#EEEEEE" PORT="title"><FONT POINT-SIZE="40"><B>AWSService</B></FONT><BR/><FONT POINT-SIZE="30">(implémentation future)</FONT></TD></TR>
+                <TR><TD ALIGN="LEFT" BALIGN="LEFT" PORT="methods"><FONT POINT-SIZE="36">+ GetTerraformBackendConfig()<BR ALIGN="LEFT"/>+ GetProviderName() → "aws"<BR ALIGN="LEFT"/>+ GetRegion()<BR ALIGN="LEFT"/>+ IsConfigured()<BR ALIGN="LEFT"/></FONT></TD></TR>
             </TABLE>>
             shape=plaintext
             style=dashed
@@ -51,8 +51,8 @@ digraph ProviderStrategyPattern {
         // Stratégie Concrète Future - Azure
         AzureService [
             label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="14">
-                <TR><TD BGCOLOR="#EEEEEE" PORT="title"><FONT POINT-SIZE="24"><B>AzureService</B></FONT><BR/><FONT POINT-SIZE="18">(implémentation future)</FONT></TD></TR>
-                <TR><TD ALIGN="LEFT" BALIGN="LEFT" PORT="methods"><FONT POINT-SIZE="20">+ GetTerraformBackendConfig()<BR ALIGN="LEFT"/>+ GetProviderName() → "azure"<BR ALIGN="LEFT"/>+ IsConfigured()<BR ALIGN="LEFT"/></FONT></TD></TR>
+                <TR><TD BGCOLOR="#EEEEEE" PORT="title"><FONT POINT-SIZE="40"><B>AzureService</B></FONT><BR/><FONT POINT-SIZE="30">(implémentation future)</FONT></TD></TR>
+                <TR><TD ALIGN="LEFT" BALIGN="LEFT" PORT="methods"><FONT POINT-SIZE="36">+ GetTerraformBackendConfig()<BR ALIGN="LEFT"/>+ GetProviderName() → "azure"<BR ALIGN="LEFT"/>+ IsConfigured()<BR ALIGN="LEFT"/></FONT></TD></TR>
             </TABLE>>
             shape=plaintext
             style=dashed
@@ -73,13 +73,13 @@ digraph ProviderStrategyPattern {
         style=dashed;
         color="#FF9800";
         fontcolor="#FF9800";
-        fontsize=28;
+        fontsize=36;
 
         ProviderManager [
             label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="14">
-                <TR><TD BGCOLOR="#FFE0B2" PORT="title"><FONT POINT-SIZE="24"><B>ProviderManager</B></FONT><BR/><FONT POINT-SIZE="18">services/provider_manager.go</FONT></TD></TR>
-                <TR><TD ALIGN="LEFT" BALIGN="LEFT" PORT="fields"><FONT POINT-SIZE="20">- providers: map[string]Provider<BR ALIGN="LEFT"/>- gcpService: *GCPService<BR ALIGN="LEFT"/>- infrastructureService: *InfrastructureService<BR ALIGN="LEFT"/></FONT></TD></TR>
-                <TR><TD ALIGN="LEFT" BALIGN="LEFT" PORT="methods"><FONT POINT-SIZE="20">+ InitializeProviders(ctx)<BR ALIGN="LEFT"/>+ GetProvider(name) Provider<BR ALIGN="LEFT"/>+ GetConfiguredProviders()<BR ALIGN="LEFT"/>+ HasConfiguredProviders()<BR ALIGN="LEFT"/>──────────────────<BR ALIGN="LEFT"/>- initializeGCP(ctx)<BR ALIGN="LEFT"/>- initializeGCPInfrastructure(ctx)<BR ALIGN="LEFT"/></FONT></TD></TR>
+                <TR><TD BGCOLOR="#FFE0B2" PORT="title"><FONT POINT-SIZE="40"><B>ProviderManager</B></FONT><BR/><FONT POINT-SIZE="30">services/provider_manager.go</FONT></TD></TR>
+                <TR><TD ALIGN="LEFT" BALIGN="LEFT" PORT="fields"><FONT POINT-SIZE="36">- providers: map[string]Provider<BR ALIGN="LEFT"/>- gcpService: *GCPService<BR ALIGN="LEFT"/>- infrastructureService: *InfrastructureService<BR ALIGN="LEFT"/></FONT></TD></TR>
+                <TR><TD ALIGN="LEFT" BALIGN="LEFT" PORT="methods"><FONT POINT-SIZE="36">+ InitializeProviders(ctx)<BR ALIGN="LEFT"/>+ GetProvider(name) Provider<BR ALIGN="LEFT"/>+ GetConfiguredProviders()<BR ALIGN="LEFT"/>+ HasConfiguredProviders()<BR ALIGN="LEFT"/>──────────────────<BR ALIGN="LEFT"/>- initializeGCP(ctx)<BR ALIGN="LEFT"/>- initializeGCPInfrastructure(ctx)<BR ALIGN="LEFT"/></FONT></TD></TR>
             </TABLE>>
             shape=plaintext
         ];
@@ -94,21 +94,21 @@ digraph ProviderStrategyPattern {
         style=dashed;
         color="#9C27B0";
         fontcolor="#9C27B0";
-        fontsize=28;
+        fontsize=36;
 
         ProvisioningService [
             label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="14">
-                <TR><TD BGCOLOR="#E1BEE7" PORT="title"><FONT POINT-SIZE="24"><B>ProvisioningService</B></FONT><BR/><FONT POINT-SIZE="18">services/gcp/provisioning.go</FONT></TD></TR>
-                <TR><TD ALIGN="LEFT" BALIGN="LEFT" PORT="fields"><FONT POINT-SIZE="20">- gcpService: *GCPService<BR ALIGN="LEFT"/>- talosService: *TalosService<BR ALIGN="LEFT"/>- gitopsService: *GitOpsService<BR ALIGN="LEFT"/>- activeProvisions: map[uuid]ProvisionSession<BR ALIGN="LEFT"/></FONT></TD></TR>
-                <TR><TD ALIGN="LEFT" BALIGN="LEFT" PORT="methods"><FONT POINT-SIZE="20">+ ProvisionNodes(ctx, req, session)<BR ALIGN="LEFT"/>──────────────────<BR ALIGN="LEFT"/>- createTerraformFiles()<BR ALIGN="LEFT"/>- commitTerraformFiles()<BR ALIGN="LEFT"/>- uploadTalosConfigsToGCS()<BR ALIGN="LEFT"/>- getTerraformOutputs()<BR ALIGN="LEFT"/></FONT></TD></TR>
+                <TR><TD BGCOLOR="#E1BEE7" PORT="title"><FONT POINT-SIZE="40"><B>ProvisioningService</B></FONT><BR/><FONT POINT-SIZE="30">services/gcp/provisioning.go</FONT></TD></TR>
+                <TR><TD ALIGN="LEFT" BALIGN="LEFT" PORT="fields"><FONT POINT-SIZE="36">- gcpService: *GCPService<BR ALIGN="LEFT"/>- talosService: *TalosService<BR ALIGN="LEFT"/>- gitopsService: *GitOpsService<BR ALIGN="LEFT"/>- activeProvisions: map[uuid]ProvisionSession<BR ALIGN="LEFT"/></FONT></TD></TR>
+                <TR><TD ALIGN="LEFT" BALIGN="LEFT" PORT="methods"><FONT POINT-SIZE="36">+ ProvisionNodes(ctx, req, session)<BR ALIGN="LEFT"/>──────────────────<BR ALIGN="LEFT"/>- createTerraformFiles()<BR ALIGN="LEFT"/>- commitTerraformFiles()<BR ALIGN="LEFT"/>- uploadTalosConfigsToGCS()<BR ALIGN="LEFT"/>- getTerraformOutputs()<BR ALIGN="LEFT"/></FONT></TD></TR>
             </TABLE>>
             shape=plaintext
         ];
 
         ProvisionSession [
             label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="14">
-                <TR><TD BGCOLOR="#F3E5F5" PORT="title"><FONT POINT-SIZE="24"><B>ProvisionSession</B></FONT></TD></TR>
-                <TR><TD ALIGN="LEFT" BALIGN="LEFT"><FONT POINT-SIZE="20">+ WorkDir: string<BR ALIGN="LEFT"/>+ Orchestrator: *Orchestrator<BR ALIGN="LEFT"/>+ Nodes: []NodeConfig<BR ALIGN="LEFT"/>+ GCPConfig: *GCPConfig<BR ALIGN="LEFT"/></FONT></TD></TR>
+                <TR><TD BGCOLOR="#F3E5F5" PORT="title"><FONT POINT-SIZE="40"><B>ProvisionSession</B></FONT></TD></TR>
+                <TR><TD ALIGN="LEFT" BALIGN="LEFT"><FONT POINT-SIZE="36">+ WorkDir: string<BR ALIGN="LEFT"/>+ Orchestrator: *Orchestrator<BR ALIGN="LEFT"/>+ Nodes: []NodeConfig<BR ALIGN="LEFT"/>+ GCPConfig: *GCPConfig<BR ALIGN="LEFT"/></FONT></TD></TR>
             </TABLE>>
             shape=plaintext
         ];
@@ -123,28 +123,28 @@ digraph ProviderStrategyPattern {
         style=dashed;
         color="#4CAF50";
         fontcolor="#4CAF50";
-        fontsize=28;
+        fontsize=36;
 
         Orchestrator [
             label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="14">
-                <TR><TD BGCOLOR="#C8E6C9" PORT="title"><FONT POINT-SIZE="24"><B>Orchestrator</B></FONT><BR/><FONT POINT-SIZE="18">pkg/terraform/orchestrator.go</FONT></TD></TR>
-                <TR><TD ALIGN="LEFT" BALIGN="LEFT" PORT="methods"><FONT POINT-SIZE="20">+ Init(ctx)<BR ALIGN="LEFT"/>+ Plan(ctx) (bool, error)<BR ALIGN="LEFT"/>+ PlanWithOutput(ctx)<BR ALIGN="LEFT"/>+ Apply(ctx)<BR ALIGN="LEFT"/>+ ApplyJSON(ctx, writer)<BR ALIGN="LEFT"/>+ Destroy(ctx)<BR ALIGN="LEFT"/>+ Output(ctx)<BR ALIGN="LEFT"/>+ RenderTemplate(name, data)<BR ALIGN="LEFT"/>+ CommitToGitOps(ctx, client, config)<BR ALIGN="LEFT"/></FONT></TD></TR>
+                <TR><TD BGCOLOR="#C8E6C9" PORT="title"><FONT POINT-SIZE="40"><B>Orchestrator</B></FONT><BR/><FONT POINT-SIZE="30">pkg/terraform/orchestrator.go</FONT></TD></TR>
+                <TR><TD ALIGN="LEFT" BALIGN="LEFT" PORT="methods"><FONT POINT-SIZE="36">+ Init(ctx)<BR ALIGN="LEFT"/>+ Plan(ctx) (bool, error)<BR ALIGN="LEFT"/>+ PlanWithOutput(ctx)<BR ALIGN="LEFT"/>+ Apply(ctx)<BR ALIGN="LEFT"/>+ ApplyJSON(ctx, writer)<BR ALIGN="LEFT"/>+ Destroy(ctx)<BR ALIGN="LEFT"/>+ Output(ctx)<BR ALIGN="LEFT"/>+ RenderTemplate(name, data)<BR ALIGN="LEFT"/>+ CommitToGitOps(ctx, client, config)<BR ALIGN="LEFT"/></FONT></TD></TR>
             </TABLE>>
             shape=plaintext
         ];
 
         Executor [
             label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="14">
-                <TR><TD BGCOLOR="#C8E6C9" PORT="title"><FONT POINT-SIZE="24"><B>Executor</B></FONT><BR/><FONT POINT-SIZE="18">pkg/terraform/executor.go</FONT></TD></TR>
-                <TR><TD ALIGN="LEFT" BALIGN="LEFT"><FONT POINT-SIZE="20">encapsule: hashicorp/terraform-exec<BR ALIGN="LEFT"/>──────────────────<BR ALIGN="LEFT"/>+ Init(), Plan(), Apply()<BR ALIGN="LEFT"/>+ Destroy(), Output()<BR ALIGN="LEFT"/></FONT></TD></TR>
+                <TR><TD BGCOLOR="#C8E6C9" PORT="title"><FONT POINT-SIZE="40"><B>Executor</B></FONT><BR/><FONT POINT-SIZE="30">pkg/terraform/executor.go</FONT></TD></TR>
+                <TR><TD ALIGN="LEFT" BALIGN="LEFT"><FONT POINT-SIZE="36">encapsule: hashicorp/terraform-exec<BR ALIGN="LEFT"/>──────────────────<BR ALIGN="LEFT"/>+ Init(), Plan(), Apply()<BR ALIGN="LEFT"/>+ Destroy(), Output()<BR ALIGN="LEFT"/></FONT></TD></TR>
             </TABLE>>
             shape=plaintext
         ];
 
         Templates [
             label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="14">
-                <TR><TD BGCOLOR="#DCEDC8" PORT="title"><FONT POINT-SIZE="24"><B>Gabarits Terraform</B></FONT><BR/><FONT POINT-SIZE="18">terraform-templates/</FONT></TD></TR>
-                <TR><TD ALIGN="LEFT" BALIGN="LEFT"><FONT POINT-SIZE="20">gcp/infrastructure.tf.tmpl<BR ALIGN="LEFT"/>gcp/node.tf.tmpl<BR ALIGN="LEFT"/>gcp/modules/node/*.tmpl<BR ALIGN="LEFT"/>──────────────────<BR ALIGN="LEFT"/>aws/*.tf.tmpl (futur)<BR ALIGN="LEFT"/>azure/*.tf.tmpl (futur)<BR ALIGN="LEFT"/></FONT></TD></TR>
+                <TR><TD BGCOLOR="#DCEDC8" PORT="title"><FONT POINT-SIZE="40"><B>Gabarits Terraform</B></FONT><BR/><FONT POINT-SIZE="30">terraform-templates/</FONT></TD></TR>
+                <TR><TD ALIGN="LEFT" BALIGN="LEFT"><FONT POINT-SIZE="36">gcp/infrastructure.tf.tmpl<BR ALIGN="LEFT"/>gcp/node.tf.tmpl<BR ALIGN="LEFT"/>gcp/modules/node/&#42;.tmpl<BR ALIGN="LEFT"/>──────────────────<BR ALIGN="LEFT"/>aws/&#42;.tf.tmpl (futur)<BR ALIGN="LEFT"/>azure/&#42;.tf.tmpl (futur)<BR ALIGN="LEFT"/></FONT></TD></TR>
             </TABLE>>
             shape=plaintext
         ];
@@ -159,8 +159,8 @@ digraph ProviderStrategyPattern {
 
     InfrastructureService [
         label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="14">
-            <TR><TD BGCOLOR="#FFE0B2" PORT="title"><FONT POINT-SIZE="24"><B>InfrastructureService</B></FONT><BR/><FONT POINT-SIZE="18">services/infrastructure.go</FONT></TD></TR>
-            <TR><TD ALIGN="LEFT" BALIGN="LEFT" PORT="methods"><FONT POINT-SIZE="20">+ InitializeInfrastructure(ctx, provider)<BR ALIGN="LEFT"/>+ DestroyInfrastructure(ctx, provider)<BR ALIGN="LEFT"/>+ GetInfrastructureStatus(provider)<BR ALIGN="LEFT"/>+ PublishNodeModule(ctx, provider)<BR ALIGN="LEFT"/></FONT></TD></TR>
+            <TR><TD BGCOLOR="#FFE0B2" PORT="title"><FONT POINT-SIZE="40"><B>InfrastructureService</B></FONT><BR/><FONT POINT-SIZE="30">services/infrastructure.go</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT" BALIGN="LEFT" PORT="methods"><FONT POINT-SIZE="36">+ InitializeInfrastructure(ctx, provider)<BR ALIGN="LEFT"/>+ DestroyInfrastructure(ctx, provider)<BR ALIGN="LEFT"/>+ GetInfrastructureStatus(provider)<BR ALIGN="LEFT"/>+ PublishNodeModule(ctx, provider)<BR ALIGN="LEFT"/></FONT></TD></TR>
         </TABLE>>
         shape=plaintext
     ];
@@ -194,7 +194,7 @@ digraph ProviderStrategyPattern {
         fontcolor="#616161";
         fontsize=26;
 
-        node [shape=box, style="rounded,filled", fillcolor="#E8F5E9"];
+        node [shape=box, style="rounded,filled", fillcolor="#E8F5E9", fontsize=32, margin="0.8,0.6", penwidth=2];
 
         step1 [label="1. Requête HTTP\n(POST /gcp/nodes/provision)"];
         step2 [label="2. Obtenir Config GCP\nvia GCPService"];
@@ -228,12 +228,12 @@ digraph ProviderStrategyPattern {
 
         node [shape=plaintext];
 
-        legend [label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="8" CELLPADDING="10">
-            <TR><TD BGCOLOR="#E3F2FD"><FONT POINT-SIZE="20">Interface Stratégie (Patron Stratégie)</FONT></TD></TR>
-            <TR><TD BGCOLOR="#C8E6C9"><FONT POINT-SIZE="20">Stratégie Concrète</FONT></TD></TR>
-            <TR><TD BGCOLOR="#FFE0B2"><FONT POINT-SIZE="20">Contexte (Patron Stratégie)</FONT></TD></TR>
-            <TR><TD BGCOLOR="#E1BEE7"><FONT POINT-SIZE="20">Service d'Approvisionnement</FONT></TD></TR>
-            <TR><TD BGCOLOR="#EEEEEE" BORDER="1" STYLE="dashed"><FONT POINT-SIZE="20">Futur (non implémenté)</FONT></TD></TR>
+        legend [label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="12" CELLPADDING="14">
+            <TR><TD BGCOLOR="#E3F2FD"><FONT POINT-SIZE="36">Interface Stratégie (Patron Stratégie)</FONT></TD></TR>
+            <TR><TD BGCOLOR="#C8E6C9"><FONT POINT-SIZE="36">Stratégie Concrète</FONT></TD></TR>
+            <TR><TD BGCOLOR="#FFE0B2"><FONT POINT-SIZE="36">Contexte (Patron Stratégie)</FONT></TD></TR>
+            <TR><TD BGCOLOR="#E1BEE7"><FONT POINT-SIZE="36">Service d'Approvisionnement</FONT></TD></TR>
+            <TR><TD BGCOLOR="#EEEEEE" BORDER="1" STYLE="dashed"><FONT POINT-SIZE="36">Futur (non implémenté)</FONT></TD></TR>
         </TABLE>>];
     }
 }
